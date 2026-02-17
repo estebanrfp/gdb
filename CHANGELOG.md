@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.7] - 2026-02-18
+
+### Changed
+
+- **Testing Infrastructure:** Replaced Vitest/jsdom mock-based test suite with real browser testing via `agent-browser`. Tests now verify actual P2P sync between two browser sessions with screenshot evidence. Removed `vitest`, `@vitest/ui`, `jsdom` devDependencies, `setupTests.js`, `vitest.config.js`, and CI workflow.
+
 ## [0.12.0] - 2025-12-01
 
 ### 🚀 Major Feature: Cellular Mesh Overlay for Massive P2P Scalability
