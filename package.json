@@ -13,7 +13,7 @@
   "scripts": {
     "build": "bun esbun.js",
     "dev": "bun run --watch",
-    "test": "vitest run --pool=threads --maxWorkers=1 --reporter=verbose --reporter=html --outputFile=tests/html/test-results.html"
+    "test": "bash tests/run.sh"
   },
   "files": [
     "dist"
@@ -53,13 +53,10 @@
     "pako": "2.1.0"
   },
   "devDependencies": {
-    "@vitest/ui": "4.0.9",
     "eslint": "9.39.1",
     "eslint-config-standard": "17.1.0",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-n": "17.23.1",
-    "eslint-plugin-promise": "7.2.1",
-    "jsdom": "27.2.0",
-    "vitest": "4.0.9"
+    "eslint-plugin-promise": "7.2.1"
   }
 }

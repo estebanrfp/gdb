@@ -13,8 +13,8 @@ For detailed architecture: See docs/genosdb-features.md (features overview), doc
 ## Key Workflows
 - **Build**: `bun esbun.js` (bundles to dist/, gzips files).
 - **Dev**: `bun run --watch` (hot reload).
-- **Test**: `vitest run --pool=threads --maxWorkers=1 --reporter=verbose --reporter=html --outputFile=tests/html/test-results.html` (mocks WebRTC in setupTests.js).
-- **Debug P2P**: Use console logs in room.js for peer events; mock RTCPeerConnection in tests.
+- **Test**: `bash tests/run.sh` (real browser tests via agent-browser with P2P sync verification).
+- **Debug P2P**: Use console logs in room.js for peer events.
 
 ## Project Conventions
 - **Modules**: ES6 imports/exports; no classes, prefer factory functions (e.g., room.js exports a function).
