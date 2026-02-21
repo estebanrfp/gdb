@@ -31,7 +31,11 @@
     "p2p",
     "distributed",
     "decentralized",
-    "rbac"
+    "rbac",
+    "decentralized-database",
+    "webrtc-mesh",
+    "offline-first",
+    "zero-trust"
   ],
   "author": {
     "name": "Esteban Fuster Pozzi",
