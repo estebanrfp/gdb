@@ -188,6 +188,9 @@ _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 WebXR Educational Virtual World - Real-time shared experiences. ~ By [estebanrfp](https://github.com/estebanrfp)
 Project progress videos - [@ovgrid](https://odysee.com/@ovgrid:d)
 
+### [notizbuch-app - P2P collaborative notebook](https://github.com/mike-tuxedo/notizbuch-app)
+P2P collaborative notebook app with GenosDB sync. ~ By [mike-tuxedo](https://github.com/mike-tuxedo)
+
 ---
 **Contributing to Awesome Projects:**
 If you have a project using GenosDB that you'd like to showcase, please [open an issue](https://github.com/estebanrfp/gdb/issues) with the details, or submit a pull request to this page!
