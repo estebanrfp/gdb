@@ -1,6 +1,6 @@
 {
   "name": "genosdb",
-  "version": "0.12.9",
+  "version": "0.12.10",
   "description": "GenosDB (GDB): distributed graph database in real-time, peer-to-peer, scalable storage - efficient querying of complex relationships.",
   "main": "dist/index.js",
   "type": "module",
@@ -51,16 +51,22 @@
     "node": "23.x",
     "npm": "11.x"
   },
-  "dependencies": {
+  "devDependencies": {
     "@msgpack/msgpack": "3.1.2",
     "ethers": "6.15.0",
-    "pako": "2.1.0"
-  },
-  "devDependencies": {
+    "pako": "2.1.0",
     "eslint": "9.39.1",
     "eslint-config-standard": "17.1.0",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-n": "17.23.1",
     "eslint-plugin-promise": "7.2.1"
+  },
+  "overrides": {
+    "ws": ">=8.20.1 <9"
+  },
+  "pnpm": {
+    "overrides": {
+      "ws": ">=8.20.1 <9"
+    }
   }
 }

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.10] - 2026-06-03
+
+### Changed
+
+- **Build-only dependencies moved to `devDependencies`:** `ethers`, `pako`, and `@msgpack/msgpack` are now `devDependencies`. The published package ships only the self-contained, pre-bundled `dist/` (these libraries are inlined at build time), so they are not required at runtime. As a result, `npm install genosdb` now pulls **zero** transitive dependencies.
+
+### Security
+
+- **Cleared false-positive `ws` advisory (GHSA-58qx-3vcg-4xpx, `ws <8.20.1`):** The alert originated from `ws` being pulled transitively through `ethers`, which GenosDB uses for cryptography only — its Node WebSocket provider is tree-shaken out, so no `ws` code ships in the bundle. Removing the runtime dependency surface means consumers are no longer flagged; a `ws >=8.20.1 <9` override keeps the dev/build tree clean. Resolves [#30](https://github.com/estebanrfp/gdb/issues/30).
+
 ## [0.12.8] - 2026-03-13
 
 ### Added
