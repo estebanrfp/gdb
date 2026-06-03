@@ -31,7 +31,8 @@
       padding: 0;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       background: var(--bg);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -127,8 +128,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
     }
 
     .header-stats {
@@ -227,10 +235,21 @@
       border-radius: 50%;
     }
 
-    .legend-dot.you { background: #a855f7; }
-    .legend-dot.peer { background: #22c55e; }
-    .legend-dot.bridge { background: #f59e0b; }
-    .legend-dot.cell { background: #3b82f6; }
+    .legend-dot.you {
+      background: #a855f7;
+    }
+
+    .legend-dot.peer {
+      background: #22c55e;
+    }
+
+    .legend-dot.bridge {
+      background: #f59e0b;
+    }
+
+    .legend-dot.cell {
+      background: #3b82f6;
+    }
 
     /* Sidebar */
     .sidebar {
@@ -439,13 +458,33 @@
     }
 
     /* Graph colors */
-    .c-accent { color: var(--accent); }
-    .c-purple { color: var(--purple); }
-    .c-success { color: var(--success); }
-    .c-warning { color: var(--warning); }
-    .c-error { color: var(--error); }
-    .c-dim { color: var(--text-dim); }
-    .c-text { color: var(--text); }
+    .c-accent {
+      color: var(--accent);
+    }
+
+    .c-purple {
+      color: var(--purple);
+    }
+
+    .c-success {
+      color: var(--success);
+    }
+
+    .c-warning {
+      color: var(--warning);
+    }
+
+    .c-error {
+      color: var(--error);
+    }
+
+    .c-dim {
+      color: var(--text-dim);
+    }
+
+    .c-text {
+      color: var(--text);
+    }
 
     /* Legend */
     .legend {
@@ -469,8 +508,13 @@
     }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .header-stats { display: none; }
+      .sidebar {
+        display: none;
+      }
+
+      .header-stats {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -822,7 +866,7 @@
     function animateFullBroadcast(fromPeerId, fromCellId) {
       const fromPos = nodePositions.get(fromPeerId);
       const fromCellPos = cellPositions.get(fromCellId);
-      
+
       if (fromPos) {
         createPulse(fromPos.x, fromPos.y, COLORS.message);
       } else if (fromCellPos) {
@@ -1027,7 +1071,7 @@
     function calculateLayout() {
       const allPeers = getAllPeers();
       const cells = new Map();
-      
+
       for (const [pid, st] of allPeers) {
         const cellId = st.cellId || "cell-0";
         if (!cells.has(cellId)) cells.set(cellId, []);
@@ -1285,14 +1329,17 @@
     // ════════════════════════════════════════════════════════════════
     // CONNECT & EVENTS
     // ════════════════════════════════════════════════════════════════
-    const relayUrls = ["wss://relay.orangepill.ovh"];
+    // const relayUrls = ["wss://nostr.spaceshell.xyz"];
 
     async function connect() {
       try {
         log('Initializing mesh network...');
-        
+
         db = await gdb('mesh-cells-monitor', {
-          rtc: { relayUrls, cells: { ...CELLS_CONFIG, debug: false } }
+          rtc: {
+            // relayUrls,
+            cells: { ...CELLS_CONFIG, debug: false }
+          }
         });
 
         room = db.room;
@@ -1385,7 +1432,7 @@
     window.addEventListener("load", () => {
       resizeCanvas();
       window.addEventListener("resize", resizeCanvas);
-      
+
       $("sendBtn").addEventListener("click", sendMessage);
       $("msgInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
 

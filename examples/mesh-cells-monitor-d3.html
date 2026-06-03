@@ -1578,23 +1578,15 @@
     // ════════════════════════════════════════════════════════════════
     // CONNECT & EVENTS
     // ════════════════════════════════════════════════════════════════
-    const relayUrls = [
-      // "wss://relay.orangepill.ovh",
-      // "wss://purplerelay.com",
-      // "wss://pyramid.fiatjaf.com",
-      // "wss://nostr.azzamo.net",
-      // "wss://strfry.elswa-dev.online",
-      // "wss://relay.letsfo.com",
-      // "wss://nostr.gleeze.com",
-      // "wss://relay.angor.io"
-      "wss://nostr.spaceshell.xyz"
-    ];
+    // const relayUrls = [
+    //   "wss://nostr.spaceshell.xyz"
+    // ];
 
     async function connect() {
       try {
         db = await gdb('mesh-cells-monitor', {
           rtc: {
-            relayUrls,
+            // relayUrls,
             cells: {
               ...CELLS_CONFIG,
               debug: false

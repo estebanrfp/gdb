@@ -32,7 +32,8 @@
       padding: 0;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       background: var(--bg);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -135,8 +136,17 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.3; transform: scale(0.8); }
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
     }
 
     .header-stats {
@@ -248,10 +258,21 @@
       box-shadow: 0 0 8px currentColor;
     }
 
-    .legend-dot.you { background: #a855f7; }
-    .legend-dot.peer { background: #10b981; }
-    .legend-dot.bridge { background: #f59e0b; }
-    .legend-dot.cell { background: #6366f1; }
+    .legend-dot.you {
+      background: #a855f7;
+    }
+
+    .legend-dot.peer {
+      background: #10b981;
+    }
+
+    .legend-dot.bridge {
+      background: #f59e0b;
+    }
+
+    .legend-dot.cell {
+      background: #6366f1;
+    }
 
     .controls-hint {
       position: absolute;
@@ -476,8 +497,13 @@
     }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .header-stats { display: none; }
+      .sidebar {
+        display: none;
+      }
+
+      .header-stats {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -650,7 +676,7 @@
 
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  
+
   <script type="module">
     import { gdb } from "../dist/index.js";
 
@@ -749,7 +775,7 @@
           (Math.random() - 0.5) * 600,
           (Math.random() - 0.5) * 400
         );
-        
+
         const color = new THREE.Color();
         color.setHSL(0.7 + Math.random() * 0.1, 0.5, 0.3 + Math.random() * 0.2);
         colors.push(color.r, color.g, color.b);
@@ -788,14 +814,14 @@
 
     function onMouseMove(event) {
       if (!isDragging) return;
-      
+
       const deltaX = event.clientX - previousMousePosition.x;
       const deltaY = event.clientY - previousMousePosition.y;
-      
+
       rotationY += deltaX * 0.005;
       rotationX += deltaY * 0.005;
       rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
-      
+
       previousMousePosition = { x: event.clientX, y: event.clientY };
     }
 
@@ -958,7 +984,7 @@
         peers.forEach((peer, peerIndex) => {
           const theta = (peerIndex / peerCount) * Math.PI * 2;
           const phi = (peerIndex % 3) * (Math.PI / 4) - Math.PI / 4;
-          
+
           const px = cellX + Math.cos(theta) * Math.cos(phi) * radius;
           const py = cellY + Math.sin(phi) * radius * 0.8;
           const pz = cellZ + Math.sin(theta) * Math.cos(phi) * radius;
@@ -1167,7 +1193,7 @@
           if (p.currentSegment >= p.path.length - 1) {
             const lastPos = p.path[p.path.length - 1];
             create3DPulse(lastPos, COLORS.cell);
-            
+
             scene.remove(p.mesh);
             scene.remove(p.trail);
             p.mesh.geometry.dispose();
@@ -1490,14 +1516,17 @@
     // ════════════════════════════════════════════════════════════════
     // CONNECT & EVENTS
     // ════════════════════════════════════════════════════════════════
-    const relayUrls = ["wss://relay.orangepill.ovh"];
+    // const relayUrls = ["wss://nostr.spaceshell.xyz"];
 
     async function connect() {
       try {
         log('Initializing 3D mesh network...');
-        
+
         db = await gdb('mesh-cells-monitor', {
-          rtc: { relayUrls, cells: { ...CELLS_CONFIG, debug: false } }
+          rtc: {
+            // relayUrls,
+            cells: { ...CELLS_CONFIG, debug: false }
+          }
         });
 
         room = db.room;
@@ -1553,7 +1582,7 @@
           stats.msgRecv++;
           stats.bytesIn += msgSize;
           log(`<span class="from">${shortId(from)}:</span> ${content}`);
-          
+
           const fromState = remotePeerStates.get(from);
           if (fromState?.cellId) {
             animate3DMessage(from, fromState.cellId);
@@ -1584,11 +1613,11 @@
       stats.msgSent++;
       stats.bytesOut += text.length;
       log(`<span class="you">You:</span> ${text}`);
-      
+
       if (selfState.cellId) {
         animate3DMessage(selfId, selfState.cellId);
       }
-      
+
       input.value = "";
     }
 
@@ -1597,7 +1626,7 @@
     // ════════════════════════════════════════════════════════════════
     window.addEventListener("load", () => {
       initThreeJS();
-      
+
       $("sendBtn").addEventListener("click", sendMessage);
       $("msgInput").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
 

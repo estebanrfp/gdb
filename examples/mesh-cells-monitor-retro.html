@@ -968,9 +968,9 @@
     // ════════════════════════════════════════════════════════════════
     // CONNECT & EVENTS
     // ════════════════════════════════════════════════════════════════
-    const relayUrls = [
-      "wss://relay.orangepill.ovh"
-    ];
+    // const relayUrls = [
+    //   "wss://nostr.spaceshell.xyz"
+    // ];
 
     async function connect() {
       try {
@@ -978,7 +978,7 @@
         
         db = await gdb('mesh-cells-monitor', {
           rtc: {
-            relayUrls,
+            // relayUrls,
             cells: {
               ...CELLS_CONFIG,
               debug: false
