@@ -187,6 +187,19 @@ _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 ### [OVGrid - Open Virtual Grid](https://ovgrid.com/)
 WebXR Educational Virtual World - Real-time shared experiences. ~ By [estebanrfp](https://github.com/estebanrfp)
 Project progress videos - [@ovgrid](https://odysee.com/@ovgrid:d)
+
 ---
+
+## Integrations
+
+Plugins, bridges, and adapters that bring GenosDB into other platforms, engines, and frameworks. *(Different from GenosDB's own optional **modules** — SM, NLQ, GEO, rx, audit.)*
+
+### [godot-genosdb — Serverless P2P multiplayer for Godot](https://github.com/estebanrfp/godot-genosdb)
+A drop-in **Godot 4** plugin that adds real-time **P2P multiplayer** to Web exports via GenosDB — no backend. The API **mirrors GenosDB** (`join` / `send` / `put` / `map` / `remove`), so using it teaches the real GenosDB API. Ships with a cozy Stardew-style co-op farm demo (chop trees in a shared world, P2P chat). **[▶ Live demo](https://estebanrfp.github.io/godot-genosdb/)**.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
+---
+
 **Contributing to Awesome Projects:**
 If you have a project using GenosDB that you'd like to showcase, please [open an issue](https://github.com/estebanrfp/gdb/issues) with the details, or submit a pull request to this page!
