@@ -56,6 +56,8 @@ const db = await gdb("my-app", {
 | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `if`              | yes      | A standard GenosDB query (the same language used by `db.map`) evaluated against `user:<address>` nodes.                   |
 | `then.assignRole` | yes      | The role to assign when the condition matches. Must be one of the defined roles.                                          |
+| `then.expiresIn`  | no       | Makes the granted role **temporary**: a duration in milliseconds measured from the moment of promotion. See [Temporary roles](#temporary-roles-expiring-promotions). |
+| `then.expiresAt`  | no       | Like `expiresIn`, but an **absolute** expiry — an ISO string, a `Date`, or epoch milliseconds. Takes precedence over `expiresIn` if both are present. |
 | `offsetTimestamp` | no       | Minimum time in milliseconds since the user node's last write. The rule only fires once the node has been stable that long. |
 
 ## Conditions are GenosDB queries
@@ -76,6 +78,27 @@ The `if` block is passed verbatim to the query engine, so **every operator avail
 ```
 
 Operators contributed by optional modules (for example the [geo module](geo-module.md)'s `$near` / `$bbox`) also work when the module is enabled.
+
+## Temporary roles (expiring promotions)
+
+By default a promotion is permanent. Add `expiresIn` (relative) or `expiresAt` (absolute) to a rule's `then` to grant a role that **expires on its own** — useful for time-boxed moderators, trial accesses, temporary sanctions or event-only roles.
+
+```javascript
+// Trial moderator: promote on 10 reports, valid for 7 days
+{ if: { role: "user", reports: { $gte: 10 } },
+  then: { assignRole: "manager", expiresIn: 7 * 24 * 60 * 60 * 1000 } }
+
+// Event role with a fixed end date
+{ if: { role: "user", ticket: "vip" },
+  then: { assignRole: "vip", expiresAt: "2026-12-31T23:59:59Z" } }
+```
+
+- `expiresIn` is measured **from the moment of promotion**; `expiresAt` is absolute and wins if both are set.
+- The expiry is written onto the `user:<address>` node and signed by the superadmin, like any role change.
+- Once expired, the Security Manager **stops honoring the role** — privileged operations from that user are rejected on the honest client (`verifyUserRoleLocal` throws *"Role has expired"*).
+- The engine does **not** rewrite the node's `role` field when it expires; the role simply ceases to have effect. (A demotion rule can revert it visually if you also condition on the metric that granted it.)
+
+> **Beta note:** as with the rest of the governance beta, expiry is enforced on the honest client. Strict enforcement against a malicious peer (rejecting incoming operations signed under an expired role) is part of a planned Security-Manager hardening pass.
 
 ## Where the objective data lives
 

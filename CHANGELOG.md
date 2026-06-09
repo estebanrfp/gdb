@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-06-10
+
+### Added
+
+- **Governance — expiring roles (`then.expiresIn` / `then.expiresAt`):** A promotion rule can now grant a **temporary** role. Add `expiresIn` (duration in milliseconds, measured from the moment of promotion) or `expiresAt` (an absolute ISO string, `Date`, or epoch ms) to a rule's `then`, and the signed `assignRole` carries that expiry — enabling time-boxed moderators, trial accesses, temporary sanctions and event roles. Once the role expires the Security Manager stops honoring it locally (`verifyUserRoleLocal` rejects expired roles). Like the rest of the governance beta, expiry is enforced on the honest client; full P2P enforcement against a malicious peer is tracked for a later hardening pass. The engine does not revert the node's `role` field on expiry. Docs: [docs/governance.md](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+
 ## [0.13.0] - 2026-06-10
 
 ### Added
