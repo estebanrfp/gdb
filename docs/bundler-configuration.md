@@ -30,6 +30,14 @@ export default defineConfig({
 
 This tells Vite to skip pre-bundling GenosDB, allowing the dynamic imports to resolve correctly at runtime.
 
+### Production builds
+
+`exclude` only affects the dev server. GenosDB resolves its own modules relative to
+itself (`import.meta.url`), so re-bundling it in a production build can leave those
+modules unemitted (`404`). Keep GenosDB's `dist/` **intact** in your output — ship it
+as a single folder and load GenosDB from that path — and set `build.target: 'es2022'`
+(GenosDB uses top-level `await`).
+
 ## Webpack
 
 No additional configuration is typically required for Webpack 5+.
