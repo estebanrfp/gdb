@@ -154,7 +154,7 @@ startWebcam()
 ### Room & Peer Management
 
 - **`db.room.leave()`**: Disconnects the local user from the room and all peers.
-- **`db.room.getPeers()`**: Returns a `Map` of the active `RTCPeerConnection` objects, keyed by `peerId`.
+- **`db.room.getPeers()`**: Returns an object of the active `RTCPeerConnection` objects, keyed by `peerId`.
 - **`db.room.ping(peerId)`**: Measures the latency (in ms) to a specific peer. Returns a promise that resolves with the round-trip time.
 
 ---
