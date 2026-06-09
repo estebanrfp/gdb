@@ -38,7 +38,7 @@ Welcome to the official technical documentation for GenosDB.
   - 🤖 [NLQ Module](nlq-module.md) (Natural Language for Queries in db.map using prompts)
   - 📍 [GEO Query Module (geo)](geo-module.md) (Geo queries with $near and $bbox operators)
   - 🔒 [GenosDB SM ACLs Module (acls)](sm-acls-module.md) (Node-level permissions and access control)
-  - 🏛️ [Governance (Role Promotion)](governance.md) (Rule-based promotion of users from guest to higher roles — purpose & mechanism; preview)
+  - 🏛️ [Governance (Role Promotion)](governance.md) (Rule-based promotion of users from guest to higher roles, driven by GenosDB queries and signed by a present superadmin)
 
   ---
 

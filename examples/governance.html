@@ -1,120 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>GDB Governance - Viewer</title>
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 20px;
-      background: #f5f5f5;
-    }
-
-    .container {
-      max-width: 700px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
-    }
-
-    h1 {
-      color: #333;
-      text-align: center;
-
-    }
-
-    h2#status {
-      background: #e3f2fd;
-      color: #0d47a1;
-      padding: 12px;
-      border-radius: 6px;
-      text-align: center;
-      margin: 10px 0 20px 0;
-      font-size: 1rem;
-    }
-
-    /* Role highlight */
-    .role-green {
-      color: #00a8ff;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    button {
-      margin: 5px;
-      padding: 8px 14px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background: #007bff;
-      color: #fff;
-      font-size: 0.95rem;
-      transition: background 0.2s ease;
-    }
-
-    button:hover:not(:disabled) {
-      background: #0056b3;
-    }
-
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
-    #logout:not(:disabled) {
-      background: #dc3545;
-    }
-
-    #deleteDb:not(:disabled) {
-      background: #dc3545;
-    }
-
-    #deleteDb:hover:not(:disabled) {
-      background: #a71d2a;
-    }
-
-    textarea {
-      width: 100%;
-      padding: 8px;
-      margin-top: 8px;
-      font-size: .9rem;
-      min-height: 70px;
-      box-sizing: border-box;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      resize: none;
-    }
-
-    pre {
-      background: #222;
-      color: #eee;
-      padding: 12px;
-      border-radius: 6px;
-      max-height: 300px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 0.85rem;
-    }
+    body{font-family:system-ui,sans-serif;margin:20px;background:#f5f5f5}
+    .container{max-width:700px;margin:auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    h1{color:#333;text-align:center}
+    h2#status{background:#e3f2fd;color:#0d47a1;padding:12px;border-radius:6px;text-align:center;margin:10px 0 20px 0;font-size:1rem}
+    .role-green{color:#00a8ff;font-weight:600;text-transform:uppercase}
+    button{margin:5px;padding:8px 14px;border:none;border-radius:5px;cursor:pointer;background:#007bff;color:#fff;font-size:.95rem;transition:background .2s}
+    button:hover:not(:disabled){background:#0056b3}
+    button:disabled{background:#ccc;cursor:not-allowed}
+    #logout:not(:disabled),#deleteDb:not(:disabled){background:#dc3545}
+    #deleteDb:hover:not(:disabled){background:#a71d2a}
+    textarea{width:100%;padding:8px;margin-top:8px;font-size:.9rem;min-height:70px;box-sizing:border-box;border-radius:5px;border:1px solid #ccc;resize:none}
+    pre{background:#222;color:#eee;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:.85rem}
+    .row{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{background:#eef;padding:6px 10px;border-radius:999px;font-weight:600}
   </style>
 </head>
-
 <body>
   <div class="container">
     <h1>Governance Module - Viewer</h1>
     <h2 id="status">Logged Out</h2>
+
     <div>
       <button id="init">Init System</button>
       <button id="guest" disabled>New Guest</button>
       <button id="login" disabled>Login Mnemonic</button>
       <button id="logout" disabled>Logout</button>
-      <button id="deleteDb" disabled style="background: #dc3545;">🗑️</button>
+      <button id="deleteDb" disabled>🗑️</button>
     </div>
+
     <textarea id="mnemonic" placeholder="New mnemonic will appear here or paste one to log in"></textarea>
+
+    <div class="row">
+      <button id="voteUp" disabled>👍 +1</button>
+      <button id="voteDown" disabled>👎 -1</button>
+      <span id="points" class="pill">Points: 0</span>
+    </div>
+
     <h2>Log</h2>
     <pre id="log">Logs will appear here...</pre>
   </div>
@@ -122,6 +49,7 @@
   <script type="module">
     import { gdb } from "../dist/index.js"
 
+    // ---------- UI refs ----------
     const els = {
       init: document.getElementById("init"),
       guest: document.getElementById("guest"),
@@ -130,170 +58,181 @@
       deleteDb: document.getElementById("deleteDb"),
       mnemonic: document.getElementById("mnemonic"),
       status: document.getElementById("status"),
-      log: document.getElementById("log")
+      log: document.getElementById("log"),
+      voteUp: document.getElementById("voteUp"),
+      voteDown: document.getElementById("voteDown"),
+      points: document.getElementById("points"),
     }
 
-    // let db, unsub
-    let db, unsubscribeDb, unsubscribeUser;
-    // Cache de últimos valores por id para detectar cambios de rol
-    const cache = new Map()
+    // ---------- State ----------
+    let db, unsubscribeUser
+    let address = null, lastRole = "guest"
 
-    const abbrAddr = address => `${address.slice(0, 6)}...${address.slice(-4)}`;
-
-    const log = m => {
-      els.log.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`
-      els.log.scrollTop = els.log.scrollHeight
-    }
-
-    const setStatus = (addr = null, role = null) => {
-      if (addr && role) {
-        const isSuperAdmin = SUPERADMINS_ADDRESSES.some(
-          sa => sa && addr && sa.toLowerCase() === addr.toLowerCase()
-        )
-        const roleToDisplay = isSuperAdmin ? 'superadmin' : role
-        els.status.innerHTML = `${abbrAddr(addr)} | <span class=\"role-green\">${roleToDisplay}</span>`
-        els.status.style.cssText = "background:#d4edda;color:#155724"
-      } else {
-        els.status.textContent = "Logged Out"
-        els.status.style.cssText = "background:#e3f2fd;color:#0d47a1"
-      }
-    }
-
-    // ✅ Superadmins addresses
+    // ---------- Utils ----------
+    // Demo superadmins. The 2nd is a public throwaway identity so anyone can try the engine:
+    // log in with this mnemonic to become superadmin and start governance —
+    // panic now afford carbon donate lecture drift excite collect essay stuff prosper
     const SUPERADMINS_ADDRESSES = [
-      "0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"
+      "0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7",
+      "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
     ]
-
-    // ✅ Governance rules
+    const LEVEL_UP_THRESHOLD = 1
     const GOVERNANCE_RULES = [
-      {
-        if: { role: "guest" },
-        offsetTimestamp: 5000,
-        then: { assignRole: "user" },
-      },
-      // {
-      //   if: { role: "user" },
-      //   offsetTimestamp: 5000,
-      //   then: { assignRole: "guest" },
-      // }
+      // Time objective: a guest becomes user after 5s (while a superadmin is online to sign it)
+      { if:{ role:"guest" }, offsetTimestamp:5000, then:{ assignRole:"user" } },
+      // Points objective (up): reach the threshold -> promoted to manager
+      { if:{ role:"user", points:{ $gte: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"manager" } },
+      // Points objective (down): drop below the threshold -> demoted back to user
+      { if:{ role:"manager", points:{ $lt: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"user" } },
     ]
+    const abbr = a => `${a.slice(0,6)}...${a.slice(-4)}`
+    const log = m => { els.log.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; els.log.scrollTop = els.log.scrollHeight }
+    const setStatus = (addr=null, role=null) => {
+      if (addr && role){
+        const isSA = SUPERADMINS_ADDRESSES.some(sa=>sa && addr && sa.toLowerCase()===addr.toLowerCase())
+        const r = isSA ? "superadmin" : role
+        els.status.innerHTML = `${abbr(addr)} | <span class="role-green">${r}</span>`
+        els.status.style.cssText = "background:#d4edda;color:#155724"
+      } else { els.status.textContent = "Logged Out"; els.status.style.cssText = "background:#e3f2fd;color:#0d47a1" }
+    }
+    const toggleVoting = on => els.voteUp.disabled = els.voteDown.disabled = !on
 
+    // Ensure role+points live together in user:<address>
+    // NOTE: db.put REPLACES the whole node value (no merge), so always spread existing fields.
+    const ensureUserDoc = async addr => {
+      const id = `user:${addr}`
+      const { result } = await db.get(id)
+      const v = result?.value
+      if (!v || v.points == null || v.role == null)
+        await db.put({ role: "guest", ...v, points: v?.points ?? 0 }, id)
+      return id
+    }
+
+    // Atomic points write (preserves role and the rest of the node value)
+    const writePoints = async (id, updater) => {
+      const { result } = await db.get(id)
+      const v = result?.value ?? {}
+      const curr = v.points ?? 0
+      const next = Math.max(0, updater(curr))
+      if (next !== curr) await db.put({ ...v, points: next }, id)
+    }
+
+    // ---------- Actions ----------
     const init = async () => {
       els.init.disabled = true
-      try {
-        db = await gdb("governance-interactive-test-db10", {
-          rtc: true,
-          sm: {
-            superAdmins: SUPERADMINS_ADDRESSES,
-            governanceRules: GOVERNANCE_RULES
+      try{
+        db = await gdb("governance-demo-db", {
+          rtc:true,
+          sm:{ superAdmins: SUPERADMINS_ADDRESSES, governanceRules: GOVERNANCE_RULES }
+        })
+
+        // Only enable/disable voting based on real session state
+        await db.sm.setSecurityStateChangeCallback(state => {
+          const isActive = !!state?.isActive, active = state?.activeAddress
+          els.logout.disabled = !isActive
+          els.guest.disabled = isActive
+          els.login.disabled = isActive
+
+          if (isActive && active){
+            // keep current role shown; don't force "guest"
+            setStatus(active, lastRole ?? "guest")
+            toggleVoting(true)     // ✅ keep voting enabled while session is active
+            els.deleteDb.disabled = false
+          } else {
+            setStatus()
+            toggleVoting(false)    // ❌ disable only when really logged out
+            els.deleteDb.disabled = true
           }
         })
 
-        await db.sm.setSecurityStateChangeCallback((state) => {
-          const isActive = !!state?.isActive
-          els.logout.disabled = !isActive
-          // Keep deleteDb enabled after init, regardless of session state
-          els.guest.disabled = isActive
-          els.login.disabled = isActive
-          setStatus()
-
-          if (isActive && state.activeAddress) {
-            setStatus(state.activeAddress, 'guest')
-          } else {
-            setStatus()
-          }
+        // Governance activity viewer: log every role transition of any user node,
+        // so promotions/demotions signed by the engine are visible in this Log box.
+        const roleCache = new Map()
+        db.map({ query: { role: { $exists: true } } }, ({ id, value }) => {
+          if (!id?.startsWith("user:") || !value?.role) return
+          const prev = roleCache.get(id)
+          roleCache.set(id, value.role)
+          if (prev && prev !== value.role) log(`📜 ${abbr(id.slice(5))}: ${prev} → ${value.role}`)
         })
 
         els.guest.disabled = els.login.disabled = false
-        // Enable delete database button after successful initialization
-        els.deleteDb.disabled = false
         log("✅ System initialized with governance rules")
-        // React to SM security state to toggle logout and show status promptly
-
-      } catch (e) {
-        log(`❌ Init failed: ${e.message}`)
-        els.init.disabled = false
+      }catch(e){
+        log(`❌ Init failed: ${e.message}`); els.init.disabled = false
       }
     }
 
     const newGuest = async () => {
       log("Generating new guest identity...")
-      if (db.sm.isSecurityActive()) await logout()
-      try {
+      if (db?.sm?.isSecurityActive()) await logout()
+      try{
         const id = await db.sm.startNewUserRegistration()
         els.mnemonic.value = id.mnemonic
         log(`✅ Guest created: ${id.address}`)
-      } catch (e) {
-        log(`❌ Failed to generate guest: ${e.message}`)
-      }
+      }catch(e){ log(`❌ Failed to generate guest: ${e.message}`) }
     }
 
-    let address = null;
-
     const login = async () => {
-      const phrase = els.mnemonic.value.trim(); if (!mnemonic) return alert("Textarea is empty.");
+      const phrase = els.mnemonic.value.trim()
       if (!phrase) return alert("No mnemonic provided")
       log("Attempting login...")
-      try {
+      try{
         if (db.sm.isSecurityActive()) await logout()
         const id = await db.sm.loginOrRecoverUserWithMnemonic(phrase)
         if (!id) throw new Error("Invalid mnemonic")
-        log(`✅ Logged in: ${id.address}`)
-        address = id.address;
+        address = id.address
+        log(`✅ Logged in: ${address}`)
 
-        // Subscribe to user data changes
-        // unsubscribeUser?.(); // Unsubscribe previous if any
-        unsubscribeUser = db.map({ query: { id: `user:${id.address}` } }, ({ value }) => {
-          if (value) {
-            setStatus(id.address, value.role);
-          }
-        });
-      } catch (e) {
-        log(`❌ Login failed: ${e.message}`)
-      }
+        const userId = await ensureUserDoc(address)
+
+        // subscribe to the SAME doc we mutate
+        unsubscribeUser?.(); unsubscribeUser = null
+        const { unsubscribe } = await db.get(userId, ({ value }) => {
+          if (!value) return
+          lastRole = value.role ?? lastRole
+          els.points.textContent = `Points: ${value.points ?? 0}`
+          setStatus(address, lastRole)
+          toggleVoting(true) // stays enabled
+          els.deleteDb.disabled = false
+        })
+        unsubscribeUser = unsubscribe
+      }catch(e){ log(`❌ Login failed: ${e.message}`) }
     }
 
     const logout = async () => {
-      // unsubscribeUser?.(); unsubscribeUser = null;
-
-      await db.sm.clearSecurity()
-      setStatus()
-      // Ensure logout button is disabled after session clears
-      els.logout.disabled = true
-      els.deleteDb.disabled = true
-      // Re-enable identity/login buttons after logout (fallback if callback hasn't fired yet)
-      els.guest.disabled = false
-      els.login.disabled = false
-      log("Logged out")
-    }
-
-    const deleteDatabase = async () => {
-      try {
-        log("🗑️ Deleting database...")
-        
-        // Clear all data using GenosDB's clear method
-        await db.clear()
-        
-        log("✅ Database cleared successfully")
-        
-        // Reset UI state
-        setStatus()
-        els.logout.disabled = true
-        els.deleteDb.disabled = true
-        els.guest.disabled = false
-        els.login.disabled = false
-        els.mnemonic.value = ""
-        
-        // Clear cache
-        cache.clear()
-        
-        // Reset database reference
-        db = null
-      } catch (e) {
-        log(`❌ Error during database deletion: ${e.message}`)
+      try{ await db.sm.clearSecurity() } finally {
+        setStatus(); els.logout.disabled = true; els.deleteDb.disabled = true
+        els.guest.disabled = false; els.login.disabled = false
+        toggleVoting(false); els.points.textContent = "Points: 0"
+        unsubscribeUser?.(); unsubscribeUser = null
+        address = null; lastRole = "guest"
+        log("Logged out")
       }
     }
 
+    const deleteDatabase = async () => {
+      try{
+        log("🗑️ Deleting database...")
+        await db.clear()
+        setStatus(); els.logout.disabled = true; els.deleteDb.disabled = true
+        els.guest.disabled = false; els.login.disabled = false
+        els.mnemonic.value = ""; toggleVoting(false); els.points.textContent = "Points: 0"
+        unsubscribeUser?.(); unsubscribeUser = null
+        address = null; lastRole = "guest"; db = null
+        log("✅ Database cleared successfully")
+      }catch(e){ log(`❌ Error during database deletion: ${e.message}`) }
+    }
+
+    // Votes write into user:<address> so rule can match role+points together
+    const vote = async d => {
+      if (!address || !db?.sm?.isSecurityActive()) return
+      const id = await ensureUserDoc(address)
+      await writePoints(id, p => p + d) // multiple clicks now keep adding
+    }
+    els.voteUp.onclick = () => vote(+1)
+    els.voteDown.onclick = () => vote(-1)
+
+    // Bind buttons
     els.init.onclick = init
     els.guest.onclick = newGuest
     els.login.onclick = login
@@ -301,5 +240,4 @@
     els.deleteDb.onclick = deleteDatabase
   </script>
 </body>
-
 </html>

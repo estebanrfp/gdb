@@ -1,6 +1,6 @@
 # 🏛️ Governance (Role Promotion)
 
-> **Status: Preview / in active development.** This document describes the **purpose** and the **mechanism** of GenosDB Governance. The technical API and configuration are intentionally left out for now: the module and its reference example are being developed together, and the setup details will be documented once the design is finalized.
+> **Status: Beta.** The mechanism described here is implemented and validated end-to-end. Details may still be refined before the stable release — check the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md).
 
 ## What is Governance?
 
@@ -16,31 +16,93 @@ In GenosDB's [zero-trust model](zero-trust-security-model.md):
 - To do more, the guest must be **promoted** to a role such as `user`.
 - Only a **`superadmin`** holds the `assignRole` permission, and every operation is **cryptographically signed** — so a promotion is valid only when a superadmin signs it. There is no central server to delegate this to.
 
-Manually promoting every newcomer does not scale, and hard-coding "everyone can write" throws the security away. Governance is the middle path: the superadmin **declares the rules of advancement up front**, and the network applies them consistently.
+Manually promoting every newcomer does not scale, and hard-coding "everyone can write" throws the security away. Governance is the middle path: the superadmin **declares the rules of advancement up front**, and the engine applies them consistently — signing each promotion with the superadmin's key.
 
-## How it works (conceptually)
+## How it works
 
-1. **The superadmin declares the objectives.** A superadmin defines clear, public *rules* — the conditions a guest must satisfy to earn a given role (for example: *"a guest who has set up a profile and stayed active for a period becomes a `user`"*). These objectives are explicit and identical for everyone.
-2. **The guest works within its limits.** Using only what a `guest` is allowed to do (read, sync, create its own user node), the newcomer fulfills the declared objectives.
-3. **A present superadmin grants the promotion.** When the objectives are met **and a superadmin is online**, the superadmin's authority promotes the user — `guest → user` (or higher) — by signing the role change. Because the signature comes from a superadmin's key, every honest peer accepts the new role; nobody else could have minted it.
-4. **Superadmins are immune.** The root of trust can never be downgraded by a rule: governance never modifies a superadmin's own role.
-
-## Why promotion requires a present superadmin
-
-The authority to promote lives in the **superadmin's private key** — not in a rule, and not in a server. So the governance evaluation runs **on a superadmin's node**: promotions can only be created while a superadmin is online to sign them. This is deliberate and central to the [Distributed Trust Model](genosdb-distributed-trust-model.md):
+1. **The superadmin declares the objectives** as rules in the app configuration — explicit, public, and identical for everyone.
+2. **The guest works within its limits.** Using only what its role allows, the newcomer fulfills the declared objectives (time, activity, merit points…).
+3. **A present superadmin grants the promotion.** While a superadmin is online, the governance engine evaluates the rules on their node and signs each role change. Because the signature comes from a superadmin's key, every honest peer accepts the new role.
+4. **Superadmins are immune.** Governance never modifies a superadmin's own role.
 
 > Rules describe **intent**. Only a verifiable superadmin **signature** grants a role.
 
-A lagging peer might briefly not recognize a freshly promoted user, but once the signed promotion propagates, every node accepts it — security is prioritized over instant availability.
+## Enabling Governance
+
+Governance is part of the Security Manager: pass `governanceRules` alongside `superAdmins` when initializing the database. No additional setup is required — the engine activates automatically when a superadmin logs in on that device, and pauses when they log out. Other peers never run the engine.
+
+```javascript
+import { gdb } from "genosdb"
+
+const db = await gdb("my-app", {
+  rtc: true, // Required for the SM module
+  sm: {
+    superAdmins: ["0xYourSuperAdminAddress..."],
+    governanceRules: [
+      // Time objective: a guest becomes user after 5 seconds
+      { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } },
+      // Merit objective (up): reaching 1 point promotes to manager
+      { if: { role: "user", points: { $gte: 1 } }, then: { assignRole: "manager" } },
+      // Merit objective (down): dropping below the threshold demotes back to user
+      { if: { role: "manager", points: { $lt: 1 } }, then: { assignRole: "user" } },
+    ],
+  },
+})
+```
+
+## Anatomy of a rule
+
+| Field             | Required | Meaning                                                                                                                  |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `if`              | yes      | A standard GenosDB query (the same language used by `db.map`) evaluated against `user:<address>` nodes.                   |
+| `then.assignRole` | yes      | The role to assign when the condition matches. Must be one of the defined roles.                                          |
+| `offsetTimestamp` | no       | Minimum time in milliseconds since the user node's last write. The rule only fires once the node has been stable that long. |
+
+## Conditions are GenosDB queries
+
+The `if` block is passed verbatim to the query engine, so **every operator available in `db.map` works in a rule** — comparison (`$eq`, `$gt`, `$gte`, `$lt`, `$lte`, `$between`, `$in`, `$exists`), text (`$like`, `$regex`, `$text`) and logical (`$and`, `$or`, `$not`) operators, in any combination:
+
+```javascript
+// Reputation range
+{ if: { role: "user", reputation: { $between: [50, 100] } }, then: { assignRole: "manager" } }
+
+// Corporate e-mail whitelist
+{ if: { role: "guest", email: { $regex: "@company\\.com$" } }, then: { assignRole: "user" } }
+
+// Nested logic: points OR invitation
+{ if: { $and: [ { role: "user" },
+        { $or: [ { points: { $gte: 50 } }, { invitedBy: { $exists: true } } ] } ] },
+  then: { assignRole: "manager" } }
+```
+
+Operators contributed by optional modules (for example the [geo module](geo-module.md)'s `$near` / `$bbox`) also work when the module is enabled.
+
+## Where the objective data lives
+
+Rules are evaluated against the **`user:<address>` node** — the same node where the Security Manager stores the user's role. The application writes the user's metrics (points, reputation, counters…) into that node, and the rules read them from there. For objectives based on other data ("created 5 posts"), aggregate a counter into the user node whenever the action happens.
+
+> **Important:** `db.put()` replaces the whole node value. Always spread the existing value when writing a metric, or you will wipe the user's `role`:
+>
+> ```javascript
+> const id = `user:${address}`
+> const { result } = await db.get(id)
+> await db.put({ ...result.value, points: newPoints }, id)
+> ```
+
+## Engine behavior
+
+- Runs **only while a superadmin is logged in** on that device — their key signs every `assignRole`.
+- Evaluates the rules **every 4 seconds**, sequentially, in the order they are declared.
+- Skips: nodes that are not `user:<address>`, **superadmins (immunity)**, users already in the target role, and nodes more recent than `offsetTimestamp`.
+- Design **stable rule sets**: use complementary thresholds (`$gte 1` to promote, `$lt 1` to demote) instead of conditions that contradict each other at the same state.
+- P2P consistency: a metric must have synced to the superadmin's node before a rule can see it (typically a few seconds).
+
+## Try it
+
+The interactive viewer at **[examples/governance.html](https://estebanrfp.github.io/gdb/examples/governance.html)** demonstrates the full cycle. Open it in **two browsers**: in one, log in as a superadmin (a demo mnemonic is included in the file); in the other, create a new guest. Watch the guest get promoted to `user` after 5 seconds, climb to `manager` with 👍, and drop back to `user` with 👎 — every transition appears in the log.
 
 ## Where it fits
 
 - It builds directly on the **[Zero-Trust Security Model](zero-trust-security-model.md)** (guest → superadmin) and the **[Distributed Trust Model](genosdb-distributed-trust-model.md)** (signed, serverless authority).
 - It uses the Security Manager's **RBAC roles and role assignment** (see [SM Architecture](sm-architecture.md)).
 - It is **complementary to [ACLs](sm-acls-module.md)**: ACLs gate *per-node* access (who may read or write a specific node); Governance gates *role promotion* (whether a user may act at all, and at what level). One controls individual documents; the other controls how a user advances through the trust hierarchy.
-
-## Roadmap
-
-Governance is being built alongside its reference example so the mechanism can be validated end-to-end before its configuration is frozen. Once finalized, this page will be expanded with the full setup — how to declare rules, the available options, and a working example. Until then, treat the above as the **design contract**:
-
-> **Declared objectives → fulfilled by a guest → promoted by a present, signing superadmin.**
