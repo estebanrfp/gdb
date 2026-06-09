@@ -70,6 +70,9 @@ A minimalist and secure note-taking app showcasing decentralized identity manage
 ### [Real-time IoT Thermostat Control powered by GenosDB](https://estebanrfp.github.io/gdb/examples/thermostat.html)
 A real-time peer-to-peer thermostat control demo showcasing GenosDB's reactive synchronization. Multiple users can adjust target temperature, toggle eco-mode (Leaf), and set away status — all changes instantly sync across connected browsers without any backend server. Demonstrates `db.put()`, reactive `db.get()` subscriptions, and P2P room events for peer counting.
 
+### [DevConnect — P2P Developer Network powered by GenosDB](https://estebanrfp.github.io/gdb/examples/devconnect.html)
+A decentralized developer-networking app and full GenosDB showcase: passwordless identity via the Security Manager (mnemonic + WebAuthn passkeys) behind a centered login modal, a real-time developer directory powered by `db.map()`, public and private P2P chat over GenosRTC data channels, GitHub profile import, and interactive Leaflet maps with geo-tagged peers.
+
 ---
 
 ## Security Manager (SM) Examples
