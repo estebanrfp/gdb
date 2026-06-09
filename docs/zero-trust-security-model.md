@@ -116,3 +116,7 @@ grant the base `guest` role `write` (and `link`) permissions via the SM's
 `customRoles` option, and anyone can post immediately. This opens **authorization,
 not authenticity**: every operation is still signed and peer-verified, so forged
 writes are rejected — you are only letting unpromoted identities participate.
+
+---
+
+> **See also — [Governance](governance.md):** how role *promotions* (guest → user → …) can be driven by declared rules and granted by a present superadmin. Governance is the structured counterpart to the manual promotion described above.
