@@ -101,6 +101,9 @@ Provides real-time auditing of oplog entries, detect spam and prohibited content
 ### [SM Secure Notes](https://estebanrfp.github.io/gdb/examples/sm-secure-notes.html)
 A single-page HTML application demonstrating secure, real-time, peer-to-peer note sharing. It utilizes GenosDB and its SM module for identity management, implicit client-side encryption of notes, and secure P2P data synchronization.
 
+### [ACLs Testbed — Node-Level Permissions](https://estebanrfp.github.io/gdb/examples/acls.html)
+A focused testbed for the Security Manager's ACLs module: two fixed identities (Alice & Bob) demonstrate node-level permissions end to end — `db.sm.acls.set` / `grant` / `revoke` / `delete` for per-user read and write access. Open it in two tabs (Login as Alice / Login as Bob) to grant and revoke access live. Referenced from the [SM ACLs Module guide](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md).
+
 ---
 
 ## Tools & Testbeds

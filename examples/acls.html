@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACLs Testbed — node-level permissions powered by GenosDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================ Tokens ============================ */
+    :root {
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --surface-2: #f1f3f7;
+      --border: #e4e7ee;
+      --text: #1a1d24;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --read: #0891b2;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', menlo, monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-pill: 999px;
+      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+      --transition: 150ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    /* ============================ Buttons ============================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font: inherit;
+      font-weight: 600;
+      font-size: .9rem;
+      padding: 10px 16px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .btn--ghost {
+      background: var(--surface-2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn--ghost:hover:not(:disabled) {
+      background: var(--border);
+    }
+
+    .btn--danger {
+      background: var(--danger);
+    }
+
+    .btn--danger:hover:not(:disabled) {
+      background: #b91c1c;
+    }
+
+    .btn--sm {
+      padding: 6px 12px;
+      font-size: .82rem;
+    }
+
+    /* ============================ Login screen ============================ */
+    .screen {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 36px;
+      text-align: center;
+      max-width: 520px;
+      margin: 8vh auto 0;
+    }
+
+    .login-card h1 {
+      font-size: 1.5rem;
+      letter-spacing: -.02em;
+      margin-bottom: 10px;
+    }
+
+    .login-card .muted {
+      margin-bottom: 24px;
+    }
+
+    .login-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .login-row .btn {
+      flex: 1;
+      padding: 16px;
+      font-size: 1rem;
+    }
+
+    /* ============================ App ============================ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .me {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .me .addr {
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 28px 20px 80px;
+      display: grid;
+      gap: 28px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-head h2 {
+      font-size: 1.15rem;
+      letter-spacing: -.01em;
+    }
+
+    .notes {
+      display: grid;
+      gap: 14px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: .9rem;
+      padding: 18px;
+      text-align: center;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* ============================ Note card ============================ */
+    .note {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .note__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .note__title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .note__content {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      font: inherit;
+      font-size: .92rem;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      outline: none;
+    }
+
+    .note__content:focus {
+      border-color: var(--accent);
+    }
+
+    .note__content:disabled {
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .note__foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .badge {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+
+    .badge--read {
+      color: #fff;
+      background: var(--read);
+    }
+
+    .badge--write {
+      color: #fff;
+      background: var(--success);
+    }
+
+    .badge--none {
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
+    /* ============================ Toast ============================ */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      max-width: 90vw;
+      padding: 11px 18px;
+      border-radius: var(--radius-pill);
+      background: #1a1d24;
+      color: #fff;
+      font-size: .88rem;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+    }
+
+    .toast--show {
+      opacity: 1;
+    }
+
+    .toast--error {
+      background: var(--danger);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ============================ Login ============================ -->
+  <div id="login" class="screen">
+    <div class="login-card">
+      <h1>ACLs Testbed</h1>
+      <p class="muted">Node-level permissions with the GenosDB Security Manager. Open this page in
+        <strong>two tabs</strong> — one as Alice, one as Bob — then create notes and grant / revoke access live.
+        Permissions are enforced peer-to-peer by the ACLs middleware.</p>
+      <div class="login-row">
+        <button id="login-alice" class="btn">👩‍🦰 Login as Alice</button>
+        <button id="login-bob" class="btn btn--ghost">👨‍🦱 Login as Bob</button>
+      </div>
+      <button id="reset" class="btn btn--ghost btn--sm">Reset demo DB</button>
+    </div>
+  </div>
+
+  <!-- ============================ App ============================ -->
+  <div id="app" class="is-hidden">
+    <header class="topbar">
+      <div class="me" id="me"></div>
+      <button id="logout" class="btn btn--ghost btn--sm">Logout</button>
+    </header>
+    <main class="main">
+      <section>
+        <div class="section-head">
+          <h2>My notes</h2>
+          <button id="new-note" class="btn btn--sm">+ New note</button>
+        </div>
+        <div id="owned" class="notes"></div>
+      </section>
+      <section>
+        <div class="section-head">
+          <h2>Shared with me</h2>
+        </div>
+        <div id="shared" class="notes"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { gdb } from '../dist/index.js';
+
+    /** Database / room name for this testbed. */
+    const DB_NAME = 'genosdb-acls-demo';
+
+    // Two deterministic identities (mnemonic ↔ address pairs verified to match GenosDB's derivation).
+    // Hardcoding them lets you log in with one click in each tab and lets each side know the other's
+    // address to grant permissions to.
+    const ALICE = {
+      name: 'Alice', emoji: '👩‍🦰',
+      mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
+      address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
+    };
+    const BOB = {
+      name: 'Bob', emoji: '👨‍🦱',
+      mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
+      address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
+    };
+
+    /** @type {object} GDB instance (created on first login). */
+    let db;
+    /** @type {object|null} The identity selected in this tab. */
+    let currentUser = null;
+    /** @type {string|null} Active Ethereum address, taken from the Security Manager (source of truth). */
+    let myAddress = null;
+    /** @type {Map<string, object>} Live cache of note nodes, keyed by id. */
+    const notesCache = new Map();
+    /** @type {Function|null} Unsubscribe handle for the notes subscription. */
+    let unsubscribeNotes = null;
+
+    const $ = (id) => document.getElementById(id);
+    const loginScreen = $('login'), appScreen = $('app');
+    const meEl = $('me'), ownedEl = $('owned'), sharedEl = $('shared'), toastEl = $('toast');
+
+    const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+    /** Read a collaborator's permission case-insensitively. */
+    const permFor = (collaborators = {}, address) => {
+      const key = Object.keys(collaborators).find((k) => eqAddr(k, address));
+      return key ? collaborators[key] : undefined;
+    };
+    /** The identity that is NOT the current user. */
+    const other = () => (currentUser === ALICE ? BOB : ALICE);
+
+    let toastTimer;
+    /** Show a transient message. @param {string} msg @param {boolean} [isError] */
+    const toast = (msg, isError = false) => {
+      toastEl.textContent = msg;
+      toastEl.className = `toast toast--show${isError ? ' toast--error' : ''}`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (toastEl.className = 'toast'), 2600);
+    };
+
+    /* ============================ Auth ============================ */
+    /** Log in with one of the fixed identities. */
+    const login = async (identity) => {
+      currentUser = identity;
+      try {
+        if (!db) {
+          db = await gdb(DB_NAME, {
+            rtc: true,
+            sm: {
+              // Both test identities are superAdmins, so RBAC never blocks them. The ACLs layer
+              // (node ownership + per-node grants) is what actually gates access between Alice and Bob:
+              // a non-owner — even a superAdmin — still needs an ACL grant to read or write a note.
+              superAdmins: [ALICE.address, BOB.address],
+              acls: true,
+            },
+          });
+          db.sm.setSecurityStateChangeCallback(onSecurityState);
+        }
+        await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    };
+
+    // Single source of truth for the UI: the Security Manager state callback.
+    /** @param {object} state securityState */
+    const onSecurityState = async (state) => {
+      if (state.isActive) {
+        myAddress = state.activeAddress;
+        loginScreen.classList.add('is-hidden');
+        appScreen.classList.remove('is-hidden');
+        meEl.innerHTML = `<span>${currentUser.emoji} ${currentUser.name}</span><span class="addr">${db.sm.abbrAddr(myAddress)}</span>`;
+        await ensureUserNode();
+        setupSubscription();
+      } else {
+        unsubscribeNotes?.();
+        unsubscribeNotes = null;
+        notesCache.clear();
+        myAddress = null;
+        appScreen.classList.add('is-hidden');
+        loginScreen.classList.remove('is-hidden');
+      }
+    };
+
+    // Zero-trust bootstrap: a brand-new identity must first create its own `user:[address]` node
+    // (the one write the network allows an unknown user) before it can write any other node.
+    /** Create the current user's node once, if it does not exist yet. */
+    const ensureUserNode = async () => {
+      const userId = `user:${myAddress}`;
+      const { result } = await db.get(userId);
+      if (!result) await db.put({ type: 'user', name: currentUser.name }, userId);
+    };
+
+    /* ============================ Notes subscription ============================ */
+    /** Subscribe to all note nodes; `results` seeds the initial view, the callback keeps it live. */
+    const setupSubscription = async () => {
+      unsubscribeNotes?.();
+      const onNote = ({ id, value, action }) => {
+        if (action === 'removed') notesCache.delete(id);
+        else if (value) notesCache.set(id, { id, value });
+        render();
+      };
+      const { results, unsubscribe } = await db.map({ query: { type: 'note' } }, onNote);
+      unsubscribeNotes = unsubscribe;
+      for (const { id, value } of results) notesCache.set(id, { id, value });
+      render(); // render even when there are no notes yet (so the empty state / "New note" works)
+    };
+
+    /* ============================ Render ============================ */
+    const render = () => {
+      if (!myAddress) return;
+      const notes = [...notesCache.values()];
+      const owned = notes.filter((n) => eqAddr(n.value.owner, myAddress));
+      const shared = notes.filter((n) => !eqAddr(n.value.owner, myAddress) && permFor(n.value.collaborators, myAddress));
+
+      ownedEl.innerHTML = owned.length
+        ? owned.map(renderOwned).join('')
+        : `<div class="empty">No notes yet. Click “New note” to create one.</div>`;
+      sharedEl.innerHTML = shared.length
+        ? shared.map(renderShared).join('')
+        : `<div class="empty">Nothing shared with you yet.</div>`;
+      attachListeners();
+    };
+
+    /** A note owned by the current user, with sharing controls for the other identity. */
+    const renderOwned = ({ id, value }) => {
+      const o = other();
+      const perm = permFor(value.collaborators, o.address);
+      const badge = perm
+        ? `<span class="badge badge--${perm}">${o.emoji} ${o.name}: ${perm}</span>`
+        : `<span class="badge badge--none">${o.emoji} ${o.name}: no access</span>`;
+      return `
+        <article class="note" data-id="${id}">
+          <div class="note__head"><span class="note__title">${value.title ?? 'Untitled'}</span>${badge}</div>
+          <textarea class="note__content" data-field="content">${value.content ?? ''}</textarea>
+          <div class="note__foot">
+            <button class="btn btn--sm" data-action="save">Save</button>
+            <span class="spacer"></span>
+            <button class="btn btn--ghost btn--sm" data-action="grant-read" ${perm === 'read' ? 'disabled' : ''}>Grant read</button>
+            <button class="btn btn--ghost btn--sm" data-action="grant-write" ${perm === 'write' ? 'disabled' : ''}>Grant write</button>
+            <button class="btn btn--ghost btn--sm" data-action="revoke" ${!perm ? 'disabled' : ''}>Revoke</button>
+            <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
+          </div>
+        </article>`;
+    };
+
+    /** A note shared with the current user; editable only with `write` permission. */
+    const renderShared = ({ id, value }) => {
+      const perm = permFor(value.collaborators, myAddress);
+      const canWrite = perm === 'write';
+      const ownerName = eqAddr(value.owner, ALICE.address) ? `${ALICE.emoji} ${ALICE.name}`
+        : eqAddr(value.owner, BOB.address) ? `${BOB.emoji} ${BOB.name}` : 'Unknown';
+      return `
+        <article class="note" data-id="${id}">
+          <div class="note__head">
+            <span class="note__title">${value.title ?? 'Untitled'}</span>
+            <span class="badge badge--${perm}">your access: ${perm}</span>
+          </div>
+          <textarea class="note__content" data-field="content" ${canWrite ? '' : 'disabled'}>${value.content ?? ''}</textarea>
+          <div class="note__foot">
+            <span class="badge">from ${ownerName}</span>
+            <span class="spacer"></span>
+            ${canWrite ? '<button class="btn btn--sm" data-action="save">Save</button>' : ''}
+          </div>
+        </article>`;
+    };
+
+    /* ============================ Actions ============================ */
+    const attachListeners = () => {
+      for (const btn of document.querySelectorAll('[data-action]')) {
+        btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.closest('.note').dataset.id));
+      }
+    };
+
+    /** Run an ACL action; the middleware enforces permissions and rejects unauthorized ops. */
+    const handleAction = async (action, id) => {
+      try {
+        if (action === 'save') {
+          const note = notesCache.get(id);
+          const content = document.querySelector(`.note[data-id="${id}"] [data-field="content"]`).value;
+          // Spread the existing value to preserve owner + collaborators; the middleware checks write access.
+          await db.sm.acls.set({ ...note.value, content }, id);
+          toast('Saved');
+        } else if (action === 'grant-read') {
+          await db.sm.acls.grant(id, other().address, 'read');
+          toast(`Granted read to ${other().name}`);
+        } else if (action === 'grant-write') {
+          await db.sm.acls.grant(id, other().address, 'write');
+          toast(`Granted write to ${other().name}`);
+        } else if (action === 'revoke') {
+          await db.sm.acls.revoke(id, other().address);
+          toast(`Revoked ${other().name}'s access`);
+        } else if (action === 'delete') {
+          await db.sm.acls.delete(id);
+          toast('Note deleted');
+        }
+        // ACL grant/revoke don't always emit a db.map event, so refresh the affected node
+        // directly to keep this tab's UI immediate. (Remote tabs update on their next sync.)
+        if (action === 'delete') {
+          notesCache.delete(id);
+        } else {
+          const { result } = await db.get(id);
+          if (result) notesCache.set(id, { id: result.id, value: result.value });
+        }
+        render();
+      } catch (err) {
+        toast(err.message, true);
+      }
+    };
+
+    /** Create a new ACL-protected note owned by the current user. */
+    const createNote = async () => {
+      const n = [...notesCache.values()].filter((x) => eqAddr(x.value.owner, myAddress)).length + 1;
+      try {
+        const id = await db.sm.acls.set({ type: 'note', title: `${currentUser.name}'s note #${n}`, content: 'Edit me…' });
+        const { result } = await db.get(id);
+        if (result) notesCache.set(id, { id: result.id, value: result.value });
+        render();
+      } catch (err) {
+        toast(err.message, true);
+      }
+    };
+
+    /* ============================ Wiring ============================ */
+    $('login-alice').onclick = () => login(ALICE);
+    $('login-bob').onclick = () => login(BOB);
+    $('new-note').onclick = createNote;
+    $('logout').onclick = () => db?.sm.clearSecurity();
+    $('reset').onclick = async () => {
+      const inst = db ?? await gdb(DB_NAME);
+      await inst.clear();
+      location.reload();
+    };
+
+    addEventListener('beforeunload', () => unsubscribeNotes?.());
+  </script>
+</body>
+
+</html>
