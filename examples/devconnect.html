@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevConnect — P2P developer network powered by GenosDB</title>
+
+  <!-- Fonts: Inter (UI) + JetBrains Mono (technical/addresses) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <!-- LeafletJS for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    /* ============================ Design tokens (minimal-ui) ============================ */
+    :root {
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #262626;
+      --bg-elevated: #2a2a2a;
+      --bg-overlay: rgba(0, 0, 0, .72);
+
+      --text-primary: #ffffff;
+      --text-secondary: #8a939b;
+      --text-tertiary: #555555;
+
+      --accent: #2081e2;
+      --accent-hover: #1868b7;
+      --accent-subtle: rgba(32, 129, 226, .1);
+
+      --success: #34c759;
+      --warning: #ff9500;
+      --warning-subtle: rgba(255, 149, 0, .1);
+      --error: #ff3b30;
+
+      --border-subtle: #353840;
+      --border-default: #404040;
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 48px;
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+      --text-xs: 12px;
+      --text-sm: 14px;
+      --text-base: 16px;
+      --text-lg: 18px;
+      --text-xl: 20px;
+      --text-2xl: 24px;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, .4);
+      --shadow-xl: 0 16px 48px rgba(0, 0, 0, .6);
+      --glow: 0 0 0 3px var(--accent-subtle);
+
+      --transition: 150ms ease;
+
+      --header-height: 64px;
+      --container: 1200px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: var(--text-base);
+      line-height: 1.5;
+      color: var(--text-primary);
+      background-color: var(--bg-primary);
+      /* Subtle technical dot-grid */
+      background-image: radial-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px);
+      background-size: 32px 32px;
+      min-height: 100vh;
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    /* ============================ Header ============================ */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: 0 var(--space-5);
+      background-color: rgba(13, 13, 13, .8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .brand__mark {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent), #5ac8fa);
+    }
+
+    .brand__name {
+      font-weight: 700;
+      font-size: var(--text-lg);
+      letter-spacing: -.02em;
+    }
+
+    .brand__tag {
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    .topbar__right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      height: 32px;
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-full);
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--text-tertiary);
+    }
+
+    .dot--online {
+      background-color: var(--success);
+      box-shadow: 0 0 0 3px var(--color-success-subtle, rgba(52, 199, 89, .2));
+    }
+
+    .identity {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .identity__addr {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--accent);
+      background-color: var(--accent-subtle);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ============================ Layout ============================ */
+    .main {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: var(--space-6) var(--space-5) var(--space-7);
+      width: 100%;
+    }
+
+    .tabs {
+      display: flex;
+      gap: var(--space-1);
+      margin-bottom: var(--space-6);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tab {
+      position: relative;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      font: inherit;
+      font-weight: 600;
+      font-size: var(--text-sm);
+      padding: var(--space-3) var(--space-4);
+      cursor: pointer;
+      transition: color var(--transition);
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab--active {
+      color: var(--text-primary);
+    }
+
+    .tab--active::after {
+      content: "";
+      position: absolute;
+      left: var(--space-4);
+      right: var(--space-4);
+      bottom: -1px;
+      height: 2px;
+      background-color: var(--accent);
+      border-radius: var(--radius-full);
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view--active {
+      display: block;
+    }
+
+    .view--narrow {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* ============================ Panels & components ============================ */
+    .panel {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+    }
+
+    .panel+.panel {
+      margin-top: var(--space-4);
+    }
+
+    .panel__title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      margin-bottom: var(--space-5);
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--accent);
+      background-color: var(--accent-subtle);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+    }
+
+    .muted {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    /* Forms */
+    .field {
+      margin-bottom: var(--space-4);
+    }
+
+    .label {
+      display: block;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+
+    .input,
+    .textarea,
+    .select {
+      width: 100%;
+      font: inherit;
+      font-size: var(--text-sm);
+      color: var(--text-primary);
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .input::placeholder,
+    .textarea::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .input:focus,
+    .textarea:focus,
+    .select:focus {
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .textarea {
+      resize: none;
+      font-family: var(--font-mono);
+      line-height: 1.6;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      font: inherit;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      width: 100%;
+    }
+
+    .btn--primary {
+      background-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .btn--primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn--secondary {
+      background-color: transparent;
+      color: var(--text-primary);
+      border-color: var(--border-default);
+    }
+
+    .btn--secondary:hover {
+      background-color: var(--bg-tertiary);
+    }
+
+    .btn--success {
+      background-color: var(--success);
+      color: #06210f;
+    }
+
+    .btn--success:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .btn--icon {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .btn-row .btn {
+      flex: 1;
+    }
+
+    /* ============================ Auth modal (gate) ============================ */
+    .gate {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      background-color: var(--bg-overlay);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 420px;
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .modal__brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-2);
+    }
+
+    .modal__brand .brand__name {
+      font-size: var(--text-xl);
+    }
+
+    .modal__subtitle {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-5);
+    }
+
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      align-items: center;
+      font-size: var(--text-xs);
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      padding: var(--space-3);
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-4);
+    }
+
+    .status code {
+      color: var(--accent);
+    }
+
+    .warning {
+      display: flex;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+      color: var(--warning);
+      background-color: var(--warning-subtle);
+      border: 1px solid rgba(255, 149, 0, .25);
+      padding: var(--space-3);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-3);
+    }
+
+    .stack>*+* {
+      margin-top: var(--space-3);
+    }
+
+    /* ============================ Profile ============================ */
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-default);
+      object-fit: cover;
+      background-color: var(--bg-tertiary);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin: var(--space-3) 0;
+    }
+
+    .tag {
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--text-secondary);
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+    }
+
+    .map {
+      height: 240px;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      margin-top: var(--space-3);
+      background-color: var(--bg-tertiary);
+    }
+
+    /* ============================ Explore ============================ */
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-4);
+    }
+
+    .dev-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      transition: var(--transition);
+    }
+
+    .dev-card:hover {
+      background-color: var(--bg-tertiary);
+      border-color: var(--border-default);
+      transform: translateY(-2px);
+    }
+
+    .dev-card .avatar {
+      width: 44px;
+      height: 44px;
+    }
+
+    .dev-card__name {
+      font-weight: 600;
+      font-size: var(--text-sm);
+    }
+
+    .dev-card__addr {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+    }
+
+    .dev-card__bio {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      margin: var(--space-2) 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--space-7) var(--space-5);
+      color: var(--text-secondary);
+    }
+
+    .empty-state__icon {
+      font-size: 40px;
+      margin-bottom: var(--space-3);
+      opacity: .6;
+    }
+
+    /* ============================ Chat ============================ */
+    .chat {
+      display: flex;
+      flex-direction: column;
+      height: 64vh;
+      min-height: 420px;
+    }
+
+    .chat__tabs {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .bubble {
+      max-width: 78%;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      word-break: break-word;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bubble--own {
+      align-self: flex-end;
+      background-color: var(--accent);
+      border-bottom-right-radius: var(--space-1);
+    }
+
+    .bubble--other {
+      align-self: flex-start;
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      border-bottom-left-radius: var(--space-1);
+    }
+
+    .bubble__sender {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      opacity: .85;
+      margin-bottom: var(--space-1);
+    }
+
+    .bubble__time {
+      align-self: flex-end;
+      font-size: 10px;
+      opacity: .7;
+      margin-top: var(--space-1);
+    }
+
+    .chat__input {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-4);
+    }
+
+    .chat__input .input {
+      flex: 1;
+    }
+
+    /* ============================ Spinner ============================ */
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border-default);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: var(--space-5) auto;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .brand__tag {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ============================ Auth gate (centered modal) ============================ -->
+  <div class="gate" id="gate" role="dialog" aria-modal="true" aria-label="Sign in">
+    <div class="modal">
+      <div class="modal__brand">
+        <span class="brand__mark"></span>
+        <span class="brand__name">DevConnect</span>
+      </div>
+      <p class="modal__subtitle">Decentralized identity, no servers. Sign in with your recovery phrase or generate a new
+        one.</p>
+
+      <div class="status" id="auth-status">Initializing secure context…</div>
+
+      <div id="auth-default" class="stack">
+        <div class="field">
+          <label class="label" for="mnemonic">Recovery phrase</label>
+          <textarea class="textarea" id="mnemonic" rows="3" placeholder="Enter your 12-word mnemonic phrase…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn--secondary" id="btn-generate">Generate</button>
+          <button class="btn btn--primary" id="btn-login-mnemonic">Login</button>
+        </div>
+        <button class="btn btn--secondary" id="btn-login-passkey">Login with passkey</button>
+      </div>
+
+      <div id="auth-confirm" class="stack is-hidden">
+        <div class="warning">⚠️ Save this phrase securely — it is the only way to recover your account.</div>
+        <div class="btn-row">
+          <button class="btn btn--secondary" id="btn-copy">Copy phrase</button>
+          <button class="btn btn--success" id="btn-protect">Protect with passkey</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ App ============================ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark"></span>
+      <span class="brand__name">DevConnect</span>
+      <span class="brand__tag">powered by GenosDB</span>
+    </div>
+    <div class="topbar__right">
+      <span class="pill"><span class="dot" id="conn-dot"></span><span id="peer-count">0</span> peers</span>
+      <div class="identity is-hidden" id="identity">
+        <span class="identity__addr" id="identity-addr"></span>
+        <button class="btn btn--secondary" id="btn-logout" style="width:auto">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <nav class="tabs" role="tablist">
+      <button class="tab tab--active" data-view="profile">Profile</button>
+      <button class="tab" data-view="explore">Explore</button>
+      <button class="tab" data-view="chat">Chat</button>
+    </nav>
+
+    <!-- Profile -->
+    <section id="view-profile" class="view view--active view--narrow">
+      <div class="panel">
+        <div class="panel__title">Your profile</div>
+        <div class="spinner is-hidden" id="profile-loader"></div>
+
+        <div id="profile-fetch" class="field">
+          <label class="label" for="github-username">Import from GitHub</label>
+          <input class="input" type="text" id="github-username" placeholder="e.g. torvalds" autocomplete="off">
+          <button class="btn btn--primary" id="btn-fetch-github" style="margin-top:var(--space-3)">Fetch profile</button>
+        </div>
+
+        <div id="profile-content" class="is-hidden"></div>
+
+        <div id="profile-edit" class="is-hidden">
+          <div class="field">
+            <label class="label" for="profile-location">Location</label>
+            <input class="input" type="text" id="profile-location" placeholder="e.g. Valencia, Spain">
+          </div>
+          <div class="field">
+            <label class="label" for="profile-tags">Tags (comma-separated)</label>
+            <input class="input" type="text" id="profile-tags" placeholder="javascript, rust, web3">
+          </div>
+          <button class="btn btn--primary" id="btn-save-profile">Save profile</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Explore -->
+    <section id="view-explore" class="view">
+      <div class="filters">
+        <input class="input" type="text" id="filter-tag" placeholder="Filter by tag…">
+        <input class="input" type="text" id="filter-lang" placeholder="Filter by language…">
+        <input class="input" type="text" id="filter-location" placeholder="Filter by location…">
+      </div>
+      <div class="map" id="global-map"></div>
+      <div style="height:var(--space-5)"></div>
+      <div class="spinner is-hidden" id="dev-loader"></div>
+      <div class="grid" id="dev-grid"></div>
+      <div class="empty-state is-hidden" id="dev-empty">
+        <div class="empty-state__icon">🛰️</div>
+        No developers match your filters yet.
+      </div>
+    </section>
+
+    <!-- Chat -->
+    <section id="view-chat" class="view">
+      <div class="panel">
+        <div class="panel__title">Real-time chat <span class="badge">P2P</span></div>
+        <div class="chat__tabs">
+          <button class="btn btn--primary" id="chat-tab-public">Public</button>
+          <button class="btn btn--secondary" id="chat-tab-private">Private</button>
+        </div>
+
+        <div id="public-chat" class="chat">
+          <div class="messages" id="public-messages"></div>
+          <form class="chat__input" id="public-form">
+            <input class="input" type="text" id="public-input" placeholder="Message everyone…" autocomplete="off">
+            <button type="submit" class="btn btn--primary btn--icon" aria-label="Send">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        <div id="private-chat" class="chat is-hidden">
+          <div class="field">
+            <label class="label" for="peer-select">Chat privately with</label>
+            <select class="select" id="peer-select"></select>
+          </div>
+          <div class="messages" id="private-messages"></div>
+          <form class="chat__input" id="private-form">
+            <input class="input" type="text" id="private-input" placeholder="Private message…" autocomplete="off">
+            <button type="submit" class="btn btn--primary btn--icon" aria-label="Send">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { gdb } from "../dist/index.js"
+
+    /* ============================ DOM refs ============================ */
+    const $ = (sel, root = document) => root.querySelector(sel)
+    const el = {
+      gate: $("#gate"), authStatus: $("#auth-status"), authDefault: $("#auth-default"), authConfirm: $("#auth-confirm"),
+      mnemonic: $("#mnemonic"), btnGenerate: $("#btn-generate"), btnLoginMnemonic: $("#btn-login-mnemonic"),
+      btnLoginPasskey: $("#btn-login-passkey"), btnCopy: $("#btn-copy"), btnProtect: $("#btn-protect"),
+      identity: $("#identity"), identityAddr: $("#identity-addr"), btnLogout: $("#btn-logout"),
+      peerCount: $("#peer-count"), connDot: $("#conn-dot"),
+      profileLoader: $("#profile-loader"), profileFetch: $("#profile-fetch"),
+      profileContent: $("#profile-content"), profileEdit: $("#profile-edit"),
+      githubUsername: $("#github-username"), btnFetchGithub: $("#btn-fetch-github"),
+      profileLocation: $("#profile-location"), profileTags: $("#profile-tags"), btnSaveProfile: $("#btn-save-profile"),
+      devGrid: $("#dev-grid"), devLoader: $("#dev-loader"), devEmpty: $("#dev-empty"),
+      filterTag: $("#filter-tag"), filterLang: $("#filter-lang"), filterLocation: $("#filter-location"),
+      globalMap: $("#global-map"),
+      publicMessages: $("#public-messages"), publicForm: $("#public-form"), publicInput: $("#public-input"),
+      privateMessages: $("#private-messages"), privateForm: $("#private-form"), privateInput: $("#private-input"),
+      peerSelect: $("#peer-select"), publicChat: $("#public-chat"), privateChat: $("#private-chat"),
+      chatTabPublic: $("#chat-tab-public"), chatTabPrivate: $("#chat-tab-private"),
+    }
+
+    const show = (...n) => n.forEach(x => x.classList.remove("is-hidden"))
+    const hide = (...n) => n.forEach(x => x.classList.add("is-hidden"))
+    const toggleLoader = (n, on) => n.classList.toggle("is-hidden", !on)
+
+    /* ============================ App state ============================ */
+    const state = { ownProfile: null, ownProfileId: null, developers: new Map(), peers: new Map() }
+    let publicChannel, privateChannel, controlChannel
+    let ownMap, globalMap
+    const unsubscribers = []
+
+    /* ============================ GenosDB init (top-level await) ============================ */
+    // The Security Manager requires rtc: true and at least one superAdmin address.
+    const db = await gdb("dev-connect-db", {
+      rtc: true,
+      sm: { superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"] }, // demo address — replace with yours
+    })
+
+    /* ============================ Authentication (single source of truth) ============================ */
+    /** Reactively render the auth modal / header identity from the SM state. @param {object} s securityState */
+    const renderAuth = (s) => {
+      if (!s) { el.authStatus.textContent = "Security context not active."; return }
+
+      el.authStatus.innerHTML = `
+        <span>${s.isActive ? "● signed in" : "○ signed out"}</span>
+        <span>passkey: ${s.hasWebAuthnHardwareRegistration ? "yes" : "no"}</span>
+        ${s.activeAddress ? `<span>addr: <code>${s.abbrAddr}</code></span>` : ""}`
+
+      if (s.isActive) {
+        hide(el.gate)
+        show(el.identity)
+        el.identityAddr.textContent = s.abbrAddr
+        el.mnemonic.value = ""
+        el.mnemonic.readOnly = false
+        loadOwnProfile(s.activeAddress)
+        return
+      }
+
+      // Signed out → gate the app behind the modal
+      show(el.gate)
+      hide(el.identity)
+      state.ownProfile = state.ownProfileId = null
+      localStorage.removeItem("dc.ownProfileId")
+      el.btnLoginPasskey.disabled = !s.hasWebAuthnHardwareRegistration
+
+      if (s.hasVolatileIdentity) {
+        // Confirmation state right after generating: show the phrase + protect actions,
+        // hide "Generate" (avoid regenerating and losing it), but keep "Login" reachable (no dead-end).
+        show(el.authConfirm)
+        hide(el.btnGenerate)
+        el.mnemonic.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? ""
+        el.mnemonic.readOnly = true
+      } else {
+        hide(el.authConfirm)
+        show(el.btnGenerate)
+        if (document.activeElement !== el.mnemonic) el.mnemonic.value = ""
+        el.mnemonic.readOnly = false
+      }
+    }
+
+    db.sm.setSecurityStateChangeCallback(renderAuth)
+
+    el.btnGenerate.onclick = () => db.sm.startNewUserRegistration().catch(err => alert(err.message))
+    el.btnLoginMnemonic.onclick = () => {
+      const phrase = el.mnemonic.value.trim()
+      if (!phrase) return alert("Please enter a mnemonic phrase.")
+      db.sm.loginOrRecoverUserWithMnemonic(phrase).catch(err => alert(err.message))
+    }
+    el.btnLoginPasskey.onclick = () => db.sm.loginCurrentUserWithWebAuthn().catch(err => alert(err.message))
+    el.btnProtect.onclick = () => db.sm.protectCurrentIdentityWithWebAuthn().catch(err => alert(err.message))
+    el.btnLogout.onclick = () => db.sm.clearSecurity().catch(err => alert(err.message))
+    el.btnCopy.onclick = () =>
+      navigator.clipboard.writeText(el.mnemonic.value)
+        .then(() => alert("Phrase copied to clipboard."))
+        .catch(() => alert("Failed to copy."))
+
+    /* ============================ Profile management (persistent state) ============================ */
+    /** Load the current user's stored profile via db.get. */
+    const loadOwnProfile = async (ethAddress) => {
+      toggleLoader(el.profileLoader, true)
+      hide(el.profileContent, el.profileEdit, el.profileFetch)
+      state.ownProfileId = localStorage.getItem("dc.ownProfileId")
+
+      if (state.ownProfileId) {
+        const { result } = await db.get(state.ownProfileId)
+        if (result?.value?.ethAddress === ethAddress) {
+          state.ownProfile = { id: result.id, ...result.value }
+          renderOwnProfile()
+        } else {
+          state.ownProfileId = null
+          localStorage.removeItem("dc.ownProfileId")
+        }
+      }
+      if (!state.ownProfile) show(el.profileFetch)
+      toggleLoader(el.profileLoader, false)
+    }
+
+    const renderOwnProfile = () => {
+      const p = state.ownProfile
+      if (!p) { hide(el.profileContent, el.profileEdit); show(el.profileFetch); return }
+      el.profileContent.innerHTML = `
+        <div class="profile-head">
+          <img class="avatar" src="${p.avatar}" alt="${p.github}">
+          <div><div class="dev-card__name">${p.github}</div><span class="dev-card__addr">${db.sm.abbrAddr(p.ethAddress)}</span></div>
+        </div>
+        <p class="muted">${p.bio ?? "No bio available."}</p>
+        <div class="tags">${(p.tags ?? []).map(t => `<span class="tag">${t}</span>`).join("")}</div>
+        <p class="muted">📍 ${p.location || "Location not set"}</p>
+        <div class="map ${p.lat ? "" : "is-hidden"}" id="own-map"></div>`
+      el.profileLocation.value = p.location ?? ""
+      el.profileTags.value = (p.tags ?? []).join(", ")
+      hide(el.profileFetch); show(el.profileContent, el.profileEdit)
+      if (p.lat && p.lon) initOwnMap(p.lat, p.lon)
+    }
+
+    /** Import a public GitHub profile (unauthenticated API — 60 req/h rate limit). */
+    const fetchGithubProfile = async () => {
+      const username = el.githubUsername.value.trim()
+      if (!username) return
+      el.btnFetchGithub.textContent = "Fetching…"; el.btnFetchGithub.disabled = true
+      try {
+        const userRes = await fetch(`https://api.github.com/users/${username}`)
+        if (!userRes.ok) throw new Error(userRes.status === 403 ? "GitHub rate limit reached" : "User not found")
+        const user = await userRes.json()
+        const repos = await (await fetch(`${user.repos_url}?sort=pushed&per_page=5`)).json()
+        const languages = {}
+        for (const repo of repos) {
+          const langs = await (await fetch(repo.languages_url)).json()
+          for (const [lang, bytes] of Object.entries(langs)) languages[lang] = (languages[lang] ?? 0) + bytes
+        }
+        state.ownProfile = {
+          type: "Developer", github: user.login, avatar: user.avatar_url, bio: user.bio,
+          repos: repos.map(r => ({ name: r.name, description: r.description, stars: r.stargazers_count })),
+          languages, tags: [], location: "", lat: null, lon: null, ethAddress: db.sm.getActiveEthAddress(),
+        }
+        renderOwnProfile()
+      } catch (err) {
+        alert(`Error fetching GitHub profile: ${err.message}`)
+      } finally {
+        el.btnFetchGithub.textContent = "Fetch profile"; el.btnFetchGithub.disabled = false
+      }
+    }
+
+    /** Persist the profile to GenosDB (geocoding the location first). */
+    const saveProfile = async () => {
+      if (!state.ownProfile) return
+      el.btnSaveProfile.textContent = "Saving…"; el.btnSaveProfile.disabled = true
+      try {
+        state.ownProfile.location = el.profileLocation.value.trim()
+        state.ownProfile.tags = el.profileTags.value.split(",").map(t => t.trim()).filter(Boolean)
+        const coords = await geocode(state.ownProfile.location)
+        if (coords) Object.assign(state.ownProfile, coords)
+        const id = await db.put(state.ownProfile, state.ownProfile.id ?? state.ownProfileId)
+        state.ownProfile.id = state.ownProfileId = id
+        localStorage.setItem("dc.ownProfileId", id)
+        renderOwnProfile()
+        alert("Profile saved.")
+      } catch (err) {
+        alert(`Error saving profile: ${err.message}`)
+      } finally {
+        el.btnSaveProfile.textContent = "Save profile"; el.btnSaveProfile.disabled = false
+      }
+    }
+
+    /* ============================ Explore developers ============================ */
+    const calcSimilarity = (a = [], b = []) => { const s = new Set(a); return b.filter(t => s.has(t)).length }
+
+    const renderDevelopers = () => {
+      const tag = el.filterTag.value.toLowerCase()
+      const lang = el.filterLang.value.toLowerCase()
+      const loc = el.filterLocation.value.toLowerCase()
+
+      let devs = [...state.developers.values()].filter(({ id, value }) => {
+        if (id === state.ownProfileId) return false
+        const langs = Object.keys(value.languages ?? {}).map(l => l.toLowerCase())
+        return (!tag || (value.tags ?? []).some(t => t.toLowerCase().includes(tag)))
+          && (!lang || langs.some(l => l.includes(lang)))
+          && (!loc || (value.location ?? "").toLowerCase().includes(loc))
+      })
+
+      if (state.ownProfile?.tags?.length) {
+        devs.sort((a, b) =>
+          calcSimilarity(state.ownProfile.tags, b.value.tags) - calcSimilarity(state.ownProfile.tags, a.value.tags))
+      }
+
+      el.devEmpty.classList.toggle("is-hidden", devs.length > 0)
+      el.devGrid.innerHTML = devs.map(({ id, value }) => `
+        <article class="dev-card" data-id="${id}">
+          <div class="profile-head" style="margin-bottom:var(--space-2)">
+            <img class="avatar" src="${value.avatar}" alt="${value.github}">
+            <div><div class="dev-card__name">${value.github}</div><span class="dev-card__addr">${db.sm.abbrAddr(value.ethAddress)}</span></div>
+          </div>
+          <p class="dev-card__bio">${(value.bio ?? "").slice(0, 110) || "No bio."}</p>
+          <div class="tags">${(value.tags ?? []).map(t => `<span class="tag">${t}</span>`).join("")}</div>
+          <p class="muted">📍 ${value.location || "Unknown"}</p>
+        </article>`).join("")
+      updateGlobalMarkers()
+    }
+
+    /* ============================ Maps ============================ */
+    const initOwnMap = (lat, lon) => {
+      const node = $("#own-map")
+      if (!node) return
+      ownMap?.remove()
+      ownMap = L.map(node).setView([lat, lon], 12)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(ownMap)
+      L.marker([lat, lon]).addTo(ownMap)
+    }
+    const initGlobalMap = () => {
+      globalMap = L.map(el.globalMap).setView([20, 0], 2)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(globalMap)
+    }
+    const updateGlobalMarkers = () => {
+      if (!globalMap) return
+      globalMap.eachLayer(l => { if (l instanceof L.Marker) globalMap.removeLayer(l) })
+      for (const { value } of state.developers.values()) {
+        if (value.lat && value.lon)
+          L.marker([value.lat, value.lon]).addTo(globalMap)
+            .bindPopup(`<b>${value.github}</b><br>${db.sm.abbrAddr(value.ethAddress)}`)
+      }
+    }
+    const geocode = async (query) => {
+      if (!query) return null
+      try {
+        const data = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)).json()
+        if (data?.length) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }
+      } catch { /* non-fatal */ }
+      return null
+    }
+
+    /* ============================ Chat (ephemeral — db.room) ============================ */
+    // Chat traffic is ephemeral, so it travels over room channels (NOT the database).
+    const identity = () => ({ ethAddress: state.ownProfile.ethAddress, github: state.ownProfile.github })
+
+    const setupChat = () => {
+      publicChannel = db.room.channel("public-chat")
+      controlChannel = db.room.channel("dc-control")
+
+      const announce = (peerId) => {
+        if (db.sm.isSecurityActive() && state.ownProfile)
+          controlChannel.send({ type: "identity", payload: identity() }, peerId)
+      }
+
+      db.room.on("peer:join", (peerId) => { announce(peerId); updatePeers() })
+      db.room.on("peer:leave", (peerId) => { state.peers.delete(peerId); updatePeers() })
+
+      controlChannel.on("message", (msg, peerId) => {
+        if (msg.type !== "identity") return
+        state.peers.set(peerId, msg.payload)
+        updatePeers()
+        if (state.ownProfile) controlChannel.send({ type: "identity", payload: identity() }, peerId) // reply
+      })
+
+      publicChannel.on("message", (data) => addMessage(el.publicMessages, data.text, false, data.sender))
+
+      el.publicForm.onsubmit = (e) => {
+        e.preventDefault()
+        const text = el.publicInput.value.trim()
+        if (!text) return
+        publicChannel.send({ text, sender: state.ownProfile?.github ?? "Anonymous" })
+        addMessage(el.publicMessages, text, true)
+        el.publicInput.value = ""
+      }
+      el.privateForm.onsubmit = (e) => {
+        e.preventDefault()
+        if (!privateChannel) return alert("Select a peer first.")
+        const text = el.privateInput.value.trim()
+        if (!text) return
+        privateChannel.send({ text, sender: state.ownProfile?.github ?? "Anonymous" })
+        addMessage(el.privateMessages, text, true)
+        el.privateInput.value = ""
+      }
+      el.peerSelect.onchange = openPrivateChannel
+    }
+
+    const updatePeers = () => {
+      const size = db.room.getPeers().size
+      el.peerCount.textContent = size
+      el.connDot.classList.toggle("dot--online", size > 0)
+      const current = el.peerSelect.value
+      el.peerSelect.innerHTML = `<option value="">— select a peer —</option>` +
+        [...state.peers].map(([id, d]) => `<option value="${id}">${d.github} (${db.sm.abbrAddr(d.ethAddress)})</option>`).join("")
+      if (current) el.peerSelect.value = current
+    }
+
+    const openPrivateChannel = () => {
+      const peerId = el.peerSelect.value
+      if (!peerId) { privateChannel = null; return }
+      const peer = state.peers.get(peerId)
+      if (!peer || !state.ownProfile) return alert("Peer or own profile data missing.")
+      // Deterministic channel name shared by both ends
+      const name = `private-${[state.ownProfile.ethAddress, peer.ethAddress].sort().join("-")}`
+      privateChannel = db.room.channel(name)
+      el.privateMessages.innerHTML = ""
+      privateChannel.on("message", (data) => addMessage(el.privateMessages, data.text, false, data.sender))
+    }
+
+    const addMessage = (container, text, own, sender) => {
+      const div = document.createElement("div")
+      div.className = `bubble ${own ? "bubble--own" : "bubble--other"}`
+      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      div.innerHTML = `${!own ? `<span class="bubble__sender">${sender ?? "Peer"}</span>` : ""}<span>${text}</span><span class="bubble__time">${time}</span>`
+      container.append(div)
+      container.scrollTop = container.scrollHeight
+    }
+
+    /* ============================ Real-time developer feed (persistent) ============================ */
+    toggleLoader(el.devLoader, true)
+    // The callback streams live changes; `results` holds the initial set (and covers the empty case,
+    // where the callback would never fire because no node matches the query).
+    const { results, unsubscribe } = await db.map({ query: { type: "Developer" } }, ({ id, value, action }) => {
+      if (action === "removed") state.developers.delete(id)
+      else state.developers.set(id, { id, value })
+      renderDevelopers()
+    })
+    unsubscribers.push(unsubscribe)
+    for (const { id, value } of results) state.developers.set(id, { id, value })
+    toggleLoader(el.devLoader, false)
+    renderDevelopers()
+
+    /* ============================ Wiring ============================ */
+    initGlobalMap()
+    setupChat()
+
+    // Tab navigation
+    for (const tab of document.querySelectorAll(".tab")) {
+      tab.onclick = () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("tab--active"))
+        document.querySelectorAll(".view").forEach(v => v.classList.remove("view--active"))
+        tab.classList.add("tab--active")
+        $(`#view-${tab.dataset.view}`).classList.add("view--active")
+        if (tab.dataset.view === "explore") globalMap?.invalidateSize()
+      }
+    }
+
+    // Chat sub-tabs: active = primary, inactive = secondary
+    el.chatTabPublic.onclick = () => {
+      el.chatTabPublic.className = "btn btn--primary"; el.chatTabPrivate.className = "btn btn--secondary"
+      show(el.publicChat); hide(el.privateChat)
+    }
+    el.chatTabPrivate.onclick = () => {
+      el.chatTabPrivate.className = "btn btn--primary"; el.chatTabPublic.className = "btn btn--secondary"
+      show(el.privateChat); hide(el.publicChat)
+    }
+
+    el.btnFetchGithub.onclick = fetchGithubProfile
+    el.btnSaveProfile.onclick = saveProfile
+    for (const input of [el.filterTag, el.filterLang, el.filterLocation]) input.oninput = renderDevelopers
+
+    // Best practice: release real-time subscriptions on teardown to avoid leaks
+    addEventListener("beforeunload", () => unsubscribers.forEach(u => u?.()))
+  </script>
+</body>
+
+</html>
