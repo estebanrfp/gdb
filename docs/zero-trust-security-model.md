@@ -105,3 +105,14 @@ This is a user whose Ethereum address is hard-coded into the node's configuratio
 | **Assign Roles** | ❌ No | ❌ No | ❌ No | ❌ No | ✅ **Yes** |
 
 In summary, our Security Manager implements a secure, one-way entry portal for new users. It allows them to introduce themselves to the network by creating their identity card, but the system immediately takes the pen away, waiting for a trusted authority (`SuperAdmin`) to grant them real permissions. This model is robust, secure, and ready for decentralized collaboration.
+
+---
+
+### Opening It Up: Public Platforms
+
+The portal above is the **secure default**, where a `SuperAdmin` decides who can
+write. For apps that are open by design — public forums, polls, comment boards —
+grant the base `guest` role `write` (and `link`) permissions via the SM's
+`customRoles` option, and anyone can post immediately. This opens **authorization,
+not authenticity**: every operation is still signed and peer-verified, so forged
+writes are rejected — you are only letting unpromoted identities participate.
