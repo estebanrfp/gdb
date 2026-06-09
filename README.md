@@ -1,6 +1,6 @@
 # GenosDB (GDB) – Decentralized P2P Graph Database
 
-A lightweight, decentralized graph database designed for modern web applications, offering real-time peer-to-peer synchronization, SM ([Security Manager](https://github.com/estebanrfp/gdb/blob/main/docs/sm-architecture.md)) Provides WebAuthn-based authentication, role-based access control (RBAC), Access Control Lists ([ACLs](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md)), and efficient local storage utilizing OPFS.
+A lightweight, decentralized graph database designed for modern web applications, offering real-time peer-to-peer synchronization, SM ([Security Manager](https://github.com/estebanrfp/gdb/blob/main/docs/sm-architecture.md)) Provides WebAuthn-based authentication, role-based access control (RBAC), Access Control Lists ([ACLs](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md)), rule-based role promotion ([Governance](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md)), and efficient local storage utilizing OPFS.
 
 ![GenosDB](https://i.imgur.com/7Xqrht1.png)
 
@@ -64,6 +64,7 @@ A lightweight, decentralized graph database designed for modern web applications
   - **Intelligent Hybrid Synchronization:**
     GenosDB overcomes the limitations of naive P2P sync with an intelligent, dual-mode engine. It automatically exchanges tiny, compressed Deltas between active peers using a sliding-window Oplog for blazing-fast, low-latency updates. For peers that are too far out of sync, it seamlessly switches to a robust Full-State Fallback, guaranteeing absolute data consistency for everyone, no matter how long they've been offline.
   - **Access Control Lists (ACLs):** Optional submodule for fine-grained, node-level permissions, allowing owners to grant/revoke specific permissions ('read', 'write', 'delete') to other users per node, complementing the existing RBAC system.
+  - **Governance (Role Promotion):** Optional engine that promotes users between roles from declarative rules whose conditions are native GenosDB queries, with each promotion signed by an online superadmin. ([Governance](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md))
 
 ### 🧪 API Status: Stable Beta
 

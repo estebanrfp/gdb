@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-06-10
+
+### Added
+
+- **Governance engine (`sm-gov`) — rule-based role promotion:** The Security Manager can now promote (and demote) users automatically from declarative rules passed via `sm.governanceRules`. Each rule is `{ if, then: { assignRole }, offsetTimestamp? }`, where `if` is a **native GenosDB query** (the same language as `db.map`: `$gte`, `$lt`, `$and`, `$or`, `$regex`, …) evaluated against `user:<address>` nodes. The engine runs only while a superadmin is logged in — their key signs every `assignRole`, and every peer verifies it (zero-trust). Includes superadmin immunity and an optional `offsetTimestamp` (minimum time since the user node's last write). Full guide: [docs/governance.md](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+- **Governance viewer example (`examples/governance.html`):** Interactive two-browser demo of the full cycle — time-based promotion (`guest → user`), merit-based promotion (`user → manager` on points) and demotion (`manager → user` when dropping below the threshold) — with a live role-transition log and a demo superadmin mnemonic for self-testing. Replaces the previous unfinished drafts.
+- **Full security model showcase (`examples/acls.html`):** The ACLs testbed now demonstrates zero-trust + governance + node-level ACLs together: a one-button demo superadmin runs a governance console (live user/role list and signed promotions) while Alice & Bob join as write-blocked guests, get promoted by rule, and then create, share and revoke notes per user with `db.sm.acls.set` / `grant` / `revoke` / `delete`.
+- **New examples:** `devconnect.html` (P2P developer network: SM identity behind a centered login modal, real-time directory via `db.map`, public/private chat over GenosRTC channels, GitHub profile import and Leaflet maps) and `collab-editor-basic.html` (minimal, no-login collaborative editor with live presence and debounced auto-save on top of GenosDB's automatic sync).
+
+### Fixed
+
+- **Governance rules were not evaluated:** the engine previously queried all nodes and ignored each rule's `if` condition, so role changes were not driven by the declared objectives. Conditions are now applied via the query engine and scoped to `user:<address>` nodes.
+- **`examples/tictactoc.html` rework:** the previous version crashed on role selection (undefined `sendData`) and never synced state to late joiners; replaced with a typed `role`/`state`/`reset` message protocol, state broadcast on `peer:join`, a winner guard and a minimalist flat UI.
+- **Docs — `db.room.getPeers()` return type:** corrected to a plain object keyed by `peerId` (it was documented as a `Map`).
+
 ## [0.12.10] - 2026-06-03
 
 ### Changed
