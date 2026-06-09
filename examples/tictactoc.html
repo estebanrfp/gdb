@@ -2,206 +2,363 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tic Tac Toe with GDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ============================ Flat-design tokens ============================ */
+    :root {
+      --bg-1: #d9e6f4;
+      --bg-2: #eef4fb;
+      --slate: #3a4d63;
+      --slate-soft: #4a5e76;
+      --line: rgba(255, 255, 255, .14);
+      --x: #ff6b6b;
+      --o: #4dabf7;
+      --text: #3a4d63;
+      --muted: #7c8ba1;
+      --surface: #ffffff;
+      --radius: 16px;
+      --radius-lg: 28px;
+      --transition: 160ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-
-    .board {
-      display: grid;
-      grid-template-columns: repeat(3, 100px);
-      grid-template-rows: repeat(3, 100px);
-      gap: 5px;
-      margin: 20px auto;
-      width: 320px;
-    }
-
-    .cell {
-      width: 100px;
-      height: 100px;
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2em;
-      border: 2px solid black;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .game {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      padding: 32px;
+    }
+
+    .title {
+      font-weight: 700;
+      font-size: 1.9rem;
+      letter-spacing: -.03em;
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    /* ============================ Role selection ============================ */
+    .roles {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .roles__label {
+      color: var(--muted);
+      font-size: .95rem;
+      font-weight: 500;
+    }
+
+    .roles__buttons {
+      display: flex;
+      gap: 14px;
+    }
+
+    .role {
+      width: 68px;
+      height: 68px;
+      border-radius: var(--radius);
+      border: 2px solid;
+      background: var(--surface);
+      font-family: inherit;
+      font-size: 2rem;
+      font-weight: 300;
       cursor: pointer;
-      background-color: lightgray;
+      transition: var(--transition);
+    }
+
+    .role--x {
+      color: var(--x);
+      border-color: var(--x);
+    }
+
+    .role--o {
+      color: var(--o);
+      border-color: var(--o);
+    }
+
+    .role--x:hover {
+      background: var(--x);
+      color: #fff;
+    }
+
+    .role--o:hover {
+      background: var(--o);
+      color: #fff;
+    }
+
+    /* ============================ Board ============================ */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 96px);
+      grid-template-rows: repeat(3, 96px);
+      gap: 6px;
+      padding: 6px;
+      border-radius: var(--radius-lg);
+      background-color: var(--line);
+    }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--slate);
+      border-radius: 10px;
+      font-size: 3rem;
+      font-weight: 300;
+      line-height: 1;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      transition: background var(--transition);
+    }
+
+    .cell:hover:not(.taken) {
+      background: var(--slate-soft);
     }
 
     .cell.taken {
       cursor: not-allowed;
     }
 
-    #role-selection {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin: 20px auto;
+    .cell.x {
+      color: var(--x);
     }
 
-    #role-selection button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 1em;
+    .cell.o {
+      color: var(--o);
+    }
+
+    /* ============================ Status & reset ============================ */
+    .status {
+      color: var(--muted);
+      font-weight: 500;
+      min-height: 1.4em;
+    }
+
+    .btn-reset {
+      padding: 11px 28px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--slate);
+      color: #fff;
+      font-family: inherit;
+      font-size: .95rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-reset:hover {
+      background: var(--slate-soft);
     }
   </style>
 </head>
 
 <body>
-  <h1>Tic Tac Toe with GDB</h1>
-  <div id="role-selection">
-    <p>Select your role:</p>
-    <button id="select-x">X</button>
-    <button id="select-o">O</button>
-  </div>
-  <div class="board" id="board"></div>
-  <p id="status">Waiting for players...</p>
-  <button id="reset-button">Reset</button>
+  <main class="game">
+    <h1 class="title">Tic Tac Toe</h1>
+
+    <div id="role-selection" class="roles">
+      <p class="roles__label">Choose your side</p>
+      <div class="roles__buttons">
+        <button id="select-x" class="role role--x">X</button>
+        <button id="select-o" class="role role--o">O</button>
+      </div>
+    </div>
+
+    <div class="board" id="board"></div>
+    <p id="status" class="status">Waiting for players…</p>
+    <button id="reset-button" class="btn-reset">Reset</button>
+  </main>
+
   <script type="module">
     import { gdb } from "../dist/index.js";
 
-    // Initialize GenosDB using async factory
-    const db = await gdb('tic-tac-toe', { rtc: true });
-    const gameChannel = db.room.channel("gamesync");
-    const boardElement = document.getElementById('board');
-    const statusElement = document.getElementById('status');
-    const roleSelection = document.getElementById('role-selection');
-    const selectXButton = document.getElementById('select-x');
-    const selectOButton = document.getElementById('select-o');
+    /** Game constants */
+    const WINNING_COMBOS = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
 
-    let boardState = Array(9).fill(null);
-    let player = null; // Player role (X or O)
-    let currentPlayer = 'X'; // Current player
+    /** Cache DOM elements */
+    const boardElement = document.getElementById("board");
+    const statusElement = document.getElementById("status");
+    const roleSelection = document.getElementById("role-selection");
+    const selectXButton = document.getElementById("select-x");
+    const selectOButton = document.getElementById("select-o");
+    const resetButton = document.getElementById("reset-button");
 
-    // Show role selection menu at start
-    roleSelection.style.display = 'block';
+    /** Game state */
+    const state = {
+      board: Array(9).fill(null),
+      player: null,   // "X" | "O" | null
+      current: "X",   // whose turn
+      winner: null    // "X" | "O" | "T" | null
+    };
 
-    // Handle role selection
-    selectXButton.addEventListener('click', () => {
-      player = 'X';
-      startGame();
-    });
+    /** RTC channel (assigned in init) */
+    let gameChannel = null;
 
-    selectOButton.addEventListener('click', () => {
-      player = 'O';
-      startGame();
-    });
-
-    function startGame() {
-      roleSelection.style.display = 'none'; // Hide role selection menu
-      statusElement.textContent = `You are player ${player}`;
-      sendData({ role: player }); // Notify other players about the selected role
-    }
-
-    db.room.on('peer:join', peerId => {
-      const peers = db.room.getPeers();
-      const count = Object.keys(peers).length;
-
-      if (count === 2 && !player) {
-        alert("Waiting for the other player to select their role...");
+    /** Winner calculation */
+    const getWinner = board => {
+      for (const [a, b, c] of WINNING_COMBOS) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
       }
-    });
+      return board.includes(null) ? null : "T";
+    };
 
-    db.room.on('peer:leave', peerId => {
-      resetGame();
-    });
+    /** Status text */
+    const updateStatus = () => {
+      if (state.winner) {
+        statusElement.textContent = state.winner === "T"
+          ? "It's a Tie!"
+          : `${state.winner} has won!`;
+        return;
+      }
+      const roleInfo = state.player ? `You are player ${state.player}. ` : "";
+      statusElement.textContent = `${roleInfo}Turn: ${state.current}`;
+    };
 
-    function createBoard() {
-      boardElement.innerHTML = '';
-      boardState.forEach((mark, index) => {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
+    /** Render board */
+    const renderBoard = () => {
+      boardElement.innerHTML = "";
+      state.board.forEach((mark, index) => {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
         if (mark) {
           cell.textContent = mark;
-          cell.classList.add('taken');
+          cell.classList.add("taken", mark === "X" ? "x" : "o");
         }
-        cell.addEventListener('click', () => makeMove(index));
+        cell.addEventListener("click", () => handleMove(index));
         boardElement.appendChild(cell);
       });
-    }
+      updateStatus();
+    };
 
-    function checkWinner() {
-      const winningCombos = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-        [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-        [0, 4, 8], [2, 4, 6] // Diagonals
-      ];
-      for (let combo of winningCombos) {
-        const [a, b, c] = combo;
-        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
-          return boardState[a];
-        }
+    /** Broadcast state over RTC */
+    const broadcastState = () => {
+      if (!gameChannel) return;
+      gameChannel.send({
+        type: "state",
+        board: state.board,
+        current: state.current,
+        winner: state.winner
+      });
+    };
+
+    /** Local move */
+    const handleMove = index => {
+      if (!state.player || state.winner || state.board[index] || state.current !== state.player) return;
+
+      state.board[index] = state.player;
+      state.winner = getWinner(state.board);
+      state.current = state.winner ? state.current : (state.current === "X" ? "O" : "X");
+
+      renderBoard();
+      broadcastState();
+    };
+
+    /** Role selection */
+    const selectRole = role => {
+      if (state.player) return;
+      state.player = role;
+      roleSelection.classList.add("is-hidden");
+      updateStatus();
+      if (gameChannel) gameChannel.send({ type: "role", role });
+    };
+
+    selectXButton.addEventListener("click", () => selectRole("X"));
+    selectOButton.addEventListener("click", () => selectRole("O"));
+
+    /** Reset game */
+    const resetGame = (broadcast = true) => {
+      state.board = Array(9).fill(null);
+      state.current = "X";
+      state.winner = null;
+      renderBoard();
+      if (broadcast && gameChannel) gameChannel.send({ type: "reset" });
+    };
+
+    resetButton.addEventListener("click", () => resetGame(true));
+
+    /** Init GenosDB + RTC */
+    const init = async () => {
+      try {
+        const db = await gdb("tic-tac-toe", { rtc: true });
+        gameChannel = db.room.channel("gamesync");
+
+        gameChannel.on("message", data => {
+          const { type } = data || {};
+          if (!type) return;
+
+          if (type === "role") {
+            if (!state.player && data.role) {
+              state.player = data.role === "X" ? "O" : "X";
+              roleSelection.classList.add("is-hidden");
+            }
+            updateStatus();
+            return;
+          }
+
+          if (type === "state") {
+            if (Array.isArray(data.board)) state.board = [...data.board];
+            if (data.current) state.current = data.current;
+            state.winner = data.winner ?? null;
+            renderBoard();
+            return;
+          }
+
+          if (type === "reset") {
+            resetGame(false);
+          }
+        });
+
+        db.room.on("peer:join", () => {
+          // Share current state with the newly joined peer
+          broadcastState();
+        });
+
+        db.room.on("peer:leave", () => {
+          if (!state.winner) statusElement.textContent =
+            "A player has left. You can reset to start a new game.";
+        });
+      } catch (err) {
+        console.error("[GenosDB init error]", err);
+        statusElement.textContent = "Error initializing GenosDB/RTC. Check console.";
       }
-      return boardState.includes(null) ? null : 'T'; // 'T' for Tie
-    }
+    };
 
-    function makeMove(index) {
-      // Check if the cell is already taken or if it's not the current player's turn
-      if (boardState[index] || currentPlayer !== player) return;
-
-      // Update the board state
-      boardState[index] = player;
-
-      // Visually update the board for the current player
-      createBoard();
-
-      currentPlayer = player === 'X' ? 'O' : 'X';
-      // Notify other players about the move
-      const winner = checkWinner();
-      if (winner) {
-        gameChannel.send({ board: JSON.stringify(boardState), winner });
-      } else {
-        gameChannel.send({ board: JSON.stringify(boardState), turn: currentPlayer });
-      }
-    }
-
-    gameChannel.on('message', data => {
-      if (data.role) {
-        const peers = db.room.getPeers();
-        const count = Object.keys(peers).length;
-
-        // If there are two players, assign roles automatically if not selected
-        if (count === 2 && !player) {
-          player = data.role === 'X' ? 'O' : 'X';
-          statusElement.textContent = `You are player ${player}`;
-        }
-      }
-
-      if (data.board) boardState = JSON.parse(data.board);
-      if (data.turn) currentPlayer = data.turn;
-      if (data.winner) {
-        statusElement.textContent = data.winner === 'T' ? "It's a Tie!" : `${data.winner} has won!`;
-        showRestartButton();
-      } else {
-        createBoard();
-        statusElement.textContent = `Turn: ${currentPlayer}`;
-      }
-    })
-
-    function showRestartButton() {
-      const restartButton = document.createElement('button');
-      restartButton.textContent = "Play again";
-      restartButton.id = 'reset-button';
-      restartButton.addEventListener('click', resetGame);
-      document.body.appendChild(restartButton);
-    }
-
-    function resetGame() {
-      boardState = Array(9).fill(null);
-      currentPlayer = 'X';
-      sendData({ board: JSON.stringify(boardState), turn: 'X', winner: null });
-      document.querySelectorAll("button").forEach(btn => btn.remove());
-      createBoard();
-    }
-
-    document.getElementById('reset-button').addEventListener('click', resetGame);
-    createBoard();
+    /** Initial UI & start */
+    renderBoard();
+    init();
   </script>
 </body>
 
