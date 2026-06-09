@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collab Doc — basic collaborative editor powered by GenosDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================ Tokens (dark) ============================ */
+    :root {
+      --bg: #0d0d0d;
+      --header-bg: #161616;
+      --border: #262626;
+      --text: #f2f2f2;
+      --muted: #8a8a8a;
+      --accent: #0ea5e9;
+      --online: #34c759;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --header-height: 56px;
+      --transition: 150ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================ Header ============================ */
+    .topbar {
+      flex-shrink: 0;
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    .brand__mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--accent), #38bdf8);
+    }
+
+    .brand__tag {
+      font-weight: 500;
+      font-size: .72rem;
+      color: var(--muted);
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: .8rem;
+    }
+
+    .presence {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background var(--transition);
+    }
+
+    .dot--online {
+      background: var(--online);
+      box-shadow: 0 0 0 3px rgba(52, 199, 89, .18);
+    }
+
+    .status {
+      color: var(--muted);
+      font-weight: 500;
+      min-width: 56px;
+      text-align: right;
+    }
+
+    /* ============================ Editor (full width, left-aligned) ============================ */
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+    }
+
+    .editor {
+      flex: 1;
+      width: 100%;
+      padding: 28px;
+      border: none;
+      outline: none;
+      resize: none;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      text-align: left;
+    }
+
+    .editor::placeholder {
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark"></span>
+      Collab Doc
+      <span class="brand__tag">powered by GenosDB</span>
+    </div>
+    <div class="meta">
+      <span class="presence"><span class="dot" id="dot"></span><span id="online">1</span> online</span>
+      <span class="status" id="status">Saved</span>
+    </div>
+  </header>
+
+  <main class="editor-wrap">
+    <textarea id="editor" class="editor" placeholder="Start typing… edits sync to everyone in real time."></textarea>
+  </main>
+
+  <script type="module">
+    import { gdb } from "../dist/index.js";
+
+    /** Id of the single shared document node. */
+    const DOC_ID = "main-doc";
+    /** Idle delay before persisting edits (ms). */
+    const SAVE_DELAY = 400;
+
+    const editor = document.getElementById("editor");
+    const onlineEl = document.getElementById("online");
+    const statusEl = document.getElementById("status");
+    const dotEl = document.getElementById("dot");
+
+    // rtc: true enables P2P sync. Writes via db.put propagate to every peer automatically,
+    // and GenosDB resolves concurrent edits with its Hybrid Logical Clock (last-write-wins).
+    // No manual data channel or timestamp bookkeeping is needed.
+    const db = await gdb("collab-doc", { rtc: true });
+    const room = db.room;
+
+    /** Number of connected peers (getPeers() may be a Map or a plain object across builds). */
+    const peerCount = () => {
+      const peers = room.getPeers() ?? {};
+      return peers instanceof Map ? peers.size : Object.keys(peers).length;
+    };
+
+    /** Render the online count (this client + connected peers). */
+    const renderPresence = () => {
+      const count = peerCount() + 1;
+      onlineEl.textContent = count;
+      dotEl.classList.toggle("dot--online", count > 1);
+    };
+    room.on("peer:join", renderPresence);
+    room.on("peer:leave", renderPresence);
+    renderPresence();
+
+    // Ensure the document node exists before subscribing to it.
+    const { result } = await db.get(DOC_ID);
+    if (!result) await db.put({ content: "" }, DOC_ID);
+
+    // Reactive subscription: the callback fires immediately with the current node and again on
+    // every change (local or remote). This is the whole sync engine for this editor.
+    const { unsubscribe } = await db.get(DOC_ID, (node) => {
+      const content = node?.value?.content ?? "";
+      if (content === editor.value) return; // ignore our own echo / no-op updates
+      // Apply remote content while keeping the caret where the user left it.
+      const { selectionStart, selectionEnd } = editor;
+      editor.value = content;
+      editor.setSelectionRange(selectionStart, selectionEnd);
+    });
+
+    // Debounced auto-save: persist once the user pauses typing.
+    let saveTimer;
+    editor.addEventListener("input", () => {
+      statusEl.textContent = "Editing…";
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        await db.put({ content: editor.value }, DOC_ID);
+        statusEl.textContent = "Saved";
+      }, SAVE_DELAY);
+    });
+
+    // Best practice: release the real-time subscription on teardown.
+    addEventListener("beforeunload", () => unsubscribe?.());
+  </script>
+</body>
+
+</html>
