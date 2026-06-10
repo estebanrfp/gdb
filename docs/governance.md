@@ -58,6 +58,7 @@ const db = await gdb("my-app", {
 | `then.assignRole` | yes      | The role to assign when the condition matches. Must be one of the defined roles.                                          |
 | `then.expiresIn`  | no       | Makes the granted role **temporary**: a duration in milliseconds measured from the moment of promotion. See [Temporary roles](#temporary-roles-expiring-promotions). |
 | `then.expiresAt`  | no       | Like `expiresIn`, but an **absolute** expiry — an ISO string, a `Date`, or epoch milliseconds. Takes precedence over `expiresIn` if both are present. |
+| `then.expiresTo`  | no       | The role to **auto-revert to** when the temporary role expires (opt-in). While a superadmin is online the engine rewrites the stale label to this role; without it the expired label is left in place. |
 | `offsetTimestamp` | no       | Minimum time in milliseconds since the user node's last write. The rule only fires once the node has been stable that long. |
 
 ## Conditions are GenosDB queries
@@ -91,12 +92,17 @@ By default a promotion is permanent. Add `expiresIn` (relative) or `expiresAt` (
 // Event role with a fixed end date
 { if: { role: "user", ticket: "vip" },
   then: { assignRole: "vip", expiresAt: "2026-12-31T23:59:59Z" } }
+
+// Self-reverting: a 30s "manager pass" that drops back to user on expiry
+{ if: { role: "user", points: { $gte: 1 } },
+  then: { assignRole: "manager", expiresIn: 30000, expiresTo: "user" } }
 ```
 
 - `expiresIn` is measured **from the moment of promotion**; `expiresAt` is absolute and wins if both are set.
 - The expiry is written onto the `user:<address>` node and signed by the superadmin, like any role change.
 - Once expired, the Security Manager **stops honoring the role** — privileged operations from that user are rejected both locally (`verifyUserRoleLocal` throws *"Role has expired"*) and, since **0.14.0**, by every honest peer (incoming operations from an expired role are authorized as `guest`).
-- The engine does **not** rewrite the node's `role` field when it expires; the role simply ceases to have effect. (A demotion rule can revert it visually if you also condition on the metric that granted it.)
+- By default the engine leaves the node's `role` label untouched on expiry; the role simply ceases to have effect. Add **`expiresTo`** to the rule's `then` to make the engine auto-revert the stale label to a base role (e.g. `expiresTo: "user"`) on a later cycle.
+- **Avoid renewal loops:** if `expiresTo` reverts to a role that *still satisfies the granting condition*, the rule re-fires immediately and the role renews forever. Design the trigger to be **consumed** on promotion (spend the points/flag) so the condition no longer holds after revert — see the "manager pass" pattern in [`examples/governance.html`](https://estebanrfp.github.io/gdb/examples/governance.html).
 
 > **Note:** since **0.14.0**, expiry is enforced **network-wide** — every honest peer downgrades to `guest` any incoming operation signed under an expired role, not just the local client. See the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md) Security section.
 

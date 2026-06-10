@@ -82,17 +82,16 @@
       "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
     ]
     const LEVEL_UP_THRESHOLD = 1
-    const MANAGER_TTL_MS = 30000 // temporary role: "manager" is granted for 30s via then.expiresIn
+    const MANAGER_TTL_MS = 30000 // a temporary "manager pass" lasts 30s (then.expiresIn)
     const GOVERNANCE_RULES = [
       // Time objective: a guest becomes user after 5s (while a superadmin is online to sign it)
       { if:{ role:"guest" }, offsetTimestamp:5000, then:{ assignRole:"user" } },
-      // Points objective (up): reaching the threshold promotes to manager FOR A LIMITED TIME.
-      // `expiresIn` writes an expiresAt onto the node; once it passes the Security Manager stops
-      // honoring the role network-wide (since 0.14.0). The engine does NOT revert the label, so the
-      // viewer shows a live countdown and an "expired" state — vote down to reset the cycle.
-      { if:{ role:"user", points:{ $gte: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"manager", expiresIn: MANAGER_TTL_MS } },
-      // Points objective (down): drop below the threshold -> demoted back to user (also resets the demo)
-      { if:{ role:"manager", points:{ $lt: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"user" } },
+      // Merit objective: reaching the points threshold buys a TEMPORARY "manager pass".
+      // `expiresIn` stamps an expiresAt on the node; once it passes the Security Manager stops honoring
+      // the role network-wide (0.14.0), and `expiresTo` makes the engine auto-revert the label to "user".
+      // The point is SPENT on promotion (see the subscription below), so the standing condition no longer
+      // holds — the pass does NOT auto-renew; earn another point to buy a new one.
+      { if:{ role:"user", points:{ $gte: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"manager", expiresIn: MANAGER_TTL_MS, expiresTo: "user" } },
     ]
     const abbr = a => `${a.slice(0,6)}...${a.slice(-4)}`
     const log = m => { els.log.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; els.log.scrollTop = els.log.scrollHeight }
@@ -106,9 +105,9 @@
     }
     const toggleVoting = on => els.voteUp.disabled = els.voteDown.disabled = !on
 
-    // Live countdown for temporary roles: then.expiresIn writes expiresAt onto user:<address>.
-    // While it is in the future we show the remaining seconds; once it passes we show "expired"
-    // (the SM stops honoring the role; the engine keeps the stale label, by design).
+    // Live countdown for the temporary "manager pass": then.expiresIn stamps expiresAt onto the node.
+    // While it is in the future we show the remaining seconds; once it passes we briefly show "expired"
+    // until the engine's expiresTo reverts the label back to "user".
     const renderTtl = () => {
       if (!lastExpiresAt) { els.ttl.hidden = true; return }
       const ms = new Date(lastExpiresAt).getTime() - Date.now()
@@ -214,7 +213,15 @@
         unsubscribeUser?.(); unsubscribeUser = null
         const { unsubscribe } = await db.get(userId, ({ value }) => {
           if (!value) return
-          lastRole = value.role ?? lastRole
+          const newRole = value.role ?? lastRole
+          // Spend the point that bought this manager pass: clearing it means the standing condition
+          // (points ≥ threshold) no longer holds, so the engine won't auto-renew the role when it
+          // later reverts to "user". Earn another point to buy a new pass.
+          if (newRole === "manager" && lastRole !== "manager" && (value.points ?? 0) > 0) {
+            writePoints(userId, () => 0)
+            log("🎟️ Spent a point for a 30s manager pass")
+          }
+          lastRole = newRole
           lastExpiresAt = value.expiresAt ?? null
           els.points.textContent = `Points: ${value.points ?? 0}`
           setStatus(address, lastRole)

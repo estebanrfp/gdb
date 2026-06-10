@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-06-10
+
+### Added
+
+- **Governance — `then.expiresTo` (auto-revert on expiry):** A temporary-role rule can now declare the role to fall back to when it expires. While a superadmin is online, the engine reverts any user whose `expiresAt` has passed to the rule's `expiresTo` role (opt-in — without it the stale label is left in place). Pairs with `expiresIn` / `expiresAt` (0.13.1) to model self-reverting temporary roles. Docs: [docs/governance.md](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+- **Governance viewer (`examples/governance.html`) — temporary-role demo:** the viewer grants a 30-second "manager pass" funded by a point, with a live countdown and auto-revert to `user` via `expiresTo`. The point is **spent** on promotion, so the standing condition no longer holds and the pass does not auto-renew — earn another point to buy a new one.
+
 ## [0.14.0] - 2026-06-10
 
 ### Security
