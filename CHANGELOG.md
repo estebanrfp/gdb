@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-06-10
+
+### Security
+
+- **Node-level ACLs and role expiry are now enforced against malicious peers (Security-Manager hardening).** Previously these were honored only by the honest client: the cryptographically-verified author of an incoming operation was never propagated to the per-node middlewares, so a modified peer could write nodes it did not own and keep acting under an expired role. `verifyIncomingOperations` now (1) attaches the verified `signer` to every validated incoming operation, so the ACL middleware enforces per-node owner/collaborator permissions against **any** peer; (2) recognizes the real `upsert` write type and lets un-owned nodes through, so ordinary writes are unaffected; and (3) downgrades an expired role to `guest` when authorizing incoming operations, making role expiry (`expiresIn` / `expiresAt`) effective **network-wide**, not just locally. Completes the hardening flagged in 0.13.1. Verified with a compiled-bundle unit suite and a live three-browser adversarial test (a promoted peer's raw write to a note it does not own is rejected by the owner's peer, while its legitimate shares still deliver). **Behavior change:** cross-peer writes that were silently accepted before are now correctly rejected; legitimate owner/collaborator writes are unchanged.
+
 ## [0.13.1] - 2026-06-10
 
 ### Added

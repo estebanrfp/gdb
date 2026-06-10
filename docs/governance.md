@@ -95,10 +95,10 @@ By default a promotion is permanent. Add `expiresIn` (relative) or `expiresAt` (
 
 - `expiresIn` is measured **from the moment of promotion**; `expiresAt` is absolute and wins if both are set.
 - The expiry is written onto the `user:<address>` node and signed by the superadmin, like any role change.
-- Once expired, the Security Manager **stops honoring the role** — privileged operations from that user are rejected on the honest client (`verifyUserRoleLocal` throws *"Role has expired"*).
+- Once expired, the Security Manager **stops honoring the role** — privileged operations from that user are rejected both locally (`verifyUserRoleLocal` throws *"Role has expired"*) and, since **0.14.0**, by every honest peer (incoming operations from an expired role are authorized as `guest`).
 - The engine does **not** rewrite the node's `role` field when it expires; the role simply ceases to have effect. (A demotion rule can revert it visually if you also condition on the metric that granted it.)
 
-> **Beta note:** as with the rest of the governance beta, expiry is enforced on the honest client. Strict enforcement against a malicious peer (rejecting incoming operations signed under an expired role) is part of a planned Security-Manager hardening pass.
+> **Note:** since **0.14.0**, expiry is enforced **network-wide** — every honest peer downgrades to `guest` any incoming operation signed under an expired role, not just the local client. See the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md) Security section.
 
 ## Where the objective data lives
 

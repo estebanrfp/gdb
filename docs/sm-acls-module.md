@@ -326,6 +326,7 @@ class TaskManager {
 - **Middleware Enforcement**: All operations are validated through ACL middleware
 - **Real-Time Checks**: Permissions are checked before each operation
 - **Cryptographic Verification**: Operations are signed and verified by all peers
+- **Enforced against malicious peers (since 0.14.0)**: incoming operations are checked in `verifyIncomingOperations` against the cryptographically-verified author, so a modified peer cannot write a node it does not own — even by bypassing the UI
 
 ### Best Practices
 
