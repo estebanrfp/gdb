@@ -121,11 +121,12 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 
 ### 4.1 Available Modules
 
--   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC and WebAuthn.
+-   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
 -   **Radix Indexer**: Enabled with `rx: true`. Uses a Radix Tree for efficient prefix-based indexing and enhances queries with `$startsWith`.
 -   **Inverted Index**: Enabled with `ii: true`. Supports full-text search.
 -   **Geo Module**: Enabled with `geo: true`. Adds geospatial indexing and queries.
 -   **Audit Module**: Enabled with `audit: true`. Analyzes oplog data for problematic content.
+-   **NLQ Module**: Enabled with `nlq: true`. Adds a thin prompt-to-query layer that translates controlled-English natural-language prompts into standard operator queries.
 
 **Example (Enabling Modules)**:
 ```javascript

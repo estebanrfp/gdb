@@ -116,7 +116,7 @@ A user with 4 points matches the floor, the manager rule **and** the admin rule 
 
 ## Try it
 
-The interactive viewer at **[examples/governance.html](https://estebanrfp.github.io/gdb/examples/governance.html)** demonstrates the last-match-wins ladder. Open it in **two browsers**: in one, log in as a superadmin (a demo mnemonic is included in the file); in the other, create a new guest. Watch the guest get promoted to `user` after 5 seconds, climb to `manager` at 2 points and `admin` at 4 points with 👍, and **auto-demote** back down with 👎 — every transition appears in the log.
+The interactive viewer at **[examples/governance.html](https://estebanrfp.github.io/gdb/examples/governance.html)** demonstrates the last-match-wins ladder. Open it in **two browsers**: in one, press **🛡️ Superadmin** (a one-click demo identity) to run the engine; in the other, log in as **Alice** (or Bob) with a single button. Alice starts as a `guest`, is promoted to `user` after 5 seconds, then climbs to `manager` at 2 points and `admin` at 4 points with 👍, and **auto-demotes** back down with 👎 — every transition appears in the log.
 
 ## Where it fits
 
