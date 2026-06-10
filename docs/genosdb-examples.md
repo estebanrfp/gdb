@@ -104,6 +104,9 @@ A single-page HTML application demonstrating secure, real-time, peer-to-peer not
 ### [ACLs + Governance Testbed — The Full Security Model](https://estebanrfp.github.io/gdb/examples/acls.html)
 The complete GenosDB security model in one demo — zero-trust, governance and node-level ACLs. Open it in two or three windows: one becomes the demo superadmin with a single button and runs a governance console (live user/role list and signed promotions); the others join as Alice & Bob — zero-trust guests that cannot write until the superadmin's governance rule promotes them to `user` — and then create, share and revoke notes per user with `db.sm.acls.set` / `grant` / `revoke` / `delete`. Referenced from the [SM ACLs Module guide](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md) and the [Governance guide](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
 
+### [Governance — Role Promotion & Demotion](https://estebanrfp.github.io/gdb/examples/governance.html)
+A live viewer of GenosDB's governance engine, which resolves each user's role by **last-match-wins**. Open it in two windows: one becomes the demo superadmin with a single button and runs the engine; the other logs in as Alice (or Bob) — a zero-trust guest promoted to `user` in ~5 seconds — then votes 👍 to climb a merit ladder (`user` → `manager` at 2 points → `admin` at 4 points) and 👎 to **auto-demote** (no explicit demotion rules — losing the condition simply lets a lower rule win). A live role roster and a signed role-transition log show every promotion and demotion. Full guide: [Governance](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+
 ---
 
 ## Tools & Testbeds
