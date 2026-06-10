@@ -19,6 +19,8 @@
     pre{background:#222;color:#eee;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:.85rem}
     .row{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{background:#eef;padding:6px 10px;border-radius:999px;font-weight:600}
+    .pill.ttl-active{background:#fff3cd;color:#856404}
+    .pill.ttl-expired{background:#f8d7da;color:#721c24}
   </style>
 </head>
 <body>
@@ -40,6 +42,7 @@
       <button id="voteUp" disabled>👍 +1</button>
       <button id="voteDown" disabled>👎 -1</button>
       <span id="points" class="pill">Points: 0</span>
+      <span id="ttl" class="pill" hidden></span>
     </div>
 
     <h2>Log</h2>
@@ -62,11 +65,13 @@
       voteUp: document.getElementById("voteUp"),
       voteDown: document.getElementById("voteDown"),
       points: document.getElementById("points"),
+      ttl: document.getElementById("ttl"),
     }
 
     // ---------- State ----------
     let db, unsubscribeUser
     let address = null, lastRole = "guest"
+    let lastExpiresAt = null, ttlTimer = null
 
     // ---------- Utils ----------
     // Demo superadmins. The 2nd is a public throwaway identity so anyone can try the engine:
@@ -77,12 +82,16 @@
       "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
     ]
     const LEVEL_UP_THRESHOLD = 1
+    const MANAGER_TTL_MS = 30000 // temporary role: "manager" is granted for 30s via then.expiresIn
     const GOVERNANCE_RULES = [
       // Time objective: a guest becomes user after 5s (while a superadmin is online to sign it)
       { if:{ role:"guest" }, offsetTimestamp:5000, then:{ assignRole:"user" } },
-      // Points objective (up): reach the threshold -> promoted to manager
-      { if:{ role:"user", points:{ $gte: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"manager" } },
-      // Points objective (down): drop below the threshold -> demoted back to user
+      // Points objective (up): reaching the threshold promotes to manager FOR A LIMITED TIME.
+      // `expiresIn` writes an expiresAt onto the node; once it passes the Security Manager stops
+      // honoring the role network-wide (since 0.14.0). The engine does NOT revert the label, so the
+      // viewer shows a live countdown and an "expired" state — vote down to reset the cycle.
+      { if:{ role:"user", points:{ $gte: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"manager", expiresIn: MANAGER_TTL_MS } },
+      // Points objective (down): drop below the threshold -> demoted back to user (also resets the demo)
       { if:{ role:"manager", points:{ $lt: LEVEL_UP_THRESHOLD } }, then:{ assignRole:"user" } },
     ]
     const abbr = a => `${a.slice(0,6)}...${a.slice(-4)}`
@@ -96,6 +105,22 @@
       } else { els.status.textContent = "Logged Out"; els.status.style.cssText = "background:#e3f2fd;color:#0d47a1" }
     }
     const toggleVoting = on => els.voteUp.disabled = els.voteDown.disabled = !on
+
+    // Live countdown for temporary roles: then.expiresIn writes expiresAt onto user:<address>.
+    // While it is in the future we show the remaining seconds; once it passes we show "expired"
+    // (the SM stops honoring the role; the engine keeps the stale label, by design).
+    const renderTtl = () => {
+      if (!lastExpiresAt) { els.ttl.hidden = true; return }
+      const ms = new Date(lastExpiresAt).getTime() - Date.now()
+      els.ttl.hidden = false
+      if (ms > 0) {
+        els.ttl.textContent = `⏳ ${lastRole} expires in ${Math.ceil(ms / 1000)}s`
+        els.ttl.className = "pill ttl-active"
+      } else {
+        els.ttl.textContent = `⌛ ${lastRole} expired — no longer enforced`
+        els.ttl.className = "pill ttl-expired"
+      }
+    }
 
     // Ensure role+points live together in user:<address>
     // NOTE: db.put REPLACES the whole node value (no merge), so always spread existing fields.
@@ -190,12 +215,15 @@
         const { unsubscribe } = await db.get(userId, ({ value }) => {
           if (!value) return
           lastRole = value.role ?? lastRole
+          lastExpiresAt = value.expiresAt ?? null
           els.points.textContent = `Points: ${value.points ?? 0}`
           setStatus(address, lastRole)
+          renderTtl()
           toggleVoting(true) // stays enabled
           els.deleteDb.disabled = false
         })
         unsubscribeUser = unsubscribe
+        ttlTimer ??= setInterval(renderTtl, 500) // keep the countdown ticking
       }catch(e){ log(`❌ Login failed: ${e.message}`) }
     }
 
@@ -205,6 +233,7 @@
         els.guest.disabled = false; els.login.disabled = false
         toggleVoting(false); els.points.textContent = "Points: 0"
         unsubscribeUser?.(); unsubscribeUser = null
+        clearInterval(ttlTimer); ttlTimer = null; lastExpiresAt = null; els.ttl.hidden = true
         address = null; lastRole = "guest"
         log("Logged out")
       }
@@ -218,6 +247,7 @@
         els.guest.disabled = false; els.login.disabled = false
         els.mnemonic.value = ""; toggleVoting(false); els.points.textContent = "Points: 0"
         unsubscribeUser?.(); unsubscribeUser = null
+        clearInterval(ttlTimer); ttlTimer = null; lastExpiresAt = null; els.ttl.hidden = true
         address = null; lastRole = "guest"; db = null
         log("✅ Database cleared successfully")
       }catch(e){ log(`❌ Error during database deletion: ${e.message}`) }
