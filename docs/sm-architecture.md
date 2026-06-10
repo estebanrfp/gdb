@@ -48,7 +48,12 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
     *   **Permission Types:** Supports granular permissions: `'read'` (view node), `'write'` (update node), `'delete'` (remove node).
     *   **Integration with RBAC:** ACL checks are performed in addition to RBAC. A user must have both the role permission and the ACL permission for the operation.
     *   **Automatic Middleware:** When enabled (`acls: true` in SM config), ACLs register middleware that enforces permissions on all database operations.
+    *   **Enforced against malicious peers (since 0.14.0):** the cryptographically-verified author (`signer`) is propagated to the per-node middleware, so a modified peer cannot write a node it does not own — node-level ACLs are real security against any peer, not just an honest-client convenience.
     *   **API Methods:** Exposed via `db.sm.acls.set()`, `db.sm.acls.grant()`, and `db.sm.acls.revoke()` for creating nodes with ACLs and managing permissions.
+
+6.  **Governance (Role Promotion & Demotion) - Optional Extension**
+    *   **Declarative, signed rules:** A superadmin declares advancement rules (`sm.governanceRules`) whose `if` is a native GenosDB query. While a superadmin is online, its key signs every role change and each peer verifies it (zero-trust) — there is no central server.
+    *   **Last-match-wins:** Each `user:<address>` node is resolved to a single role — the one proposed by the *last* matching rule in the list. Rules ordered easy→hard form a merit ladder where climbing a tier overrides the lower ones and losing the condition auto-demotes, so no explicit demotion rules are needed. See the [Governance guide](governance.md).
 
 **P2P Security Flow:**
 
@@ -58,7 +63,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
 4.  **Peer B** (receiver), regardless of whether it has an active local session, receives the operation.
 5.  The SM on **Peer B**:
     a.  Verifies Peer A's signature.
-    b.  If the signature is valid, it queries the local GDB state for Peer A's assigned role.
+    b.  If the signature is valid, it queries the local GDB state for Peer A's assigned role (an **expired** role is downgraded to `guest`), and the cryptographically-verified author is propagated to the per-node ACL middleware.
     c.  It uses the RBAC rules to confirm that Peer A's role permits the operation.
     d.  If both checks pass, the operation is applied to Peer B's local graph. Otherwise, it is rejected.
 6.  Unsigned or invalid operations are discarded, preserving the integrity of the database.

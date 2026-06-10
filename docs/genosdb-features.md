@@ -72,6 +72,12 @@
     *   **Role Management:** The `assignRole` function allows authorized users to assign roles to other peers. Role assignments are stored securely within the graph and can be set with an optional **expiration date**.
     *   **Permission Guarding:** The `executeWithPermission` method provides a robust way to check if the current user has the required permissions before executing a protected client-side action.
 
+*   **Access Control Lists (ACLs):**
+    *   **Node-level permissions:** Beyond global roles, node owners grant/revoke per-node `read`/`write`/`delete` access to specific users via `db.sm.acls.set` / `grant` / `revoke`. Since **0.14.0** these are enforced against **malicious peers** — the cryptographically-verified author is checked on every incoming operation, so a modified peer cannot write a node it does not own.
+
+*   **Governance (Role Promotion & Demotion):**
+    *   **Rule-based, signed:** A superadmin declares advancement rules as native GenosDB queries; while online, the engine resolves each user's role by **last-match-wins** — a merit ladder where climbing overrides the lower tiers and losing the condition auto-demotes — signing every change for peers to verify.
+
 *   **Encrypted Data Storage:**
     *   **User-Scoped Encryption:** Offers `db.sm.put()` and `db.sm.get()` methods to store and retrieve data that is automatically end-to-end encrypted. Only the user who created the data can decrypt it, providing a mechanism for private, secure notes or user-specific data.
 
