@@ -1,253 +1,507 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>GDB Governance - Viewer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Governance — Role Promotion &amp; Demotion · powered by GenosDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body{font-family:system-ui,sans-serif;margin:20px;background:#f5f5f5}
-    .container{max-width:700px;margin:auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-    h1{color:#333;text-align:center}
-    h2#status{background:#e3f2fd;color:#0d47a1;padding:12px;border-radius:6px;text-align:center;margin:10px 0 16px 0;font-size:1rem}
-    .ladder{text-align:center;color:#555;font-size:.85rem;margin-bottom:18px}
-    .ladder code{background:#eef;padding:2px 7px;border-radius:5px}
-    .role-green{color:#00a8ff;font-weight:600;text-transform:uppercase}
-    button{margin:5px;padding:8px 14px;border:none;border-radius:5px;cursor:pointer;background:#007bff;color:#fff;font-size:.95rem;transition:background .2s}
-    button:hover:not(:disabled){background:#0056b3}
-    button:disabled{background:#ccc;cursor:not-allowed}
-    #logout:not(:disabled),#deleteDb:not(:disabled){background:#dc3545}
-    #deleteDb:hover:not(:disabled){background:#a71d2a}
-    textarea{width:100%;padding:8px;margin-top:8px;font-size:.9rem;min-height:70px;box-sizing:border-box;border-radius:5px;border:1px solid #ccc;resize:none}
-    pre{background:#222;color:#eee;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:.85rem}
-    .row{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{background:#eef;padding:6px 10px;border-radius:999px;font-weight:600}
+    /* ============================ Tokens ============================ */
+    :root {
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --surface-2: #f1f3f7;
+      --border: #e4e7ee;
+      --text: #1a1d24;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #b45309;
+      --warning-bg: #fef3c7;
+      --purple: #7c3aed;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', menlo, monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-pill: 999px;
+      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+      --transition: 150ms ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    .is-hidden { display: none !important; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .mono { font-family: var(--font-mono); }
+    .spacer { flex: 1; }
+
+    /* ============================ Buttons ============================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font: inherit;
+      font-weight: 600;
+      font-size: .9rem;
+      padding: 10px 16px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn--ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .btn--ghost:hover:not(:disabled) { background: var(--border); }
+    .btn--danger { background: var(--danger); }
+    .btn--danger:hover:not(:disabled) { background: #b91c1c; }
+    .btn--dark { background: #1a1d24; }
+    .btn--dark:hover:not(:disabled) { background: #343a46; }
+    .btn--sm { padding: 6px 12px; font-size: .82rem; }
+
+    /* ============================ Login screen ============================ */
+    .screen { max-width: 1080px; margin: 0 auto; padding: 40px 20px; }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 36px;
+      text-align: center;
+      max-width: 600px;
+      margin: 5vh auto 0;
+    }
+
+    .login-card h1 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 10px; }
+    .login-card .muted { margin-bottom: 24px; text-align: left; }
+    .login-card .muted li { margin: 6px 0 6px 18px; }
+    .login-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    .login-row .btn { flex: 1; padding: 14px; font-size: .95rem; }
+
+    /* ============================ App ============================ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .me { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+
+    .me .addr {
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .role-chip {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+
+    .role-chip--guest { background: var(--warning-bg); color: var(--warning); }
+    .role-chip--user { background: #dcfce7; color: var(--success); }
+    .role-chip--manager { background: #dbeafe; color: var(--accent); }
+    .role-chip--admin { background: #ede9fe; color: var(--purple); }
+    .role-chip--superadmin { background: #1a1d24; color: #fff; }
+
+    .main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 80px; display: grid; gap: 20px; }
+
+    .banner { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: var(--radius); font-size: .9rem; font-weight: 500; }
+    .banner--wait { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; }
+    .banner--ok { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; }
+    .banner--info { background: #dbeafe; color: var(--accent); border: 1px solid #bfdbfe; }
+
+    /* ============================ Ladder strip ============================ */
+    .ladder { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .tier {
+      font-size: .8rem; font-weight: 600;
+      padding: 7px 14px; border-radius: var(--radius-pill);
+      background: var(--surface); color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .tier em { font-style: normal; opacity: .65; font-weight: 500; margin-left: 4px; }
+    .tier.is-current { color: #fff; border-color: transparent; }
+    .tier[data-role="guest"].is-current { background: var(--warning); }
+    .tier[data-role="user"].is-current { background: var(--success); }
+    .tier[data-role="manager"].is-current { background: var(--accent); }
+    .tier[data-role="admin"].is-current { background: var(--purple); }
+    .arrow { color: var(--muted); }
+
+    /* ============================ Cards / grid ============================ */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-head.mt { margin-top: 16px; }
+    .section-head h2 { font-size: 1.1rem; letter-spacing: -.01em; }
+
+    /* ============================ Voting ============================ */
+    .points-pill { font-weight: 700; font-size: 1.05rem; background: var(--surface-2); padding: 8px 16px; border-radius: var(--radius-pill); }
+    .vote-row { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; }
+
+    /* ============================ Users & log ============================ */
+    .users { display: grid; gap: 10px; }
+    .user-row { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
+    .user-row .who { font-weight: 600; }
+    .empty { color: var(--muted); font-size: .9rem; padding: 16px; text-align: center; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+
+    .gov-log {
+      background: #1a1d24; color: #d6dae2;
+      font-family: var(--font-mono); font-size: .8rem;
+      border-radius: var(--radius-sm); padding: 14px;
+      max-height: 220px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* ============================ Toast ============================ */
+    .toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+      max-width: 90vw; padding: 11px 18px; border-radius: var(--radius-pill);
+      background: #1a1d24; color: #fff; font-size: .88rem; font-weight: 500;
+      box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity var(--transition);
+    }
+    .toast--show { opacity: 1; }
+    .toast--error { background: var(--danger); }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>Governance Module - Viewer</h1>
-    <h2 id="status">Logged Out</h2>
-    <p class="ladder">
-      Merit ladder (last-match-wins): <code>user</code> → <code>manager</code> at 2 pts → <code>admin</code> at 4 pts.
-      Vote up to climb, down to auto-demote.
-    </p>
-
-    <div>
-      <button id="init">Init System</button>
-      <button id="guest" disabled>New Guest</button>
-      <button id="login" disabled>Login Mnemonic</button>
-      <button id="logout" disabled>Logout</button>
-      <button id="deleteDb" disabled>🗑️</button>
+  <!-- ============================ Login ============================ -->
+  <div id="login" class="screen">
+    <div class="login-card">
+      <h1>🏛️ Governance — Role Promotion &amp; Demotion</h1>
+      <div class="muted">
+        Watch GenosDB's governance engine resolve roles with <strong>last-match-wins</strong>, signed by an online superadmin:
+        <li>Open this page in <strong>two windows</strong>.</li>
+        <li>In one, press <strong>🛡️ Superadmin</strong> — it runs the engine that promotes &amp; demotes by rule.</li>
+        <li>In the other, log in as <strong>Alice</strong> (or Bob): she starts as <code>guest</code>, is promoted to <code>user</code> in ~5s, then votes 👍 to climb the ladder and 👎 to drop.</li>
+        <li>Ladder: <code>user</code> → <code>manager</code> at 2 pts → <code>admin</code> at 4 pts. Dropping below a threshold <strong>auto-demotes</strong> — no explicit demotion rules.</li>
+      </div>
+      <div class="login-row">
+        <button id="login-superadmin" class="btn btn--dark">🛡️ Superadmin (demo)</button>
+      </div>
+      <div class="login-row">
+        <button id="login-alice" class="btn">👩‍🦰 Login as Alice</button>
+        <button id="login-bob" class="btn btn--ghost">👨‍🦱 Login as Bob</button>
+      </div>
+      <button id="reset" class="btn btn--ghost btn--sm">Reset demo DB</button>
     </div>
-
-    <textarea id="mnemonic" placeholder="New mnemonic will appear here or paste one to log in"></textarea>
-
-    <div class="row">
-      <button id="voteUp" disabled>👍 +1</button>
-      <button id="voteDown" disabled>👎 -1</button>
-      <span id="points" class="pill">Points: 0</span>
-    </div>
-
-    <h2>Log</h2>
-    <pre id="log">Logs will appear here...</pre>
   </div>
 
+  <!-- ============================ App ============================ -->
+  <div id="app" class="is-hidden">
+    <header class="topbar">
+      <div class="me" id="me"></div>
+      <button id="logout" class="btn btn--ghost btn--sm">Logout</button>
+    </header>
+    <main class="main">
+      <div id="banner" class="banner banner--info"></div>
+
+      <!-- Ladder strip -->
+      <div class="ladder" id="ladder">
+        <span class="tier" data-role="guest">guest</span>
+        <span class="arrow">→</span>
+        <span class="tier" data-role="user">user</span>
+        <span class="arrow">→</span>
+        <span class="tier" data-role="manager">manager<em>2 pts</em></span>
+        <span class="arrow">→</span>
+        <span class="tier" data-role="admin">admin<em>4 pts</em></span>
+      </div>
+
+      <div class="grid-2">
+        <!-- Left: your standing / voting -->
+        <section class="card">
+          <div class="section-head">
+            <h2>Your standing</h2>
+            <span class="role-chip" id="my-chip">guest</span>
+          </div>
+          <div id="vote-area"></div>
+        </section>
+
+        <!-- Right: live network console -->
+        <section class="card">
+          <div class="section-head"><h2>Network <span class="muted">(live roles)</span></h2></div>
+          <div id="user-list" class="users"></div>
+          <div class="section-head mt"><h2>Governance activity</h2></div>
+          <pre id="gov-log" class="gov-log">Waiting for governance events…</pre>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
   <script type="module">
-    import { gdb } from "../dist/index.js"
+    import { gdb } from '../dist/index.js';
 
-    // ---------- UI refs ----------
-    const els = {
-      init: document.getElementById("init"),
-      guest: document.getElementById("guest"),
-      login: document.getElementById("login"),
-      logout: document.getElementById("logout"),
-      deleteDb: document.getElementById("deleteDb"),
-      mnemonic: document.getElementById("mnemonic"),
-      status: document.getElementById("status"),
-      log: document.getElementById("log"),
-      voteUp: document.getElementById("voteUp"),
-      voteDown: document.getElementById("voteDown"),
-      points: document.getElementById("points"),
-    }
+    /** Database / room name for this demo. */
+    const DB_NAME = 'genosdb-governance-ladder';
 
-    // ---------- State ----------
-    let db, unsubscribeUser
-    let address = null, lastRole = "guest"
+    // ────────────────────────────────────────────────────────────────────────────
+    // ⚠️ TESTING ONLY — fixed demo identities.
+    // Embedding mnemonics in source code is NEVER acceptable in a real application.
+    // These are public, throwaway identities (they protect nothing) included so each
+    // window of this demo can log in with a single click.
+    // ────────────────────────────────────────────────────────────────────────────
+    const SUPERADMIN = {
+      name: 'Superadmin', emoji: '🛡️',
+      mnemonic: 'panic now afford carbon donate lecture drift excite collect essay stuff prosper',
+      address: '0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA',
+    };
+    const ALICE = {
+      name: 'Alice', emoji: '👩‍🦰',
+      mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
+      address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
+    };
+    const BOB = {
+      name: 'Bob', emoji: '👨‍🦱',
+      mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
+      address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
+    };
+    const IDENTITIES = [SUPERADMIN, ALICE, BOB];
 
-    // ---------- Utils ----------
-    // Demo superadmins. The 2nd is a public throwaway identity so anyone can try the engine:
-    // log in with this mnemonic to become superadmin and start governance —
-    // panic now afford carbon donate lecture drift excite collect essay stuff prosper
-    const SUPERADMINS_ADDRESSES = [
-      "0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7",
-      "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
-    ]
-    const MANAGER_AT = 2, ADMIN_AT = 4
-    const MEMBER = { $in: ["user", "manager", "admin"] } // any onboarded (non-guest) member
-    // Conflict resolution is LAST-MATCH-WINS: every rule is evaluated and the LAST one in this list
-    // whose condition holds decides the role. Tiers are ordered easy→hard, so climbing overrides the
-    // floor and losing points auto-demotes — no explicit demotion rules needed.
+    // Merit ladder — resolved by LAST-MATCH-WINS (the last matching rule sets the role).
+    const MEMBER = { $in: ['user', 'manager', 'admin'] };
+    const MANAGER_AT = 2, ADMIN_AT = 4;
     const GOVERNANCE_RULES = [
-      // Zero-trust onboarding gate: a guest becomes a user after 5s (a superadmin signs it).
-      { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } },
-      // Merit ladder:
-      { if: { role: MEMBER },                              then: { assignRole: "user" } },    // floor
-      { if: { role: MEMBER, points: { $gte: MANAGER_AT } }, then: { assignRole: "manager" } }, // ≥2 → manager
-      { if: { role: MEMBER, points: { $gte: ADMIN_AT } },   then: { assignRole: "admin" } },   // ≥4 → admin
-    ]
-    const abbr = a => `${a.slice(0,6)}...${a.slice(-4)}`
-    const log = m => { els.log.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; els.log.scrollTop = els.log.scrollHeight }
-    const setStatus = (addr=null, role=null) => {
-      if (addr && role){
-        const isSA = SUPERADMINS_ADDRESSES.some(sa=>sa && addr && sa.toLowerCase()===addr.toLowerCase())
-        const r = isSA ? "superadmin" : role
-        els.status.innerHTML = `${abbr(addr)} | <span class="role-green">${r}</span>`
-        els.status.style.cssText = "background:#d4edda;color:#155724"
-      } else { els.status.textContent = "Logged Out"; els.status.style.cssText = "background:#e3f2fd;color:#0d47a1" }
-    }
-    const toggleVoting = on => els.voteUp.disabled = els.voteDown.disabled = !on
+      { if: { role: 'guest' }, offsetTimestamp: 5000, then: { assignRole: 'user' } },        // onboarding
+      { if: { role: MEMBER }, then: { assignRole: 'user' } },                                 // floor
+      { if: { role: MEMBER, points: { $gte: MANAGER_AT } }, then: { assignRole: 'manager' } }, // climb
+      { if: { role: MEMBER, points: { $gte: ADMIN_AT } }, then: { assignRole: 'admin' } },     // climb
+    ];
 
-    // Ensure role+points live together in user:<address>
+    /** @type {object} */ let db;
+    /** @type {object|null} */ let currentUser = null;
+    /** @type {string|null} */ let myAddress = null;
+    /** @type {string|null} */ let myRole = null;
+    let unsubscribeRole = null, unsubscribeConsole = null;
+
+    const $ = (id) => document.getElementById(id);
+    const loginScreen = $('login'), appScreen = $('app');
+    const meEl = $('me'), bannerEl = $('banner'), toastEl = $('toast');
+    const myChipEl = $('my-chip'), voteAreaEl = $('vote-area');
+    const userListEl = $('user-list'), govLogEl = $('gov-log'), ladderEl = $('ladder');
+
+    const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+    const isSuperadmin = (a) => eqAddr(a, SUPERADMIN.address);
+    const whoIs = (addr) => IDENTITIES.find((i) => eqAddr(i.address, addr));
+    const label = (addr) => { const i = whoIs(addr); return i ? `${i.emoji} ${i.name}` : db.sm.abbrAddr(addr); };
+
+    let toastTimer;
+    /** Show a transient message. @param {string} msg @param {boolean} [isError] */
+    const toast = (msg, isError = false) => {
+      toastEl.textContent = msg;
+      toastEl.className = `toast toast--show${isError ? ' toast--error' : ''}`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (toastEl.className = 'toast'), 2600);
+    };
+
+    /** Highlight the ladder tier matching the given role. */
+    const renderLadder = (role) => {
+      for (const t of ladderEl.querySelectorAll('.tier'))
+        t.classList.toggle('is-current', t.dataset.role === role);
+    };
+
+    /* ============================ Auth ============================ */
+    /** Log in with one of the fixed demo identities. */
+    const login = async (identity) => {
+      currentUser = identity;
+      try {
+        if (!db) {
+          db = await gdb(DB_NAME, {
+            rtc: true,
+            sm: {
+              // Only the demo superadmin holds the root of trust; Alice and Bob join as
+              // zero-trust guests and are promoted by the engine. Default roles are used
+              // (a promoted `user` can already `write`, so it can vote on its own node).
+              superAdmins: [SUPERADMIN.address],
+              governanceRules: GOVERNANCE_RULES,
+            },
+          });
+          db.sm.setSecurityStateChangeCallback(onSecurityState);
+        }
+        await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    };
+
+    // Single source of truth for the UI: the Security Manager state callback. The SM creates
+    // this identity's `user:<address>` node on login (role `guest`, or `superadmin` if configured).
+    const onSecurityState = (state) => {
+      if (state.isActive) {
+        myAddress = state.activeAddress;
+        loginScreen.classList.add('is-hidden');
+        appScreen.classList.remove('is-hidden');
+        setupNetworkConsole();                 // both views share the live roster + activity log
+        if (isSuperadmin(myAddress)) setupSuperadminStanding();
+        else subscribeOwnStanding();
+        return;
+      }
+      // Signed out
+      unsubscribeRole?.(); unsubscribeConsole?.();
+      unsubscribeRole = unsubscribeConsole = null;
+      myAddress = myRole = null;
+      appScreen.classList.add('is-hidden');
+      loginScreen.classList.remove('is-hidden');
+    };
+
+    /* ============================ Identity header ============================ */
+    const renderMe = (role) => {
+      const cls = isSuperadmin(myAddress) ? 'superadmin' : (role ?? 'guest');
+      meEl.innerHTML = `<span>${currentUser.emoji} ${currentUser.name}</span>
+        <span class="addr">${db.sm.abbrAddr(myAddress)}</span>
+        <span class="role-chip role-chip--${cls}">${cls}</span>`;
+      myChipEl.className = `role-chip role-chip--${cls}`;
+      myChipEl.textContent = cls;
+    };
+
+    /* ============================ Superadmin: runs the engine ============================ */
+    const setupSuperadminStanding = () => {
+      renderMe('superadmin');
+      renderLadder(null);
+      bannerEl.className = 'banner banner--info';
+      bannerEl.textContent = '🛡️ The governance engine is running in this window — every promotion/demotion is signed by your key. Log in as Alice or Bob in another window and vote there to watch them climb.';
+      voteAreaEl.innerHTML = `<p class="muted">You are the root of trust. Superadmins are immune to the rules — your role never changes. The merit ladder applies to the members on the right.</p>`;
+    };
+
+    /* ============================ Alice / Bob: vote to climb ============================ */
+    const subscribeOwnStanding = async () => {
+      // Build the voting controls once.
+      voteAreaEl.innerHTML = `
+        <div class="vote-row">
+          <span class="points-pill" id="points">Points: 0</span>
+          <span class="spacer"></span>
+          <button id="vote-up" class="btn btn--sm" disabled>👍 +1</button>
+          <button id="vote-down" class="btn btn--ghost btn--sm" disabled>👎 −1</button>
+        </div>
+        <p class="muted" id="vote-hint">Waiting for promotion…</p>`;
+      $('vote-up').onclick = () => vote(+1);
+      $('vote-down').onclick = () => vote(-1);
+
+      const id = await ensureUserDoc(myAddress);
+      unsubscribeRole?.();
+      const { unsubscribe } = await db.get(id, ({ value }) => {
+        if (!value) return;
+        myRole = value.role ?? 'guest';
+        const points = value.points ?? 0;
+        renderMe(myRole);
+        renderLadder(myRole);
+        const pts = $('points'); if (pts) pts.textContent = `Points: ${points}`;
+        const isMember = myRole !== 'guest';
+        const up = $('vote-up'), down = $('vote-down'), hint = $('vote-hint');
+        if (up) up.disabled = !isMember;
+        if (down) down.disabled = !isMember;
+        if (myRole === 'guest') {
+          bannerEl.className = 'banner banner--wait';
+          bannerEl.textContent = '⏳ You are a zero-trust guest. Keep the Superadmin window open — its engine promotes you to user in ~5 seconds.';
+          if (hint) hint.textContent = 'Waiting for promotion…';
+        } else {
+          bannerEl.className = 'banner banner--ok';
+          bannerEl.textContent = `✅ You are a ${myRole}. Vote 👍 to reach manager (${MANAGER_AT} pts) and admin (${ADMIN_AT} pts); 👎 drops you back down automatically.`;
+          if (hint) hint.textContent = `Manager at ${MANAGER_AT} pts · admin at ${ADMIN_AT} pts · last-match-wins.`;
+        }
+      });
+      unsubscribeRole = unsubscribe;
+    };
+
+    /* ============================ Live network console (both views) ============================ */
+    const setupNetworkConsole = async () => {
+      const roles = new Map();
+      const govLog = (m) => {
+        if (govLogEl.textContent.startsWith('Waiting')) govLogEl.textContent = '';
+        govLogEl.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`;
+        govLogEl.scrollTop = govLogEl.scrollHeight;
+      };
+      const renderUsers = () => {
+        userListEl.innerHTML = [...roles.entries()].map(([id, role]) => {
+          const addr = id.slice(5);
+          return `<div class="user-row"><span class="who">${label(addr)}</span>
+            <span class="addr mono muted">${db.sm.abbrAddr(addr)}</span>
+            <span class="spacer"></span>
+            <span class="role-chip role-chip--${role}">${role}</span></div>`;
+        }).join('') || `<div class="empty">No members yet — log in as Alice or Bob in another window.</div>`;
+      };
+      const onUser = ({ id, value }) => {
+        if (!id?.startsWith('user:') || !value?.role) return;
+        const prev = roles.get(id);
+        roles.set(id, value.role);
+        if (prev && prev !== value.role) govLog(`📜 ${label(id.slice(5))}: ${prev} → ${value.role}`);
+        renderUsers();
+      };
+      unsubscribeConsole?.();
+      const { results, unsubscribe } = await db.map({ query: { role: { $exists: true } } }, onUser);
+      unsubscribeConsole = unsubscribe;
+      for (const { id, value } of results) if (id.startsWith('user:') && value?.role) roles.set(id, value.role);
+      renderUsers();
+    };
+
+    /* ============================ User node helpers ============================ */
+    // Ensure role+points live together in user:<address>.
     // NOTE: db.put REPLACES the whole node value (no merge), so always spread existing fields.
-    const ensureUserDoc = async addr => {
-      const id = `user:${addr}`
-      const { result } = await db.get(id)
-      const v = result?.value
+    const ensureUserDoc = async (addr) => {
+      const id = `user:${addr}`;
+      const { result } = await db.get(id);
+      const v = result?.value;
       if (!v || v.points == null || v.role == null)
-        await db.put({ role: "guest", ...v, points: v?.points ?? 0 }, id)
-      return id
-    }
+        await db.put({ role: 'guest', ...v, points: v?.points ?? 0 }, id);
+      return id;
+    };
 
-    // Atomic points write (preserves role and the rest of the node value)
-    const writePoints = async (id, updater) => {
-      const { result } = await db.get(id)
-      const v = result?.value ?? {}
-      const curr = v.points ?? 0
-      const next = Math.max(0, updater(curr))
-      if (next !== curr) await db.put({ ...v, points: next }, id)
-    }
+    // Atomic points write (preserves role and the rest of the node value).
+    const vote = async (delta) => {
+      if (!myAddress || myRole === 'guest') return;
+      const id = `user:${myAddress}`;
+      const { result } = await db.get(id);
+      const v = result?.value ?? {};
+      const next = Math.max(0, (v.points ?? 0) + delta);
+      if (next !== (v.points ?? 0)) await db.put({ ...v, points: next }, id);
+    };
 
-    // ---------- Actions ----------
-    const init = async () => {
-      els.init.disabled = true
-      try{
-        db = await gdb("governance-demo-db", {
-          rtc:true,
-          sm:{ superAdmins: SUPERADMINS_ADDRESSES, governanceRules: GOVERNANCE_RULES }
-        })
-
-        // Only enable/disable voting based on real session state
-        await db.sm.setSecurityStateChangeCallback(state => {
-          const isActive = !!state?.isActive, active = state?.activeAddress
-          els.logout.disabled = !isActive
-          els.guest.disabled = isActive
-          els.login.disabled = isActive
-
-          if (isActive && active){
-            // keep current role shown; don't force "guest"
-            setStatus(active, lastRole ?? "guest")
-            toggleVoting(true)     // ✅ keep voting enabled while session is active
-            els.deleteDb.disabled = false
-          } else {
-            setStatus()
-            toggleVoting(false)    // ❌ disable only when really logged out
-            els.deleteDb.disabled = true
-          }
-        })
-
-        // Governance activity viewer: log every role transition of any user node,
-        // so promotions/demotions signed by the engine are visible in this Log box.
-        const roleCache = new Map()
-        db.map({ query: { role: { $exists: true } } }, ({ id, value }) => {
-          if (!id?.startsWith("user:") || !value?.role) return
-          const prev = roleCache.get(id)
-          roleCache.set(id, value.role)
-          if (prev && prev !== value.role) log(`📜 ${abbr(id.slice(5))}: ${prev} → ${value.role}`)
-        })
-
-        els.guest.disabled = els.login.disabled = false
-        log("✅ System initialized with governance rules")
-      }catch(e){
-        log(`❌ Init failed: ${e.message}`); els.init.disabled = false
-      }
-    }
-
-    const newGuest = async () => {
-      log("Generating new guest identity...")
-      if (db?.sm?.isSecurityActive()) await logout()
-      try{
-        const id = await db.sm.startNewUserRegistration()
-        els.mnemonic.value = id.mnemonic
-        log(`✅ Guest created: ${id.address}`)
-      }catch(e){ log(`❌ Failed to generate guest: ${e.message}`) }
-    }
-
-    const login = async () => {
-      const phrase = els.mnemonic.value.trim()
-      if (!phrase) return alert("No mnemonic provided")
-      log("Attempting login...")
-      try{
-        if (db.sm.isSecurityActive()) await logout()
-        const id = await db.sm.loginOrRecoverUserWithMnemonic(phrase)
-        if (!id) throw new Error("Invalid mnemonic")
-        address = id.address
-        log(`✅ Logged in: ${address}`)
-
-        const userId = await ensureUserDoc(address)
-
-        // subscribe to the SAME doc we mutate; the engine's promotions/demotions arrive here
-        unsubscribeUser?.(); unsubscribeUser = null
-        const { unsubscribe } = await db.get(userId, ({ value }) => {
-          if (!value) return
-          lastRole = value.role ?? lastRole
-          els.points.textContent = `Points: ${value.points ?? 0}`
-          setStatus(address, lastRole)
-          toggleVoting(true) // stays enabled
-          els.deleteDb.disabled = false
-        })
-        unsubscribeUser = unsubscribe
-      }catch(e){ log(`❌ Login failed: ${e.message}`) }
-    }
-
-    const logout = async () => {
-      try{ await db.sm.clearSecurity() } finally {
-        setStatus(); els.logout.disabled = true; els.deleteDb.disabled = true
-        els.guest.disabled = false; els.login.disabled = false
-        toggleVoting(false); els.points.textContent = "Points: 0"
-        unsubscribeUser?.(); unsubscribeUser = null
-        address = null; lastRole = "guest"
-        log("Logged out")
-      }
-    }
-
-    const deleteDatabase = async () => {
-      try{
-        log("🗑️ Deleting database...")
-        await db.clear()
-        setStatus(); els.logout.disabled = true; els.deleteDb.disabled = true
-        els.guest.disabled = false; els.login.disabled = false
-        els.mnemonic.value = ""; toggleVoting(false); els.points.textContent = "Points: 0"
-        unsubscribeUser?.(); unsubscribeUser = null
-        address = null; lastRole = "guest"; db = null
-        log("✅ Database cleared successfully")
-      }catch(e){ log(`❌ Error during database deletion: ${e.message}`) }
-    }
-
-    // Votes write into user:<address> so the rules can match role+points together
-    const vote = async d => {
-      if (!address || !db?.sm?.isSecurityActive()) return
-      const id = await ensureUserDoc(address)
-      await writePoints(id, p => p + d)
-    }
-    els.voteUp.onclick = () => vote(+1)
-    els.voteDown.onclick = () => vote(-1)
-
-    // Bind buttons
-    els.init.onclick = init
-    els.guest.onclick = newGuest
-    els.login.onclick = login
-    els.logout.onclick = logout
-    els.deleteDb.onclick = deleteDatabase
+    /* ============================ Wiring ============================ */
+    $('login-superadmin').onclick = () => login(SUPERADMIN);
+    $('login-alice').onclick = () => login(ALICE);
+    $('login-bob').onclick = () => login(BOB);
+    $('logout').onclick = () => db?.sm.clearSecurity();
+    $('reset').onclick = async () => {
+      const inst = db ?? await gdb(DB_NAME);
+      await inst.clear();
+      location.reload();
+    };
   </script>
 </body>
+
 </html>
