@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-06-10
+
+### Changed
+
+- **Governance — last-match-wins conflict resolution.** The engine now evaluates **all** rules each cycle and resolves every `user:<address>` node to a **single** role: the one proposed by the **last matching rule** in the list. Rules ordered easy→hard form a stable merit ladder where climbing a tier overrides the lower ones and losing the condition **auto-demotes** — no explicit demotion rules needed. Each node is written **at most once per cycle**, only when its role actually changes, eliminating the per-rule flicker and redundant ops of the previous sequential apply. Existing rule sets keep working (the last applicable rule already won de facto); the change makes it explicit, clean, and demotion-free. Docs: [docs/governance.md](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+- **Governance viewer (`examples/governance.html`) reworked** to a 3-tier merit ladder — `user` → `manager` (≥2 pts) → `admin` (≥4 pts) — that demonstrates last-match-wins and automatic demotion (vote down). Removes the previous temporary-pass demo.
+
 ## [0.14.1] - 2026-06-10
 
 ### Added

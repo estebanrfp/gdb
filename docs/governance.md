@@ -39,12 +39,12 @@ const db = await gdb("my-app", {
   sm: {
     superAdmins: ["0xYourSuperAdminAddress..."],
     governanceRules: [
-      // Time objective: a guest becomes user after 5 seconds
+      // Onboarding: a guest becomes user after 5 seconds
       { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } },
-      // Merit objective (up): reaching 1 point promotes to manager
-      { if: { role: "user", points: { $gte: 1 } }, then: { assignRole: "manager" } },
-      // Merit objective (down): dropping below the threshold demotes back to user
-      { if: { role: "manager", points: { $lt: 1 } }, then: { assignRole: "user" } },
+      // Merit ladder — last-match-wins: the LAST matching rule sets the role, so climbing
+      // overrides the floor and losing points auto-demotes (no explicit demotion rule needed).
+      { if: { role: { $in: ["user", "manager"] } },                     then: { assignRole: "user" } },    // floor
+      { if: { role: { $in: ["user", "manager"] }, points: { $gte: 1 } }, then: { assignRole: "manager" } }, // climb
     ],
   },
 })
@@ -118,17 +118,34 @@ Rules are evaluated against the **`user:<address>` node** — the same node wher
 > await db.put({ ...result.value, points: newPoints }, id)
 > ```
 
+## Conflict resolution: last-match-wins
+
+When several rules match the same user node in a cycle, **the last one in the list wins**. Order your rules **easy → hard** so each tier overrides the ones above it — and a merit ladder then needs **no explicit demotion rules**: losing the condition simply lets a lower rule win again.
+
+```javascript
+const MEMBER = { $in: ["user", "manager", "admin"] } // any onboarded member
+governanceRules: [
+  { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } }, // onboarding gate
+  { if: { role: MEMBER },                        then: { assignRole: "user" } },    // floor
+  { if: { role: MEMBER, points: { $gte: 2 } },   then: { assignRole: "manager" } }, // climb
+  { if: { role: MEMBER, points: { $gte: 4 } },   then: { assignRole: "admin" } },   // climb
+]
+```
+
+A user with 4 points matches the floor, the manager rule **and** the admin rule → **admin** wins (the last match). Drop to 1 point and only the floor matches → back to **user**, automatically. The engine resolves each node to a single role and writes it **at most once per cycle**, only when it actually changes — no flicker, no redundant ops.
+
+> **The floor rule matters.** It catches every onboarded member regardless of points, so a node that drops below the lowest threshold demotes cleanly instead of getting stuck at a stale tier.
+
 ## Engine behavior
 
 - Runs **only while a superadmin is logged in** on that device — their key signs every `assignRole`.
-- Evaluates the rules **every 4 seconds**, sequentially, in the order they are declared.
-- Skips: nodes that are not `user:<address>`, **superadmins (immunity)**, users already in the target role, and nodes more recent than `offsetTimestamp`.
-- Design **stable rule sets**: use complementary thresholds (`$gte 1` to promote, `$lt 1` to demote) instead of conditions that contradict each other at the same state.
+- Evaluates **all** rules **every 4 seconds** and resolves each node by last-match-wins (above).
+- Skips: nodes that are not `user:<address>`, **superadmins (immunity)**, and nodes more recent than `offsetTimestamp`. Writes only when the resolved role differs from the current one.
 - P2P consistency: a metric must have synced to the superadmin's node before a rule can see it (typically a few seconds).
 
 ## Try it
 
-The interactive viewer at **[examples/governance.html](https://estebanrfp.github.io/gdb/examples/governance.html)** demonstrates the full cycle. Open it in **two browsers**: in one, log in as a superadmin (a demo mnemonic is included in the file); in the other, create a new guest. Watch the guest get promoted to `user` after 5 seconds, climb to `manager` with 👍, and drop back to `user` with 👎 — every transition appears in the log.
+The interactive viewer at **[examples/governance.html](https://estebanrfp.github.io/gdb/examples/governance.html)** demonstrates the last-match-wins ladder. Open it in **two browsers**: in one, log in as a superadmin (a demo mnemonic is included in the file); in the other, create a new guest. Watch the guest get promoted to `user` after 5 seconds, climb to `manager` at 2 points and `admin` at 4 points with 👍, and **auto-demote** back down with 👎 — every transition appears in the log.
 
 ## Where it fits
 
