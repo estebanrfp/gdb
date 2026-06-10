@@ -6,7 +6,7 @@
 
 ## Abstract
 
-GenosDB is a lightweight, decentralized peer-to-peer (P2P) graph database designed for real-time web applications. Built with modern web technologies, it integrates a flexible graph data model, real-time P2P synchronization via GenosRTC, advanced query capabilities, and robust security through Role-Based Access Control (RBAC) and WebAuthn authentication. Its modular architecture leverages WebRTC, Nostr, MessagePack, and Last-Write-Wins (LWW) Conflict-Free Replicated Data Types (CRDTs) to ensure scalability, performance, and developer simplicity. This whitepaper explores GenosDB’s architecture, query system, extensible modules, security features, and use cases.
+GenosDB is a lightweight, decentralized peer-to-peer (P2P) graph database designed for real-time web applications. Built with modern web technologies, it integrates a flexible graph data model, real-time P2P synchronization via GenosRTC, advanced query capabilities, and robust security through a zero-trust model — Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), rule-based Governance, and WebAuthn authentication. Its modular architecture leverages WebRTC, Nostr, MessagePack, and Last-Write-Wins (LWW) Conflict-Free Replicated Data Types (CRDTs) to ensure scalability, performance, and developer simplicity. This whitepaper explores GenosDB’s architecture, query system, extensible modules, security features, and use cases.
 
 To protect proprietary algorithms and maintain a focused development path, the source code is not publicly shared. Instead, GenosDB is distributed as a free-to-use minified bundle via NPM and CDN, accompanied by comprehensive public documentation and a transparent test suite. This approach builds trust through verifiable functionality and rigorous testing while safeguarding intellectual property, positioning GenosDB as a robust solution for developers seeking secure and scalable decentralized data management.
 
@@ -24,7 +24,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 
 -   **GDB (Graph Database Engine)**: A lightweight engine supporting CRUD operations (`put`, `get`, `link`, `map`, `remove`, `clear`) and recursive graph traversal via the `$edge` operator. It uses MessagePack for serialization and Gzip (via `pako`) for compression, minimizing network and storage overhead.
 -   **GenosRTC**: A P2P streaming module built on WebRTC, enabling real-time data, audio, and video transfers through named data channels. It uses Nostr relays for peer discovery.
--   **Security Module (SM)**: Implements RBAC with hierarchical roles (`guest`, `user`, `manager`, `admin`, `superadmin`) and WebAuthn for passwordless authentication. Operations are cryptographically signed and verified.
+-   **Security Module (SM)**: Implements RBAC with hierarchical roles (`guest`, `user`, `manager`, `admin`, `superadmin`) and WebAuthn for passwordless authentication, plus optional node-level ACLs and a rule-based Governance engine. Operations are cryptographically signed and verified, and per-node ACL / role checks are enforced against malicious peers — not just the honest client.
 -   **Oplog**: A persistent operation log, supporting delta synchronization with a configurable window. It ensures efficient P2P sync by sharing recent changes.
 -   **Conflict Resolution**: Employs LWW-CRDTs with Hybrid Logical Clocks (HLCs) to resolve conflicts, with a customizable `resolveConflict` hook for advanced scenarios.
 -   **Persistence**: Uses the Origin Private File System (OPFS) for local storage, with cross-tab synchronization via `BroadcastChannel`.
@@ -197,7 +197,13 @@ WebAuthn enables passwordless authentication using biometrics or hardware keys, 
 
 ### 6.3 Access Control Lists (ACLs)
 
-As an optional extension to RBAC, ACLs provide fine-grained, node-level permissions. Enabled with `acls: true`, this allows node owners to grant specific permissions ('read', 'write', 'delete') to other users for individual nodes, complementing the global role hierarchy with per-node access control.
+As an optional extension to RBAC, ACLs provide fine-grained, node-level permissions. Enabled with `acls: true`, this allows node owners to grant specific permissions ('read', 'write', 'delete') to other users for individual nodes, complementing the global role hierarchy with per-node access control. Crucially, these checks are enforced against **any** peer, not merely the honest client: since 0.14.0 the cryptographically-verified author of every incoming operation is propagated to the per-node middleware, so a modified peer cannot write a node it does not own.
+
+### 6.4 Governance (Role Promotion & Demotion)
+
+As an optional extension, the Governance engine lets a superadmin declare the rules of advancement up front. Each rule is a declarative `{ if, then: { assignRole } }`, where `if` is a **native GenosDB query** (the same operators as `db.map`). While a superadmin is online, the engine evaluates the rules and signs every role change, which each peer then verifies — zero-trust, with no central server.
+
+Roles resolve by **last-match-wins**: ordered easy→hard, the rules form a merit ladder where reaching a higher tier overrides the lower ones and losing the condition **auto-demotes**, so no explicit demotion rules are needed. This turns reputation thresholds, e-mail whitelists or activity objectives into a few declarative rules.
 
 ## 7. Distributed Trust Model
 

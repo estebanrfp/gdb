@@ -4,6 +4,16 @@
 
 Security is our priority. This document explains how we handle security issues.
 
+## Security Model
+
+GenosDB is **zero-trust and serverless**: every operation is cryptographically signed by its author and verified by every peer — there is no central authority to trust. Access is governed by layered, peer-enforced mechanisms:
+
+- **RBAC** — a hierarchy of roles (`guest` → `user` → `manager` → `admin` → `superadmin`). A brand-new identity is a write-blocked `guest` until a superadmin signs a promotion.
+- **Node-level ACLs** — per-node `read` / `write` / `delete` grants. Since 0.14.0 these are enforced **against malicious peers**: the verified author of every incoming operation is checked against the node's owner and collaborators, so a modified peer cannot write a node it does not own.
+- **Governance** — a superadmin declares advancement rules up front; the engine resolves each user's role by **last-match-wins** (promotion and automatic demotion), signing every change for peers to verify.
+
+Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
+
 ## Supported Versions
 
 We provide security updates for all versions of our project:
