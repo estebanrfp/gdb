@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-10
+
+### Removed
+
+- **Governance — rule-level role expiry (`then.expiresIn` / `then.expiresAt` / `then.expiresTo`) and the `revertExpiredRoles` auto-revert engine.** A self-reverting temporary role granted by a *standing* condition created a renewal loop (it expired, reverted, and the still-true condition re-granted it). The governance engine is now a pure **last-match-wins** resolver: a role is a function of the node's current state each cycle, and demotion/reversion is expressed as an ordinary rule. **SM-level expiry is unchanged** — `assignRole(addr, role, expiresAt)` still grants a time-limited role and the Security Manager still enforces it network-wide (`verifyUserRoleLocal` / `verifyIncomingOperations`); only the governance-rule sugar was removed. Rebuilds `dist/sm-gov.min.js`; docs updated in [docs/governance.md](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
+
 ## [0.14.2] - 2026-06-10
 
 ### Changed
