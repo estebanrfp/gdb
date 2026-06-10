@@ -84,7 +84,7 @@ A decentralized developer-networking app and full GenosDB showcase: passwordless
 A self-contained example demonstrating a secure and intuitive user authentication (UX) flow using the GenosDB Security Manager (SM) module. It implements best practices for Mnemonic-based registration and WebAuthn (Passkeys) authentication, serving as a starter template for decentralized applications. [Secure Auth UX Demo v2](https://estebanrfp.github.io/gdb/examples/sm-auth-demo2.html)
 
 ### [Security Manager (SM Testbed)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
-Security Manager + Role-Based Access Control (RBAC) + WebAuthn Security.
+A hands-on tour of the Security Manager — one-click demo identities, per-user encryption and RBAC — built around a **guided scenario** that shows how a signed role grant propagates **P2P to an offline user via a relay peer, with the superadmin offline**. Open it in three separate browsers to watch authority survive the signer going away.
 
 ### [SM RBAC Chat (WebAuthn Example)](https://estebanrfp.github.io/gdb/examples/chatrbac.html)
 RBAC Chat with WebAuthn Security.

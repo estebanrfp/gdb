@@ -4,784 +4,576 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Security Manager (SM Testbed) - Best Practices</title>
+  <title>Security Manager — How permissions populate P2P · GenosDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ============================ Tokens ============================ */
+    :root {
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --surface-2: #f1f3f7;
+      --border: #e4e7ee;
+      --text: #1a1d24;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #b45309;
+      --warning-bg: #fef3c7;
+      --purple: #7c3aed;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', menlo, monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-pill: 999px;
+      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+      --transition: 150ms ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f4f7f9;
-      color: #333;
-      font-size: 14px;
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
     }
 
-    .container {
-      max-width: 900px;
-      margin: auto;
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    .is-hidden { display: none !important; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .mono { font-family: var(--font-mono); }
+    .spacer { flex: 1; }
+    code { font-family: var(--font-mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+
+    /* ============================ Buttons ============================ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font: inherit; font-weight: 600; font-size: .9rem; padding: 10px 16px;
+      border: 1px solid transparent; border-radius: var(--radius-sm);
+      background: var(--accent); color: #fff; cursor: pointer; transition: var(--transition);
+    }
+    .btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn--ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .btn--ghost:hover:not(:disabled) { background: var(--border); }
+    .btn--dark { background: #1a1d24; }
+    .btn--dark:hover:not(:disabled) { background: #343a46; }
+    .btn--sm { padding: 6px 12px; font-size: .82rem; }
+
+    /* ============================ Login screen ============================ */
+    .screen { max-width: 940px; margin: 0 auto; padding: 40px 20px; }
+
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 36px; text-align: center; max-width: 640px; margin: 4vh auto 0;
+    }
+    .login-card h1 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 10px; }
+    .login-card .muted { margin-bottom: 24px; text-align: left; }
+    .login-card .muted li { margin: 6px 0 6px 18px; }
+    .login-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    .login-row .btn { flex: 1; padding: 14px; font-size: .95rem; }
+
+    /* ============================ Advanced (self-custody) ============================ */
+    .advanced { margin: 18px 0 12px; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+    .advanced > summary { padding: 12px 16px; font-weight: 600; cursor: pointer; font-size: .9rem; }
+    .advanced[open] > summary { border-bottom: 1px solid var(--border); }
+    .advanced__body { padding: 16px; display: grid; gap: 10px; }
+    .advanced textarea {
+      width: 100%; min-height: 64px; resize: vertical; font: inherit; font-size: .85rem;
+      font-family: var(--font-mono); color: var(--text); background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; outline: none;
+    }
+    .advanced textarea:focus { border-color: var(--accent); }
+    .advanced .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* ============================ App ============================ */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 10px;
+    }
+    .me { display: flex; align-items: center; gap: 10px; font-weight: 600; flex-wrap: wrap; }
+    .me .addr {
+      font-family: var(--font-mono); font-size: .8rem; color: var(--muted);
+      background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-sm);
     }
 
-    h1,
-    h2,
-    h3 {
-      color: #2c3e50;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 5px;
+    .role-chip {
+      font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+      padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted);
     }
+    .role-chip--guest { background: var(--warning-bg); color: var(--warning); }
+    .role-chip--user { background: #dcfce7; color: var(--success); }
+    .role-chip--manager { background: #dbeafe; color: var(--accent); }
+    .role-chip--admin { background: #ede9fe; color: var(--purple); }
+    .role-chip--superadmin { background: #1a1d24; color: #fff; }
 
-    .section {
-      margin-bottom: 25px;
-      padding-bottom: 15px;
-      border-bottom: 1px dashed #ddd;
-    }
+    .peers { font-size: .76rem; font-weight: 600; padding: 4px 11px; border-radius: var(--radius-pill); background: #dcfce7; color: var(--success); white-space: nowrap; }
 
-    .section:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
+    .main { max-width: 940px; margin: 0 auto; padding: 24px 20px 80px; display: grid; gap: 18px; }
 
-    button {
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      margin: 5px 2px;
-      transition: background-color 0.2s, opacity 0.2s;
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+    .card h2 { font-size: 1.1rem; letter-spacing: -.01em; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .card .hint { color: var(--muted); font-size: .85rem; margin-bottom: 14px; }
 
-    button:hover {
-      background-color: #2980b9;
-    }
+    .warn-banner { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; border-radius: var(--radius); padding: 12px 16px; font-size: .88rem; font-weight: 500; }
 
-    button:disabled {
-      background-color: #bdc3c7;
-      cursor: not-allowed;
-    }
+    /* hero: your live role (the payoff of the demo) */
+    .hero { text-align: center; padding: 26px 20px; transition: background .4s ease; }
+    .hero .label { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .hero .role-big { font-size: 2.4rem; font-weight: 700; letter-spacing: -.02em; margin: 6px 0; }
+    .hero[data-role="guest"] .role-big { color: var(--warning); }
+    .hero[data-role="user"] .role-big { color: var(--success); }
+    .hero[data-role="manager"] .role-big { color: var(--accent); }
+    .hero[data-role="admin"] .role-big { color: var(--purple); }
+    .hero[data-role="superadmin"] .role-big { color: var(--text); }
+    .hero .cap { font-size: .85rem; color: var(--muted); }
+    .hero.flash { animation: flash 1.4s ease; }
+    @keyframes flash { 0% { background: #fde68a; } 100% { background: var(--surface); } }
 
-    input[type="text"],
-    input[type="password"],
-    textarea {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
+    /* guided scenario */
+    .scenario ol { list-style: none; counter-reset: step; display: grid; gap: 12px; }
+    .scenario li { counter-increment: step; position: relative; padding-left: 40px; font-size: .9rem; line-height: 1.7; }
+    .scenario li::before {
+      content: counter(step); position: absolute; left: 0; top: 1px;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
+      font-size: .78rem; font-weight: 700; color: var(--muted);
     }
+    .scenario li.key::before { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .actor { display: inline-block; font-weight: 700; padding: 1px 8px; border-radius: var(--radius-pill); font-size: .82rem; white-space: nowrap; }
+    .actor--sa { background: #1a1d24; color: #fff; }
+    .actor--alice { background: #dbeafe; color: var(--accent); }
+    .actor--bob { background: #ede9fe; color: var(--purple); }
 
-    textarea {
-      min-height: 60px;
-      resize: none;
-      /* BEST PRACTICE: Non-resizable textarea for clean UI */
-    }
+    /* live roster */
+    .roster { display: grid; gap: 10px; }
+    .user-row { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
+    .user-row .who { font-weight: 600; }
+    .user-row.me-row { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .empty { color: var(--muted); font-size: .9rem; padding: 16px; text-align: center; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 
-    .info-box {
-      background-color: #e9f7ef;
-      border: 1px solid #a7d7c5;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      font-family: monospace;
-      word-break: break-all;
+    /* forms */
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+    .field input, .field textarea, .field select {
+      width: 100%; font: inherit; font-size: .9rem; color: var(--text);
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; outline: none;
     }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 52px; }
+    .row .field { flex: 1; min-width: 170px; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .out { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: var(--font-mono); font-size: .82rem; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; margin-top: 10px; }
 
-    pre {
-      background-color: #f0f0f0;
-      padding: 10px;
-      font-size: 0.9em;
-      max-height: 150px;
-      overflow-y: auto;
-      border-radius: 4px;
-      border: 1px solid #ddd;
-      white-space: pre-wrap;
-      word-break: break-all;
+    /* console */
+    .console {
+      background: #1a1d24; color: #d6dae2; font-family: var(--font-mono); font-size: .8rem;
+      border-radius: var(--radius-sm); padding: 14px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
     }
+    .console .log-error { color: #f87171; }
+    .console .log-warn { color: #fbbf24; }
+    .console .log-info { color: #60a5fa; }
+    .console .log-success { color: #4ade80; }
 
-    .log-console {
-      background-color: #2c3e50;
-      color: #ecf0f1;
-      padding: 15px;
-      border-radius: 4px;
-      height: 250px;
-      overflow-y: auto;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
+    /* toast */
+    .toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); max-width: 90vw;
+      padding: 11px 18px; border-radius: var(--radius-pill); background: #1a1d24; color: #fff;
+      font-size: .88rem; font-weight: 500; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity var(--transition);
     }
-
-    .log-console .log-error {
-      color: #e74c3c;
-    }
-
-    .log-console .log-warn {
-      color: #f39c12;
-    }
-
-    .log-console .log-info {
-      color: #3498db;
-    }
-
-    .log-console .log-success {
-      color: #2ecc71;
-    }
-
-    .flex-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    .flex-group>div {
-      flex-grow: 1;
-      min-width: 200px;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    fieldset {
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 15px;
-      margin-bottom: 20px;
-      background-color: #fdfdfd;
-    }
-
-    legend {
-      font-size: 1.1em;
-      font-weight: bold;
-      color: #2c3e50;
-      padding: 0 10px;
-    }
-
-    details {
-      margin-top: 15px;
-      border: 1px solid #eee;
-      border-radius: 4px;
-    }
-
-    summary {
-      padding: 10px;
-      font-weight: bold;
-      cursor: pointer;
-      background-color: #f9f9f9;
-    }
+    .toast--show { opacity: 1; }
+    .toast--error { background: var(--danger); }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Security Manager (SM Testbed) - Best Practices Applied</h1>
-    <p>A comprehensive testbed for GDB identity, RBAC, encryption, and P2P security, state-driven architecture.</p>
-    <p><strong>Important:</strong> All actions are logged to the integrated console at the bottom.</p>
-
-    <!-- DB Initialization -->
-    <fieldset class="section">
-      <legend>1. Database Initialization</legend>
-      <div class="flex-group">
-        <div>
-          <label for="dbNameInput">DB Name (changing this creates a new P2P network):</label>
-          <input type="text" id="dbNameInput" value="gdb-robust-test-network">
-        </div>
-        <div>
-          <label for="superAdminInput">Super Admin ETH Address (comma-separated):</label>
-          <input type="text" id="superAdminInput" value="0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"
-            placeholder="0xYourAddress1,...">
-        </div>
+  <!-- ============================ Login ============================ -->
+  <div id="login" class="screen">
+    <div class="login-card">
+      <h1>🔐 How permissions populate, peer-to-peer</h1>
+      <div class="muted">
+        A signed role assignment is just <strong>data</strong>: once the superadmin signs it, it spreads through the
+        mesh via <em>any</em> peer — the superadmin doesn't need to be online when it reaches you.
+        <li>Run this in <strong>three separate browsers/profiles</strong> (not tabs — see the note inside).</li>
+        <li><strong>🛡️ Superadmin</strong> grants roles. <strong>👩‍🦰 Alice</strong> &amp; <strong>👨‍🦱 Bob</strong> start
+          as zero-trust <code>guest</code>s.</li>
+        <li>Follow the on-screen <strong>guided scenario</strong> to watch Alice relay a grant to Bob while the
+          superadmin is offline.</li>
       </div>
-      <button id="btnInitializeDB">Initialize DB & RBAC</button>
-      <button id="btnHardReset" style="background-color: #e74c3c;"
-        title="Deletes all local configuration and reloads the page.">Hard Reset Testbed</button>
-      <span id="initStatus" style="margin-left: 10px; font-style: italic;"></span>
-    </fieldset>
-
-    <!-- Login/Registration View -->
-    <fieldset id="loginView" class="section">
-      <legend>2. Identity Management & Status</legend>
-      <div class="flex-group">
-        <div>
-          <!-- BEST PRACTICE: Single textarea for input and output -->
-          <label for="mnemonicInput">Mnemonic Phrase (Input for Login / Output for New ID):</label>
-          <textarea id="mnemonicInput" rows="3"
-            placeholder="Enter 12-word phrase to log in, or click 'Generate New Identity' below."></textarea>
-        </div>
+      <div class="login-row">
+        <button id="login-superadmin" class="btn btn--dark">🛡️ Superadmin (demo)</button>
       </div>
-      <div class="flex-group">
-        <!-- BEST PRACTICE: Buttons are shown/hidden based on state -->
-        <button id="btnRegisterNewUser">Generate New Identity</button>
-        <button id="btnLoginMnemonic">Login with Mnemonic</button>
-        <button id="btnLoginWebAuthn" class="hidden">Login with Passkey</button>
-        <button id="btnCopyMnemonic" class="hidden">Copy Phrase</button>
-        <button id="btnProtectWebAuthn" class="hidden">Protect Account with Passkey & Login</button>
+      <div class="login-row">
+        <button id="login-alice" class="btn">👩‍🦰 Login as Alice</button>
+        <button id="login-bob" class="btn btn--ghost">👨‍🦱 Login as Bob</button>
       </div>
-      <div id="newIdentityInfo" class="info-box hidden" style="margin-top: 15px;">
-        <strong>New ETH Address Generated:</strong> <code id="newEthAddress"></code><br>
-        <strong style="color: #c0392b;">IMPORTANT:</strong> Your new mnemonic phrase is in the text area above. Save
-        it securely before proceeding!
-      </div>
-    </fieldset>
 
-
-    <!-- Logged-In View -->
-    <fieldset id="loggedInView" class="section hidden">
-      <legend>2. Session Status & Actions</legend>
-      <button id="btnLogout">Logout Current User</button>
-      <button id="btnShowMnemonic" class="hidden">Show Current Session Mnemonic</button>
-      <details open>
-        <summary>Session Status Details</summary>
-        <div id="securityStatusBox" class="info-box" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top:10px;">
-          <p><strong>RBAC Active:</strong> <span id="statusRbacActive">false</span></p>
-          <p><strong>Active ETH Address:</strong> <span id="statusActiveAddress">N/A</span></p>
-          <p><strong>Current Role (Reactive):</strong> <span id="statusCurrentRole">N/A</span></p>
-          <p><strong>Session WebAuthn Protected:</strong> <span id="statusWebAuthnProtected">false</span></p>
-          <p><strong>WebAuthn Hardware Registered:</strong> <span id="statusWebAuthnRegistered">false</span></p>
-          <p><strong>Volatile Identity in Memory:</strong> <span id="statusVolatileIdentity">false</span></p>
+      <details class="advanced">
+        <summary>Advanced — create your own self-custody identity</summary>
+        <div class="advanced__body">
+          <p class="muted">The real GenosDB auth flow: generate a BIP39 mnemonic (your private key), optionally protect
+            it with a WebAuthn passkey, then log in.</p>
+          <textarea id="mnemonic-io" rows="3" placeholder="Paste a 12-word phrase to log in, or generate one below."></textarea>
+          <div id="new-id-info" class="muted is-hidden">New address: <code id="new-address"></code> — <strong style="color:var(--danger)">save the phrase first.</strong></div>
+          <div class="btn-row">
+            <button id="btn-generate" class="btn btn--ghost btn--sm">Generate new identity</button>
+            <button id="btn-login-mnemonic" class="btn btn--sm">Login with mnemonic</button>
+            <button id="btn-copy-mnemonic" class="btn btn--ghost btn--sm is-hidden">Copy phrase</button>
+            <button id="btn-protect" class="btn btn--sm is-hidden">Protect with passkey &amp; login</button>
+            <button id="btn-login-passkey" class="btn btn--ghost btn--sm is-hidden">Login with passkey</button>
+          </div>
         </div>
       </details>
-    </fieldset>
 
-
-    <!-- Secure Data Storage (Implicit Encryption) -->
-    <fieldset class="section">
-      <legend>3. Secure Data Storage (Implicit Encryption)</legend>
-      <p>Uses <code>db.sm.put()</code> for automatic encryption and <code>db.sm.get()</code> for automatic
-        decryption.</p>
-      <div class="flex-group">
-        <div>
-          <label for="secureNoteIdInput">Note ID (leave blank to generate new):</label>
-          <input type="text" id="secureNoteIdInput" placeholder="e.g., mySecretNote123">
-        </div>
-        <div>
-          <label for="secureNoteContentInput">Note Content:</label>
-          <textarea id="secureNoteContentInput" rows="2">This is a super secret note!</textarea>
-        </div>
-        <button id="btnSaveSecureNote" disabled>Save Secure Note (db.sm.put)</button>
-      </div>
-      <hr>
-      <div class="flex-group">
-        <div>
-          <label for="loadSecureNoteIdInput">Note ID to Load:</label>
-          <input type="text" id="loadSecureNoteIdInput" placeholder="Enter ID of saved note">
-        </div>
-        <button id="btnLoadSecureNote" disabled>Load & Decrypt Note (db.sm.get)</button>
-      </div>
-      <div class="info-box">
-        <strong>Loaded Note Content:</strong>
-        <pre id="loadedSecureNoteContent" style="white-space: pre-wrap;"></pre>
-      </div>
-    </fieldset>
-
-    <!-- RBAC & P2P Tests -->
-    <fieldset class="section">
-      <legend>4. RBAC & P2P Security Tests</legend>
-      <div class="flex-group">
-        <div>
-          <label for="targetEthForRole">Target ETH Address for Role:</label>
-          <input type="text" id="targetEthForRole" placeholder="0xTargetAddress">
-        </div>
-        <div>
-          <label for="roleToAssign">Role (e.g., manager):</label>
-          <input type="text" id="roleToAssign" value="manager">
-        </div>
-        <button id="assignRoleBtn" disabled>Assign Role (needs 'assignRole' perm)</button>
-      </div>
-      <hr>
-      <h3>Real-time P2P Security</h3>
-      <p><strong>Test Node:</strong> <code>realtime_security_test_node</code>. Changes to this node from any peer will
-        appear in the log below if the signature and permissions are valid.</p>
-      <div class="flex-group">
-        <div>
-          <label for="realtimeNodeValueForTest">Value to Write to Test Node:</label>
-          <input type="text" id="realtimeNodeValueForTest" value='{"live_test": true, "ts": 0}'>
-        </div>
-        <div>
-          <button id="putLegitP2PBtn" disabled title="Signed write with current session. Should propagate to other tabs if your role allows 'write'.">A. Send LEGITIMATE 'put'</button>
-          <button id="putFakeSigP2PBtn" disabled title="Black-box: logout first so there is no signer, then click to attempt a write. Expected: stays local and peers don't receive (SM signature gate on sender).">B. Attempt Unsigned Put (black-box)</button>
-          <button id="putNoPermissionP2PBtn" disabled title="Sends a signed write without local permission check. Expected: receivers reject by RBAC if the sender lacks 'write'.">C. Write Without Permission (RBAC on receiver)</button>
-        </div>
-      </div>
-      <div class="info-box" style="margin-top:10px">
-        <strong>Test instructions (open two browser tabs pointing to the same DB):</strong>
-        <ul style="margin:8px 0 0 18px">
-          <li>
-            <strong>A. Legitimate put:</strong> Login in Tab A. Click A. Expected: Tab B receives the update in real-time (SM signature check passes and SM RBAC allows 'write').
-          </li>
-          <li>
-            <strong>B. Signature gate (black-box):</strong> In Tab A, <em>logout</em> so there is no active signer, then click <strong>B. Attempt Unsigned Put</strong>. Expected: Tab B does <em>not</em> receive anything. This proves the SM <em>signature gate</em> on the sender: without a signer, the operation is not sent to the network.
-          </li>
-          <li>
-            <strong>C. Without permission:</strong> Login in Tab A with a user that lacks the <code>write</code> permission. Click C. Expected: Tab B does <em>not</em> update. This proves the SM <em>RBAC gate</em> on the receiver: even with a valid signature, the operation is rejected if the role lacks 'write'.
-          </li>
-        </ul>
-      </div>
-      <p>Real-time Subscription Log:</p>
-      <pre id="realtimeNodeLogDisplay">Waiting for GDB initialization...</pre>
-    </fieldset>
-
-    <!-- Console Log -->
-    <fieldset class="section">
-      <legend>Testbed Console</legend>
-  <div id="logConsole" class="log-console"></div>
-    </fieldset>
+      <button id="reset" class="btn btn--ghost btn--sm">Reset demo DB</button>
+    </div>
   </div>
 
+  <!-- ============================ App ============================ -->
+  <div id="app" class="is-hidden">
+    <header class="topbar">
+      <div class="me" id="me"></div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <span class="peers" id="peers">🟢 0 peers</span>
+        <button id="btn-show-mnemonic" class="btn btn--ghost btn--sm is-hidden">Show mnemonic</button>
+        <button id="logout" class="btn btn--ghost btn--sm">Logout</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="warn-banner">⚠️ Use <strong>three genuinely separate browsers or profiles</strong> (e.g. Chrome + Firefox + an incognito window). Same-origin <em>tabs</em> sync locally via BroadcastChannel and skip the P2P mesh — the propagation wouldn't be real.</div>
+
+      <!-- HERO: your live role -->
+      <section class="card hero" id="hero" data-role="guest">
+        <div class="label">Your current role</div>
+        <div class="role-big" id="hero-role">guest</div>
+        <div class="cap" id="hero-cap">Signed by the superadmin · delivered by the mesh</div>
+      </section>
+
+      <!-- GUIDED SCENARIO -->
+      <section class="card scenario">
+        <h2>🎬 Guided scenario — authority survives the superadmin going offline</h2>
+        <p class="hint">Alice's window stays open the whole time — she is the <strong>relay</strong>. Watch the roster and
+          your role update even with the superadmin closed.</p>
+        <ol>
+          <li><span class="actor actor--sa">🛡️ Superadmin</span> — log in, then in <strong>Govern</strong> promote
+            <span class="actor actor--alice">Alice</span> to <code>manager</code>. Alice's role updates live.</li>
+          <li><span class="actor actor--sa">🛡️ Superadmin</span> — <strong>close this browser.</strong> The peers count
+            drops: the signer is now offline.</li>
+          <li><span class="actor actor--bob">👨‍🦱 Bob</span> — open a browser and log in. Only Alice is online; Bob is a
+            <code>guest</code>.</li>
+          <li><span class="actor actor--bob">👨‍🦱 Bob</span> — <strong>close Bob's browser.</strong></li>
+          <li class="key"><span class="actor actor--sa">🛡️ Superadmin</span> — reopen and promote
+            <span class="actor actor--bob">Bob</span> <strong>by address</strong>, even though Bob is offline. Alice
+            receives &amp; stores the signed grant.</li>
+          <li><span class="actor actor--sa">🛡️ Superadmin</span> — <strong>close again.</strong> Only Alice now holds
+            Bob's promotion.</li>
+          <li class="key"><span class="actor actor--bob">👨‍🦱 Bob</span> — reopen. <span class="actor actor--alice">Alice</span>
+            (not the superadmin!) relays the grant — <strong>Bob's role rises ✨</strong>, verified by the superadmin's
+            signature.</li>
+        </ol>
+      </section>
+
+      <!-- LIVE ROSTER -->
+      <section class="card">
+        <h2>📡 Network roster <span class="muted" style="font-size:.85rem; font-weight:400">(live — the proof board)</span></h2>
+        <p class="hint">Every known identity and its current role, updated in real time. This is where you watch a role
+          change arrive — even with the superadmin offline.</p>
+        <div id="roster" class="roster"></div>
+      </section>
+
+      <!-- GOVERN (superadmin) -->
+      <section class="card" id="govern-card">
+        <h2>🛡️ Govern — assign a role</h2>
+        <div id="govern-body"></div>
+      </section>
+
+      <!-- BONUS: per-user encryption -->
+      <section class="card">
+        <h2>🔒 Bonus — per-user encryption</h2>
+        <p class="hint"><code>db.sm.put()</code> encrypts to your key; <code>db.sm.get()</code> decrypts only for you.
+          Another identity loading the same note sees ciphertext.</p>
+        <div class="row">
+          <div class="field" style="flex:0 0 200px"><label for="note-id">Note ID (blank → auto)</label><input id="note-id" type="text" placeholder="my-secret"></div>
+          <div class="field"><label for="note-content">Content</label><input id="note-content" type="text" value="This is a super secret note!"></div>
+        </div>
+        <div class="btn-row" style="margin-top:10px">
+          <button id="btn-save-note" class="btn btn--sm">Save encrypted</button>
+          <button id="btn-load-note" class="btn btn--ghost btn--sm">Load &amp; decrypt</button>
+        </div>
+        <div class="out" id="note-out">No note loaded yet.</div>
+      </section>
+
+      <!-- CONSOLE -->
+      <section class="card">
+        <h2>Console</h2>
+        <div id="console" class="console"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
   <script type="module">
-    // Import libraries (adjust paths if necessary)
-    import { gdb } from "../dist/index.js";
+    import { gdb } from '../dist/index.js';
 
+    /** Database / room name for this testbed. */
+    const DB_NAME = 'genosdb-sm-testbed';
 
-    // --- DOM Element Selectors ---
-    const dbNameInput = document.getElementById('dbNameInput');
-    const superAdminInput = document.getElementById('superAdminInput');
-    const btnInitializeDB = document.getElementById('btnInitializeDB');
-    const initStatus = document.getElementById('initStatus');
-    const btnHardReset = document.getElementById('btnHardReset');
+    // ────────────────────────────────────────────────────────────────────────────
+    // ⚠️ TESTING ONLY — fixed demo identities (shared with acls.html / governance.html).
+    // Embedding mnemonics in source is NEVER acceptable in a real app. These are public,
+    // throwaway identities (they protect nothing) so each browser can log in with one click.
+    // ────────────────────────────────────────────────────────────────────────────
+    const SUPERADMIN = {
+      name: 'Superadmin', emoji: '🛡️',
+      mnemonic: 'panic now afford carbon donate lecture drift excite collect essay stuff prosper',
+      address: '0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA',
+    };
+    const ALICE = {
+      name: 'Alice', emoji: '👩‍🦰',
+      mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
+      address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
+    };
+    const BOB = {
+      name: 'Bob', emoji: '👨‍🦱',
+      mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
+      address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
+    };
+    const IDENTITIES = [SUPERADMIN, ALICE, BOB];
 
-    const loginView = document.getElementById('loginView');
-    const loggedInView = document.getElementById('loggedInView');
+    /** @type {object} */ let db;
+    /** @type {object|null} Identity generated via the advanced flow, held until secured. */
+    let volatileIdentity = null;
+    let unsubscribeRole = null, unsubscribeRoster = null;
+    let lastRole = null;
 
-    const btnRegisterNewUser = document.getElementById('btnRegisterNewUser');
-    const newIdentityInfo = document.getElementById('newIdentityInfo');
-    const newEthAddressElem = document.getElementById('newEthAddress');
-    const btnCopyMnemonic = document.getElementById('btnCopyMnemonic');
-    const btnProtectWebAuthn = document.getElementById('btnProtectWebAuthn');
-    const btnLoginWebAuthn = document.getElementById('btnLoginWebAuthn');
-    const mnemonicInput = document.getElementById('mnemonicInput'); // REFACTORED
-    const btnLoginMnemonic = document.getElementById('btnLoginMnemonic');
-    const btnLogout = document.getElementById('btnLogout');
-    const btnShowMnemonic = document.getElementById('btnShowMnemonic');
+    const $ = (id) => document.getElementById(id);
+    const loginScreen = $('login'), appScreen = $('app');
+    const meEl = $('me'), toastEl = $('toast'), consoleEl = $('console'), mnemonicIo = $('mnemonic-io');
 
-    const statusRbacActive = document.getElementById('statusRbacActive');
-    const statusActiveAddress = document.getElementById('statusActiveAddress');
-    const statusCurrentRole = document.getElementById('statusCurrentRole');
-    const statusWebAuthnProtected = document.getElementById('statusWebAuthnProtected');
-    const statusVolatileIdentity = document.getElementById('statusVolatileIdentity');
-    const statusWebAuthnRegistered = document.getElementById('statusWebAuthnRegistered');
+    const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+    const isSuperadmin = (a) => eqAddr(a, SUPERADMIN.address);
+    const whoIs = (addr) => IDENTITIES.find((i) => eqAddr(i.address, addr));
+    const label = (addr) => { const i = whoIs(addr); return i ? `${i.emoji} ${i.name}` : `🧩 ${db.sm.abbrAddr(addr)}`; };
 
-    const secureNoteIdInput = document.getElementById('secureNoteIdInput');
-    const secureNoteContentInput = document.getElementById('secureNoteContentInput');
-    const btnSaveSecureNote = document.getElementById('btnSaveSecureNote');
-    const loadSecureNoteIdInput = document.getElementById('loadSecureNoteIdInput');
-    const btnLoadSecureNote = document.getElementById('btnLoadSecureNote');
-    const loadedSecureNoteContent = document.getElementById('loadedSecureNoteContent');
+    let toastTimer;
+    /** Show a transient message. @param {string} msg @param {boolean} [isError] */
+    const toast = (msg, isError = false) => {
+      toastEl.textContent = msg;
+      toastEl.className = `toast toast--show${isError ? ' toast--error' : ''}`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (toastEl.className = 'toast'), 2800);
+    };
 
-    const targetEthForRole = document.getElementById('targetEthForRole');
-    const roleToAssign = document.getElementById('roleToAssign');
-    const assignRoleBtn = document.getElementById('assignRoleBtn');
+    /** Append a line to the in-app console. @param {string} msg @param {'info'|'warn'|'error'|'success'} [type] */
+    const log = (msg, type = 'info') => {
+      const line = document.createElement('div');
+      line.className = `log-${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    };
 
-    const realtimeNodeValueForTest = document.getElementById('realtimeNodeValueForTest');
-    const putLegitP2PBtn = document.getElementById('putLegitP2PBtn');
-    const putFakeSigP2PBtn = document.getElementById('putFakeSigP2PBtn');
-    const putNoPermissionP2PBtn = document.getElementById('putNoPermissionP2PBtn');
-    const realtimeNodeLogDisplay = document.getElementById('realtimeNodeLogDisplay');
+    /* ============================ DB bootstrap ============================ */
+    const ensureDb = async () => {
+      if (db) return db;
+      db = await gdb(DB_NAME, { rtc: true, sm: { superAdmins: [SUPERADMIN.address] } });
+      db.sm.setSecurityStateChangeCallback(onSecurityState);
+      // Live peer presence — makes "the superadmin is offline" visible.
+      db.room.on('peer:join', () => { updatePeers(); log('A peer joined the mesh.', 'info'); });
+      db.room.on('peer:leave', () => { updatePeers(); log('A peer left the mesh.', 'warn'); });
+      await subscribeRoster();
+      setInterval(updatePeers, 2500);
+      log('GDB ready — security manager active.', 'success');
+      return db;
+    };
 
-    const logConsole = document.getElementById('logConsole');
+    const updatePeers = () => {
+      if (!db?.room) return;
+      const n = Object.keys(db.room.getPeers()).length;
+      $('peers').textContent = `🟢 ${n} peer${n === 1 ? '' : 's'}`;
+    };
 
-    // --- Application State ---
-    let db = null;
-    let volatileIdentityCache = null;
-    let roleListenerUnsubscribe = null;
-    let realtimeTestNodeUnsubscribe = null;
+    /* ============================ Auth ============================ */
+    const login = async (mnemonic) => {
+      try { await ensureDb(); await db.sm.loginOrRecoverUserWithMnemonic(mnemonic); }
+      catch (err) { toast(err.message, true); log(`Login failed: ${err.message}`, 'error'); }
+    };
 
-    const REALTIME_TEST_NODE_ID = 'realtime_security_test_node';
+    // Single source of truth: the Security Manager state callback drives every view/button.
+    /** @param {object} s securityState */
+    const onSecurityState = (s) => {
+      const active = s.isActive;
+      loginScreen.classList.toggle('is-hidden', active);
+      appScreen.classList.toggle('is-hidden', !active);
 
-    // --- Logging Utilities ---
-    function logToUI(message, type = 'log') {
-      const entry = document.createElement('div');
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      const typeToClass = { error: 'log-error', warn: 'log-warn', info: 'log-info', success: 'log-success' };
-      if (typeToClass[type]) entry.classList.add(typeToClass[type]);
-      if (logConsole) {
-        logConsole.appendChild(entry);
-        logConsole.scrollTop = logConsole.scrollHeight;
-      }
-      console[type] ? console[type](message) : console.log(message);
-    }
-
-    function logToRealtimeDisplay(message) {
-      const timestamp = new Date().toLocaleTimeString();
-      realtimeNodeLogDisplay.textContent += `\n[${timestamp}] ${message}`;
-      realtimeNodeLogDisplay.scrollTop = realtimeNodeLogDisplay.scrollHeight;
-    }
-
-    // --- Central State Handler (The Core of the Refactor) ---
-    async function handleSecurityStateChange(securityState) {
-      logToUI(`Security State Change: Active=${securityState.isActive}, Volatile=${securityState.hasVolatileIdentity}, HW=${securityState.hasWebAuthnHardwareRegistration}`, 'info');
-
-      // Update status display
-      statusRbacActive.textContent = securityState.isActive;
-      statusActiveAddress.textContent = securityState.abbrAddr || 'N/A';
-      statusWebAuthnProtected.textContent = securityState.isWebAuthnProtected;
-      statusVolatileIdentity.textContent = securityState.hasVolatileIdentity;
-      statusWebAuthnRegistered.textContent = securityState.hasWebAuthnHardwareRegistration;
-
-      const isGdbReady = !!db;
-      const isLoggedIn = securityState.isActive;
-      const hasVolatile = securityState.hasVolatileIdentity;
-      const hasHardware = securityState.hasWebAuthnHardwareRegistration;
-
-      // BEST PRACTICE: Toggle entire views based on login state
-      loginView.classList.toggle('hidden', isLoggedIn);
-      loggedInView.classList.toggle('hidden', !isLoggedIn);
-
-      // BEST PRACTICE: Control all UI elements based on the state object
-      // --- Login View Controls ---
-  btnRegisterNewUser.classList.toggle('hidden', !isGdbReady || isLoggedIn || hasVolatile);
-  // Keep Login with Mnemonic visible even when a volatile identity exists
-  btnLoginMnemonic.classList.toggle('hidden', !isGdbReady || isLoggedIn);
-      btnLoginWebAuthn.classList.toggle('hidden', !isGdbReady || isLoggedIn || !hasHardware || hasVolatile);
-
-      btnCopyMnemonic.classList.toggle('hidden', !hasVolatile);
-      btnProtectWebAuthn.classList.toggle('hidden', !hasVolatile);
-      newIdentityInfo.classList.toggle('hidden', !hasVolatile);
-      if (hasVolatile && volatileIdentityCache) {
-        newEthAddressElem.textContent = volatileIdentityCache.address;
-        mnemonicInput.value = volatileIdentityCache.mnemonic;
-        
+      // Advanced (login) controls, driven by the state object.
+      $('btn-generate').classList.toggle('is-hidden', s.hasVolatileIdentity);
+      $('btn-copy-mnemonic').classList.toggle('is-hidden', !s.hasVolatileIdentity);
+      $('btn-protect').classList.toggle('is-hidden', !s.hasVolatileIdentity);
+      $('new-id-info').classList.toggle('is-hidden', !s.hasVolatileIdentity);
+      $('btn-login-passkey').classList.toggle('is-hidden', s.hasVolatileIdentity || !s.hasWebAuthnHardwareRegistration);
+      mnemonicIo.readOnly = s.hasVolatileIdentity;
+      if (s.hasVolatileIdentity && volatileIdentity) {
+        $('new-address').textContent = volatileIdentity.address;
+        mnemonicIo.value = volatileIdentity.mnemonic;
+      } else if (!active) {
+        mnemonicIo.value = '';
       }
 
-      mnemonicInput.readOnly = hasVolatile;
-      if (!isLoggedIn && !hasVolatile) {
-        mnemonicInput.value = ''; // Clear on logout or initial state
+      if (active) renderSession(s);
+      else { unsubscribeRole?.(); unsubscribeRole = null; lastRole = null; }
+    };
+
+    /* ============================ Logged-in session ============================ */
+    const renderSession = (s) => {
+      const sa = isSuperadmin(s.activeAddress);
+      meEl.innerHTML = `<span>${label(s.activeAddress)}</span><span class="addr">${s.abbrAddr}</span><span class="role-chip" id="me-chip">…</span>`;
+      $('btn-show-mnemonic').classList.toggle('is-hidden', !db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery());
+      renderGovern(sa);
+      updatePeers();
+
+      // Reactive role — superadmin from config, everyone else live from their user node.
+      unsubscribeRole?.();
+      if (sa) { paintRole('superadmin'); unsubscribeRole = null; return; }
+      db.get(`user:${s.activeAddress}`, (node) => paintRole(node?.value?.role ?? 'guest'))
+        .then(({ unsubscribe }) => (unsubscribeRole = unsubscribe));
+    };
+
+    /** Update the hero + chip, flashing when the role actually changes (the demo's payoff). */
+    const paintRole = (role) => {
+      const chip = $('me-chip');
+      if (chip) { chip.className = `role-chip role-chip--${role}`; chip.textContent = role; }
+      const hero = $('hero');
+      hero.dataset.role = role;
+      $('hero-role').textContent = role;
+      if (lastRole !== null && lastRole !== role) {
+        hero.classList.remove('flash'); void hero.offsetWidth; hero.classList.add('flash');
+        $('hero-cap').textContent = `${lastRole} → ${role} — a signed grant just reached you through the mesh.`;
+        log(`Your role changed: ${lastRole} → ${role} (authority delivered P2P).`, 'success');
+        toast(`Role updated → ${role}`);
       }
+      lastRole = role;
+    };
 
-      // --- Logged In View Controls & Main Action Buttons ---
-      const canPerformActions = isGdbReady && isLoggedIn;
-      btnShowMnemonic.classList.toggle('hidden', !canPerformActions || !db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery());
-
-  btnSaveSecureNote.disabled = !canPerformActions;
-  btnLoadSecureNote.disabled = !canPerformActions;
-  assignRoleBtn.disabled = !canPerformActions;
-  // A: requires signer
-  putLegitP2PBtn.disabled = !isGdbReady || !isLoggedIn;
-  // B: unsigned put only when logged OUT
-  putFakeSigP2PBtn.disabled = !isGdbReady || isLoggedIn;
-  // C: requires signer (receivers will reject by RBAC if not allowed)
-  putNoPermissionP2PBtn.disabled = !isGdbReady || !isLoggedIn;
-
-      // Handle reactive role subscription
-      if (roleListenerUnsubscribe) {
-        roleListenerUnsubscribe();
-        roleListenerUnsubscribe = null;
-      }
-      if (canPerformActions && securityState.activeAddress) {
-        const userNodeKey = `user:${securityState.activeAddress}`;
-        try {
-          const { unsubscribe } = await db.get(userNodeKey, (userNode) => {
-            const currentEth = db.sm.getActiveEthAddress();
-            const superAdmins = superAdminInput.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-            if (currentEth && superAdmins.includes(currentEth.toLowerCase())) {
-              statusCurrentRole.textContent = 'superadmin (from config)';
-              return;
-            }
-
-            let role = 'guest';
-            if (userNode && userNode.value && userNode.value.role) {
-              role = userNode.value.role;
-            }
-            statusCurrentRole.textContent = role;
-          });
-          roleListenerUnsubscribe = unsubscribe;
-        } catch (e) {
-          statusCurrentRole.textContent = 'Error subscribing';
-          logToUI(`Error setting up role subscription: ${e.message}`, 'error');
-        }
-      } else {
-        statusCurrentRole.textContent = 'N/A';
-      }
-    }
-
-
-    // --- Initialization ---
-    async function initializeApp() {
-      if (db) { logToUI("DB already initialized.", "warn"); return; }
-      const dbName = dbNameInput.value.trim();
-      if (!dbName) { logToUI("DB Name is required.", "error"); return; }
-      const superAdmins = superAdminInput.value.split(',').map(s => s.trim()).filter(Boolean);
-      if (superAdmins.length === 0) {
-        logToUI("At least one Super Admin ETH Address is mandatory.", "error");
+    /* ============================ Govern (assign role) ============================ */
+    const renderGovern = (isSa) => {
+      const body = $('govern-body');
+      if (!isSa) {
+        body.innerHTML = `<p class="hint" style="margin:0">Only the <strong>superadmin</strong> can assign roles. Keep this
+          window open — if you are Alice you are the <strong>relay</strong> that carries grants to others. Watch your role
+          and the roster update when a promotion reaches you.</p>`;
         return;
       }
+      body.innerHTML = `
+        <p class="hint">Assigning a role writes a <strong>signed grant</strong> to <code>user:&lt;address&gt;</code>. The
+          target <strong>need not be online</strong> — the grant propagates through the mesh and reaches them via any peer
+          when they reconnect.</p>
+        <div class="row">
+          <div class="field"><label for="role-target">Target address</label><input id="role-target" type="text" placeholder="0x…"></div>
+          <div class="field" style="flex:0 0 150px"><label for="role-select">Role</label>
+            <select id="role-select"><option>guest</option><option selected>user</option><option>manager</option><option>admin</option></select>
+          </div>
+          <button id="btn-assign" class="btn btn--sm">Assign role</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn btn--ghost btn--sm" data-fill="alice">↳ target Alice</button>
+          <button class="btn btn--ghost btn--sm" data-fill="bob">↳ target Bob (even if offline)</button>
+        </div>`;
+      body.querySelectorAll('[data-fill]').forEach((b) =>
+        (b.onclick = () => ($('role-target').value = b.dataset.fill === 'alice' ? ALICE.address : BOB.address)));
+      $('btn-assign').onclick = assignRole;
+    };
 
-      initStatus.textContent = "Initializing...";
-      logToUI(`Initializing GDB '${dbName}'...`);
-
+    const assignRole = async () => {
+      const target = $('role-target').value.trim();
+      const role = $('role-select').value;
+      if (!target) return toast('Enter a target address.', true);
       try {
-        db = await gdb(dbName, {
-          rtc: true,
-          sm: {
-            superAdmins: superAdmins,
-          }
-        });
-
-        logToUI("GDB instance ready.", "success");
-        db.sm.setSecurityStateChangeCallback(handleSecurityStateChange);
-        await setupAutomaticRealtimeSubscription();
-
-        localStorage.setItem('gdb_testbed_v2_last_db_name', dbName);
-        btnInitializeDB.disabled = true;
-        dbNameInput.disabled = true;
-        superAdminInput.disabled = true;
-        initStatus.textContent = `Initialized: ${dbName}`;
-
-      } catch (e) {
-        logToUI(`GDB setup error: ${e.message}`, "error");
-        initStatus.textContent = "GDB Initialization failed.";
-        db = null;
-        return;
-      }
-    }
-
-    async function autoInitialize() {
-      const persistedDBName = localStorage.getItem('gdb_testbed_v2_last_db_name');
-      if (persistedDBName) {
-        dbNameInput.value = persistedDBName;
-        logToUI(`Attempting auto-initialization with persisted DB name: ${persistedDBName}`, 'info');
-        await initializeApp();
-      } else {
-        initStatus.textContent = "Ready to initialize.";
-        // Set initial UI state for a non-initialized app
-        handleSecurityStateChange({
-          isActive: false,
-          activeAddress: null,
-          abbrAddr: null,
-          isWebAuthnProtected: false,
-          hasVolatileIdentity: false,
-          hasWebAuthnHardwareRegistration: false
-        });
-      }
-    }
-
-    // --- Event Listeners (Refactored to only call APIs) ---
-    btnInitializeDB.addEventListener('click', initializeApp);
-
-    btnHardReset.addEventListener('click', () => {
-      if (confirm('This will erase all local configuration (DB name) and reload the page. Are you sure?')) {
-        logToUI("Performing hard reset...", "warn");
-        localStorage.clear();
-        // Also clear session storage for good measure
-        sessionStorage.clear();
-        location.reload();
-      }
-    });
-
-    btnCopyMnemonic.addEventListener('click', async () => {
-      const mnemonicText = mnemonicInput.value;
-      if (!mnemonicText) return;
-      try {
-        await navigator.clipboard.writeText(mnemonicText);
-        logToUI("Mnemonic copied to clipboard.", "success");
-      } catch (err) {
-        logToUI("Failed to copy mnemonic to clipboard.", "error");
-      }
-    });
-
-    btnRegisterNewUser.addEventListener('click', async () => {
-      logToUI("Generating new volatile identity...", "info");
-      try {
-        const identity = await db.sm.startNewUserRegistration();
-        if (identity) {
-          volatileIdentityCache = identity;
-
-          mnemonicInput.value = identity.mnemonic          // The state change callback will handle all UI updates.
-          logToUI(`New volatile ID created for ${identity.address.substring(0, 10)}... SAVE MNEMONIC!`, "success");
-        } else {
-          logToUI("Failed to generate identity.", "warn");
-        }
-      } catch (e) {
-        logToUI(`Registration error: ${e.message}`, "error");
-      }
-    });
-
-    btnProtectWebAuthn.addEventListener('click', async () => {
-      if (!volatileIdentityCache) { logToUI("No volatile identity to protect.", "error"); return; }
-      logToUI("Protecting with WebAuthn / Passkey...", "info");
-      try {
-        const address = await db.sm.protectCurrentIdentityWithWebAuthn(volatileIdentityCache.privateKey);
-        if (address) {
-          logToUI(`Identity protected with Passkey & logged in.`, "success");
-          volatileIdentityCache = null;
-        } else { logToUI("Passkey protection cancelled or failed.", "warn"); }
-      } catch (e) { logToUI(`Passkey protection error: ${e.message}`, "error"); }
-    });
-
-    btnLoginWebAuthn.addEventListener('click', async () => {
-      logToUI("Attempting Passkey login...", "info");
-      try {
-        const address = await db.sm.loginCurrentUserWithWebAuthn();
-        if (address) logToUI(`Logged in with Passkey.`, "success");
-        else logToUI("Passkey login failed or cancelled.", "warn");
-      } catch (e) { logToUI(`Passkey login error: ${e.message}`, "error"); }
-    });
-
-    btnLoginMnemonic.addEventListener('click', async () => {
-      const mnemonic = mnemonicInput.value.trim();
-      if (!mnemonic) { logToUI("Mnemonic is required.", "error"); return; }
-      logToUI("Attempting mnemonic login...", "info");
-      try {
-        const identity = await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
-        if (identity) {
-          // The state callback will hide the login view.
-          logToUI(`Logged in with mnemonic for ${identity.address}`, "success");
-        } else logToUI("Mnemonic login failed (invalid phrase?).", "error");
-      } catch (e) { logToUI(`Mnemonic login error: ${e.message}`, "error"); }
-    });
-
-    btnLogout.addEventListener('click', async () => {
-      logToUI("Logging out...", "info");
-      if (roleListenerUnsubscribe) roleListenerUnsubscribe();
-      if (realtimeTestNodeUnsubscribe) {
-        realtimeTestNodeUnsubscribe();
-        realtimeTestNodeUnsubscribe = null;
-      }
-      volatileIdentityCache = null; // Clear any leftover volatile data
-      await db.sm.clearSecurity();
-      loadedSecureNoteContent.textContent = ''; // Clear decrypted note
-      logToUI("Logged out successfully.", "success");
-      await setupAutomaticRealtimeSubscription(); // Re-subscribe as anonymous user
-    });
-
-    btnShowMnemonic.addEventListener('click', () => {
-      const mnemonic = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery();
-      if (mnemonic) {
-        if (confirm("WARNING: Displaying secret mnemonic phrase. Continue?")) {
-          alert(`Your current session mnemonic is:\n\n${mnemonic}`);
-          logToUI("Mnemonic displayed.", "warn");
-        }
-      } else { logToUI("No fresh mnemonic available to display for this session.", "warn"); }
-    });
-
-
-    // --- Data and RBAC functions (Unchanged, they were already well-structured) ---
-
-    btnSaveSecureNote.addEventListener('click', async () => {
-      const content = secureNoteContentInput.value;
-      let noteId = secureNoteIdInput.value.trim();
-      if (!content) { logToUI("Note content cannot be empty.", "warn"); return; }
-      logToUI(`Saving secure note (ID: ${noteId || 'new'})...`, "info");
-      try {
-        const savedNodeId = await db.sm.put({ note_content: content, savedAt: new Date().toISOString() }, noteId || undefined);
-        logToUI(`Secure note saved. Node ID: ${savedNodeId}`, "success");
-        if (!noteId) secureNoteIdInput.value = savedNodeId;
-        loadSecureNoteIdInput.value = savedNodeId;
-      } catch (error) {
-        logToUI(`Failed to save secure note: ${error.message}`, "error");
-      }
-    });
-
-    btnLoadSecureNote.addEventListener('click', async () => {
-      const noteIdToLoad = loadSecureNoteIdInput.value.trim();
-      if (!noteIdToLoad) { logToUI("Enter Note ID to load.", "warn"); return; }
-      logToUI(`Loading secure note ID: ${noteIdToLoad}...`, "info");
-      loadedSecureNoteContent.textContent = 'Loading...';
-      try {
-        const { result: node } = await db.sm.get(noteIdToLoad);
-        if (node) {
-          if (node.decrypted) {
-            logToUI(`Secure note '${noteIdToLoad}' loaded and decrypted.`, "success");
-            loadedSecureNoteContent.textContent = JSON.stringify(node.value, null, 2);
-          } else {
-            logToUI(`Failed to decrypt note '${noteIdToLoad}'. You may not be the owner.`, "error");
-            loadedSecureNoteContent.textContent = `DECRYPTION FAILED. Raw (encrypted) value:\n${JSON.stringify(node.value, null, 2)}`;
-          }
-        } else {
-          logToUI(`Secure note ID '${noteIdToLoad}' not found.`, "warn");
-          loadedSecureNoteContent.textContent = 'Note not found.';
-        }
-      } catch (error) {
-        logToUI(`Failed to load secure note '${noteIdToLoad}': ${error.message}`, "error");
-        loadedSecureNoteContent.textContent = `Error: ${error.message}`;
-      }
-    });
-
-    assignRoleBtn.addEventListener('click', async () => {
-      const target = targetEthForRole.value.trim();
-      const role = roleToAssign.value.trim();
-      if (!target || !role) { logToUI("Target ETH and Role are required.", "error"); return; }
-      logToUI(`Attempting to assign role '${role}'...`, "info");
-      try {
-        await db.sm.executeWithPermission('assignRole');
-        logToUI("Permission 'assignRole' granted. Sending request...", "info");
+        await db.sm.executeWithPermission('assignRole');     // superadmin-only — throws otherwise
         await db.sm.assignRole(target, role);
-        logToUI("Role assignment request sent to GDB.", "success");
-      } catch (e) { logToUI(`Assign role error: ${e.message}`, "error"); }
-    });
+        log(`Signed assignRole('${role}') → ${label(target)} sent (target may be offline).`, 'success');
+        toast(`Granted ${role}.`);
+      } catch (err) { log(`assignRole denied: ${err.message}`, 'error'); toast(`Denied: ${err.message}`, true); }
+    };
 
-    async function setupAutomaticRealtimeSubscription() {
-      if (realtimeTestNodeUnsubscribe) realtimeTestNodeUnsubscribe();
-      if (!db) { return; }
-      logToRealtimeDisplay(`Subscribing to P2P test node: ${REALTIME_TEST_NODE_ID}...`);
+    /* ============================ Live roster (the proof board) ============================ */
+    const subscribeRoster = async () => {
+      const rosterEl = $('roster');
+      const roles = new Map();
+      const render = () => {
+        const me = db.sm.getActiveEthAddress();
+        rosterEl.innerHTML = [...roles.entries()].map(([id, role]) => {
+          const addr = id.slice(5);
+          const mine = eqAddr(addr, me) ? ' me-row' : '';
+          return `<div class="user-row${mine}"><span class="who">${label(addr)}</span>
+            <span class="addr mono muted">${db.sm.abbrAddr(addr)}</span><span class="spacer"></span>
+            <span class="role-chip role-chip--${role}">${role}</span></div>`;
+        }).join('') || `<div class="empty">No identities yet — log in to create yours.</div>`;
+      };
+      const onUser = ({ id, value }) => {
+        if (!id?.startsWith('user:') || !value?.role) return;
+        const prev = roles.get(id);
+        roles.set(id, value.role);
+        if (prev && prev !== value.role) log(`📡 Roster: ${label(id.slice(5))} ${prev} → ${value.role}`, 'info');
+        render();
+      };
+      unsubscribeRoster?.();
+      const { results, unsubscribe } = await db.map({ query: { role: { $exists: true } } }, onUser);
+      unsubscribeRoster = unsubscribe;
+      for (const { id, value } of results) if (id.startsWith('user:') && value?.role) roles.set(id, value.role);
+      render();
+    };
+
+    /* ============================ Advanced: self-custody ============================ */
+    $('btn-generate').onclick = async () => {
+      try { await ensureDb(); volatileIdentity = await db.sm.startNewUserRegistration(); log(`New identity ${volatileIdentity.address.slice(0, 10)}… — save the phrase!`, 'success'); }
+      catch (err) { toast(err.message, true); }
+    };
+    $('btn-copy-mnemonic').onclick = async () => { try { await navigator.clipboard.writeText(mnemonicIo.value); toast('Phrase copied.'); } catch { toast('Copy failed.', true); } };
+    $('btn-protect').onclick = async () => {
+      if (!volatileIdentity) return;
+      try { await db.sm.protectCurrentIdentityWithWebAuthn(volatileIdentity.privateKey); volatileIdentity = null; log('Identity protected with a passkey & logged in.', 'success'); }
+      catch (err) { toast(err.message, true); }
+    };
+    $('btn-login-mnemonic').onclick = async () => { const m = mnemonicIo.value.trim(); if (!m) return toast('Paste a mnemonic first.', true); await login(m); };
+    $('btn-login-passkey').onclick = async () => { try { await ensureDb(); await db.sm.loginCurrentUserWithWebAuthn(); } catch (err) { toast(err.message, true); } };
+    $('btn-show-mnemonic').onclick = () => { const m = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery(); if (m && confirm('Reveal this session\'s secret mnemonic?')) alert(m); };
+
+    /* ============================ Bonus: encryption ============================ */
+    $('btn-save-note').onclick = async () => {
       try {
-        const { unsubscribe } = await db.get(REALTIME_TEST_NODE_ID, (nodeData) => {
-          const message = nodeData ? `State update: ${JSON.stringify(nodeData.value)}` : "State update: Node not found or deleted.";
-          logToRealtimeDisplay(message);
-        });
-        realtimeTestNodeUnsubscribe = unsubscribe;
-        logToRealtimeDisplay("Subscription is now ACTIVE.");
-      } catch (e) { logToRealtimeDisplay(`Subscription error: ${e.message}`); }
-    }
-
-    putLegitP2PBtn.addEventListener('click', async () => {
+        const id = await db.sm.put({ note: $('note-content').value, savedAt: new Date().toISOString() }, $('note-id').value.trim() || undefined);
+        $('note-id').value = id; log(`Encrypted note saved → ${id}`, 'success'); toast('Saved & encrypted.');
+      } catch (err) { toast(err.message, true); }
+    };
+    $('btn-load-note').onclick = async () => {
+      const id = $('note-id').value.trim();
+      if (!id) return toast('Enter a note ID to load.', true);
       try {
-        let value = JSON.parse(realtimeNodeValueForTest.value);
-        value.ts = Date.now();
-        realtimeNodeValueForTest.value = JSON.stringify(value);
-        logToUI("Sending LEGITIMATE 'put'. Verifying 'write' permission...", "info");
-        await db.sm.executeWithPermission('write');
-        logToUI("'write' permission granted. Proceeding with db.put().", "info");
-        await db.put(value, REALTIME_TEST_NODE_ID);
-        logToUI("Legit 'put' sent. Check other browser tabs.", "success");
-      } catch (e) {
-        logToUI(`Legit P2P error: ${e.message}`, "error");
-      }
-    });
+        const { result: node } = await db.sm.get(id);
+        if (!node) { $('note-out').textContent = 'Note not found.'; return; }
+        $('note-out').textContent = node.decrypted ? JSON.stringify(node.value, null, 2) : `🔒 Cannot decrypt (not the owner). Ciphertext:\n${JSON.stringify(node.value)}`;
+        log(node.decrypted ? `Note '${id}' decrypted.` : `Note '${id}' could not be decrypted — not the owner.`, node.decrypted ? 'success' : 'warn');
+      } catch (err) { toast(err.message, true); }
+    };
 
-    putFakeSigP2PBtn.addEventListener('click', async () => {
-      try {
-        if (db.sm.isSecurityActive()) {
-          logToUI("This black-box test is available only when logged out (no signer). Please logout first.", "warn");
-          return;
-        }
+    /* ============================ Session controls ============================ */
+    $('logout').onclick = async () => { unsubscribeRole?.(); unsubscribeRole = null; volatileIdentity = null; lastRole = null; await db.sm.clearSecurity(); log('Logged out.', 'info'); };
+    $('login-superadmin').onclick = () => login(SUPERADMIN.mnemonic);
+    $('login-alice').onclick = () => login(ALICE.mnemonic);
+    $('login-bob').onclick = () => login(BOB.mnemonic);
+    $('reset').onclick = async () => { const inst = db ?? await gdb(DB_NAME); await inst.clear(); location.reload(); };
 
-        let value = JSON.parse(realtimeNodeValueForTest.value);
-        value.ts = Date.now();
-        realtimeNodeValueForTest.value = JSON.stringify(value);
-
-        logToUI("Attempting UNSIGNED 'put' (logged out). Expected: no propagation to other tabs.", "info");
-        await db.put(value, REALTIME_TEST_NODE_ID);
-        logToUI("Unsigned put completed locally. Check other tabs: they should NOT receive this update (SM signature gate on sender).", "success");
-      } catch (e) {
-        logToUI(`Fake sig (black-box) error: ${e.message}`, "error");
-      }
-    });
-
-    putNoPermissionP2PBtn.addEventListener('click', async () => {
-      try {
-        let value = JSON.parse(realtimeNodeValueForTest.value);
-        value.ts = Date.now();
-        realtimeNodeValueForTest.value = JSON.stringify(value);
-        logToUI("Sending 'put' with VALID signature but (potentially) NO PERMISSION...", "info");
-        await db.put(value, REALTIME_TEST_NODE_ID);
-        logToUI("'put' sent. The receiving node's RBAC rules will determine if it's accepted.", "success");
-      } catch (e) {
-        logToUI(`No-permission P2P error (local check failed): ${e.message}`, "error");
-      }
-    });
-
-    // --- Initial Load ---
-    logToUI("Testbed loaded. Ready for initialization.");
-    autoInitialize();
-
+    // Eagerly bootstrap so the roster + peer presence are live before login.
+    ensureDb().catch((err) => log(`Init error: ${err.message}`, 'error'));
   </script>
 </body>
 
