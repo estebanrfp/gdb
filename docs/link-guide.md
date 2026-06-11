@@ -1,94 +1,167 @@
-# **`db.link()` Method Documentation**
+### **Method: `link(sourceId, targetId)`**
 
-The `db.link()` method creates a **directed edge** between two existing nodes, turning flat records into a true graph. Edges are first-class data: they persist locally (OPFS), synchronize peer-to-peer like any other change, and power recursive traversals with the [`$edge` operator](map-guide.md).
+#### **Description**
+The `link` method creates a **directed edge** from one existing node to another, turning flat records into a true graph. The edge is stored on the source node, persisted to storage, and synchronized with peers in real time, just like any other change. Linked nodes can then be explored with recursive graph traversal queries using the `$edge` operator in `db.map()`.
+
+This method is useful for modeling relationships between records (e.g., users and groups, orders and products, parents and children).
 
 ---
 
-## **Method Signature**
+#### **Parameters**
+
+1. **`sourceId`** (required):
+
+   - Type: String
+   - Description: The unique identifier of the node the edge starts from (the _parent_).
+
+2. **`targetId`** (required):
+   - Type: String
+   - Description: The unique identifier of the node the edge points to (the _child_).
+
+---
+
+#### **Behavior**
+
+1. **Validation**:
+
+   - Both nodes must already exist. If either `id` is not found, a warning is logged (`⚠️ One or both nodes (<sourceId>, <targetId>) do not exist.`) and the method exits without making changes.
+
+2. **Directed Edge**:
+
+   - `link(a, b)` creates `a → b` only. The relationship is one-way; for a bidirectional relationship, call `link` in both directions.
+
+3. **Timestamping**:
+
+   - The operation is stamped with the Hybrid Logical Clock (HLC), so concurrent changes resolve deterministically across peers.
+
+4. **Persistence**:
+
+   - Changes are saved to persistent storage (e.g., OPFS).
+
+5. **Notification**:
+   - The method emits an event to notify listeners and peers of the change. This is useful for real-time synchronization in distributed systems.
+
+---
+
+#### **Returns**
+
+- **Nothing**:
+  - The method does not return any value. However, it logs a warning if either of the specified nodes does not exist.
+
+---
+
+#### **Examples**
+
 ```javascript
-async db.link(sourceId, targetId)
+// (rtc: true) for realtime updates
+const db = await gdb("my-db", { rtc: true })
 ```
 
----
+##### **Example 1: Linking Two Nodes**
 
-## **Parameters**
-1. **`sourceId`** (string, required):
-   - The ID of the node the edge starts from (the *parent*).
-
-2. **`targetId`** (string, required):
-   - The ID of the node the edge points to (the *child*).
-
-> **Both nodes must already exist.** If either ID is not found, the method logs a warning and performs no change — create the nodes with [`db.put()`](put-guide.md) first.
-
----
-
-## **Key Semantics**
-
-1. **Directed (one-way).** `db.link(a, b)` creates `a → b` only. For a bidirectional relationship, link both ways:
-   ```javascript
-   await db.link(userId, groupId);
-   await db.link(groupId, userId);
-   ```
-
-2. **Timestamped & synchronized.** Each link operation is stamped with the [Hybrid Logical Clock](genosdb-hybrid-logical-clock.md), persisted, and propagated to all peers in real time — exactly like a `put`.
-
-3. **Idempotent in practice.** Linking the same pair again does not duplicate the relationship.
-
-4. **Cleaned up on removal.** When a node is deleted with [`db.remove()`](remove-guide.md), references to it in other nodes' edges are removed as well — no dangling edges.
-
----
-
-## **Usage Examples**
-
-### **1. Build a Simple Relationship**
 ```javascript
-const aliceId = await db.put({ name: "Alice", type: "User" });
-const groupId = await db.put({ name: "Developers", type: "Group" });
+// Add two nodes to the graph
+const groupId = await db.put({ name: "Developers", type: "Group" })
+const userId = await db.put({ name: "Alice", type: "User", age: 25 })
 
-await db.link(groupId, aliceId); // Group → Alice ("has member")
+// Create the relationship: Group → User ("has member")
+await db.link(groupId, userId)
 ```
 
-### **2. Query Linked Nodes with `$edge`**
-The main query selects the **starting node(s)**; the `$edge` sub-query filters their **descendants** (children, grandchildren, …):
+In this example:
+
+- Two nodes are created with `db.put()`.
+- A directed edge is created from the group to the user.
+
+---
+
+##### **Example 2: Bidirectional Relationship**
 
 ```javascript
-// All adult users reachable from the "Developers" group
+const aliceId = await db.put({ name: "Alice", type: "User" })
+const bobId = await db.put({ name: "Bob", type: "User" })
+
+// Friendship goes both ways: create one edge in each direction
+await db.link(aliceId, bobId)
+await db.link(bobId, aliceId)
+```
+
+In this example:
+
+- Each `link` call creates a single one-way edge.
+- Calling it in both directions models a mutual relationship.
+
+---
+
+##### **Example 3: Querying Linked Nodes with `$edge`**
+
+```javascript
+// Find all adult users reachable from the "Developers" group
 const { results } = await db.map({
   query: {
-    type: "Group", name: "Developers",      // 1. starting point(s)
-    $edge: { type: "User", age: { $gte: 18 } } // 2. filter applied to descendants
-  }
-});
+    type: "Group",
+    name: "Developers", // 1. Conditions to find the starting node(s)
+    $edge: { type: "User", age: { $gte: 18 } }, // 2. Filter applied to the descendants
+  },
+})
+
+console.log(results) // Array of matching descendant nodes
 ```
 
-> ⚠️ **Direction matters.** `$edge` follows edges *outward* from the starting nodes. A query like `{ $edge: { id: "parent-id" } }` looks for descendants *equal to* the parent — almost always empty. Put the parent in the **main** query and the children's filter inside `$edge`.
+In this example:
 
-### **3. Real-World Pattern: Version History**
-Used by the [collaborative editor example](https://estebanrfp.github.io/gdb/examples/collab.html) — each saved version is a node linked **from** the document:
+- The main part of the query selects the **starting node(s)** for the traversal.
+- The `$edge` sub-query filters their **descendants** (children, grandchildren, etc.), which are returned as the result.
+
+---
+
+##### **Example 4: Linking a Non-Existent Node**
 
 ```javascript
-// Save a version
-const versionId = `version-${Date.now()}`;
-await db.put({ content, timestamp: new Date().toISOString() }, versionId);
-await db.link(docId, versionId);                  // doc → version
+await db.link("group_1", "non_existent_id")
 
-// Restore the full history (newest first)
-const { results } = await db.map({
-  query: { id: docId, $edge: { content: { $exists: true } } },
-  field: "timestamp",
-  order: "desc"
-});
+// Output: ⚠️ One or both nodes (group_1, non_existent_id) do not exist.
 ```
 
----
+In this example:
 
-## **Error Handling**
-- If `sourceId` or `targetId` does not exist, a warning is logged (`⚠️ One or both nodes … do not exist.`) and nothing is written.
-- The method is asynchronous — always `await` it so ordering with subsequent queries is guaranteed.
+- The method logs a warning because the target node does not exist, and no changes are made.
 
 ---
 
-## **Key Notes**
-1. **Edges live on the source node.** Each node carries an `edges` array of target IDs; `db.map` callbacks expose it alongside `id`, `value` and `timestamp`.
-2. **Model relationships explicitly.** Prefer meaningful directions (`order → items`, `doc → versions`, `group → members`) so `$edge` traversals read naturally.
-3. **Traversals are recursive.** `$edge` explores the entire descendant tree, not just direct children — see the [MAP guide](map-guide.md) and the [`$edge` testbed](https://estebanrfp.github.io/gdb/examples/edge-operator-testbed.html).
+#### **Key Notes**
+
+1. **Direction Matters**:
+
+   - Edges are followed _outward_ from the starting nodes during `$edge` traversals. The parent belongs in the **main** query and the children's filter inside `$edge`. Inverting them (e.g., `{ $edge: { id: parentId } }`) asks for descendants _equal to_ the parent, which is almost always empty.
+
+2. **Edges Live on the Source Node**:
+
+   - Each node carries an `edges` array of target IDs. `db.map()` callbacks expose it alongside `id`, `value`, and `timestamp`.
+
+3. **Edge Cleanup**:
+
+   - When a node is deleted with `db.remove()`, references to it in other nodes' edges are cleaned up automatically — no dangling edges.
+
+4. **Persistence & Notifications**:
+   - All changes made by `link` are persisted to storage and emitted to listeners and peers, keeping the graph consistent across the network.
+
+---
+
+#### **Use Cases**
+
+1. **Modeling Relationships**: Use `link` to connect records (e.g., users to groups, orders to products, documents to revisions).
+2. **Graph Traversal**: Combine `link` with the `$edge` operator to resolve deep, multi-hop relationships in a single declarative query.
+3. **Hierarchies**: Build trees (categories, organizations, threads) by consistently linking from parent to child.
+
+---
+
+#### **Best Practices**
+
+- **Create Nodes First**: Ensure both nodes exist (`db.put()`) before linking them; the method does not create missing nodes.
+- **Choose Meaningful Directions**: Prefer natural directions (`order → items`, `group → members`, `parent → children`) so `$edge` traversals read intuitively.
+- **Await the Call**: The method is asynchronous — always `await` it so ordering with subsequent queries is guaranteed.
+
+---
+
+This documentation provides a clear and concise explanation of the `link` method, including its behavior, parameters, error handling, and practical examples. Let me know if you'd like further clarification or additional examples! 😊
