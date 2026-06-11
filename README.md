@@ -42,7 +42,7 @@ A lightweight, decentralized graph database designed for modern web applications
 GenosDB runs **entirely in your browser** — there is no central database server. The Security Manager signs every operation with your key, nodes are stored locally in OPFS, and changes replicate **peer-to-peer over WebRTC**. Nostr relays only help peers discover each other — they never see your data.
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'transparent','primaryBorderColor':'#3b82f6','primaryTextColor':'#64748b','lineColor':'#3b82f6','edgeLabelBackground':'transparent','fontFamily':'Inter, ui-sans-serif, sans-serif'}}}%%
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'transparent','primaryBorderColor':'#3b82f6','primaryTextColor':'#64748b','lineColor':'#3b82f6','edgeLabelBackground':'rgba(0,0,0,0)','fontFamily':'Inter, ui-sans-serif, sans-serif'}}}%%
 graph TD
     A["Your Browser + GenosDB"] -->|signs every action| B["Security Manager — your key"]
     A -->|stores nodes| C["Graph store · OPFS"]
