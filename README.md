@@ -12,13 +12,13 @@ A lightweight, decentralized graph database designed for modern web applications
 [![Production Build](https://img.shields.io/badge/Production%20Build-Free%20for%20personal%20%26%20commercial%20use-brightgreen.svg?style=for-the-badge)](https://github.com/estebanrfp/gdb/blob/main/docs/index.md)
 
 ![Downloads on NPM](https://img.shields.io/npm/dw/genosdb)
-[![](https://data.jsdelivr.com/v1/package/npm/genosdb/badge)](https://www.jsdelivr.com/package/npm/genosdb)
-[![Tests](https://img.shields.io/badge/Tests-passing-brightgreen)](https://estebanrfp.github.io/gdb/tests/report.html)
+[![jsDelivr](https://img.shields.io/badge/jsDelivr-1k%20hits%2Fmonth-brightgreen)](https://www.jsdelivr.com/package/npm/genosdb)
 
+[![Tests](https://img.shields.io/badge/Tests-passing-brightgreen)](https://estebanrfp.github.io/gdb/tests/report.html)
+[![Security](https://img.shields.io/badge/security-socket.dev-success)](https://socket.dev/npm/package/genosdb)
 ![Project Status](https://img.shields.io/badge/status-stable--beta-blue)
 
 ![NPM Unpacked Size (with version)](https://img.shields.io/npm/unpacked-size/genosdb/latest)
-
 ![npm package minimized gzipped size](https://img.shields.io/bundlejs/size/genosdb)
 
 
@@ -44,14 +44,19 @@ GenosDB runs **entirely in your browser** — there is no central database serve
 ```ascii
 Nostr Relays
     │
-    │ discovery only
+    │ peer discovery only
     ▼
 
 Browser + GenosDB
+│
 ├─► Security Manager      (signs operations)
+│
 ├─► Graph Store (OPFS)    (stores nodes)
+│    │
 │    ├─► Other Peers      (WebRTC sync)
+│    │
 │    └─► BroadcastChannel (cross-tab)
+│
 └─► db.map subscriptions  (reactive queries)
 ```
 
