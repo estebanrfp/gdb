@@ -351,6 +351,20 @@
       /* for Markdown text */
     }
 
+    /* HTML source mode: monospace + syntax token colors (VS Code dark palette) */
+    #previewContent.html-mode {
+      font-family: 'Consolas', 'SF Mono', ui-monospace, monospace;
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+
+    .hl-punct { color: #808080; }
+    .hl-tag { color: #569cd6; }
+    .hl-attr { color: #9cdcfe; }
+    .hl-str { color: #ce9178; }
+    .hl-text { color: #d4d4d4; }
+    .hl-comment { color: #6a9955; font-style: italic; }
+
     /* Placeholder for contenteditable */
     #editor:empty:before {
       content: attr(data-placeholder);
@@ -1079,15 +1093,60 @@
       }
     };
 
+    // Dependency-free HTML pretty-printer: walks the live DOM tree and emits the
+    // source indented and syntax-colored (.hl-* tokens). All dynamic content is
+    // escaped, so injecting the result into the preview pane is safe.
+    const escapeHTML = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const VOID_TAGS = new Set(['AREA', 'BASE', 'BR', 'COL', 'EMBED', 'HR', 'IMG', 'INPUT', 'LINK', 'META', 'SOURCE', 'TRACK', 'WBR']);
+    const INLINE_TAGS = new Set(['A', 'ABBR', 'B', 'BR', 'CODE', 'DEL', 'EM', 'FONT', 'I', 'IMG', 'S', 'SPAN', 'STRIKE', 'STRONG', 'SUB', 'SUP', 'U']);
+    const isInlineOnly = (node) => [...node.childNodes].every(k =>
+      k.nodeType === Node.TEXT_NODE ||
+      (k.nodeType === Node.ELEMENT_NODE && INLINE_TAGS.has(k.tagName) && isInlineOnly(k)));
+    const renderOpenTag = (el) => {
+      const attrs = [...el.attributes].map(a =>
+        ` <span class="hl-attr">${escapeHTML(a.name)}</span>` +
+        (a.value !== '' ? `<span class="hl-punct">=</span><span class="hl-str">"${escapeHTML(a.value)}"</span>` : '')
+      ).join('');
+      return `<span class="hl-punct">&lt;</span><span class="hl-tag">${el.tagName.toLowerCase()}</span>${attrs}<span class="hl-punct">&gt;</span>`;
+    };
+    const renderCloseTag = (el) =>
+      `<span class="hl-punct">&lt;/</span><span class="hl-tag">${el.tagName.toLowerCase()}</span><span class="hl-punct">&gt;</span>`;
+    const renderInline = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) return `<span class="hl-text">${escapeHTML(node.textContent)}</span>`;
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      if (VOID_TAGS.has(node.tagName)) return renderOpenTag(node);
+      return renderOpenTag(node) + [...node.childNodes].map(renderInline).join('') + renderCloseTag(node);
+    };
+    const renderBlock = (node, depth) => {
+      const pad = '  '.repeat(depth);
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.trim();
+        return text ? `${pad}<span class="hl-text">${escapeHTML(text)}</span>\n` : '';
+      }
+      if (node.nodeType === Node.COMMENT_NODE)
+        return `${pad}<span class="hl-comment">&lt;!--${escapeHTML(node.textContent)}--&gt;</span>\n`;
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      if (VOID_TAGS.has(node.tagName)) return pad + renderOpenTag(node) + '\n';
+      if (isInlineOnly(node))
+        return pad + renderOpenTag(node) + [...node.childNodes].map(renderInline).join('') + renderCloseTag(node) + '\n';
+      const kids = [...node.childNodes].map(k => renderBlock(k, depth + 1)).join('');
+      return `${pad}${renderOpenTag(node)}\n${kids}${pad}${renderCloseTag(node)}\n`;
+    };
+    const highlightHTML = (html) => {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html ?? '';
+      return [...tpl.content.childNodes].map(n => renderBlock(n, 0)).join('')
+        || '<span class="hl-comment">(empty document)</span>';
+    };
+
     const updatePreview = () => {
       if (!previewContent) return;
       const html = getEditorHTML();
       const mode = previewModeSel && previewModeSel.value ? previewModeSel.value : 'markdown';
+      previewContent.classList.toggle('html-mode', mode === 'html');
       if (mode === 'html') {
-        previewContent.style.whiteSpace = 'pre-wrap';
-        previewContent.textContent = html;
+        previewContent.innerHTML = highlightHTML(html); // tokens built locally, fully escaped
       } else {
-        previewContent.style.whiteSpace = 'pre-wrap';
         previewContent.textContent = htmlToMarkdown(html);
       }
     };
