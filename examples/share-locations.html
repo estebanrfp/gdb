@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grok Location Share - P2P Real-Time Tracking</title>
-    <!-- Leaflet CSS -->
+    <title>Real-Time Location Sharing — powered by GenosDB</title>
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- GenosDB CDN -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/genosdb@latest/dist/index.min.js"></script>
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* Grok-inspired style: Dark theme, futuristic tech look with neon accents */
+        /* Dark tech look with neon accents */
         body {
             margin: 0;
             padding: 0;
@@ -81,9 +78,9 @@
             color: #ffffff;
         }
 
-        /* Custom marker styles for tech feel */
+        /* Glow on markers for the tech feel */
         .leaflet-marker-icon {
-            filter: drop-shadow(0 0 5px #00ffcc); /* Neon glow on markers */
+            filter: drop-shadow(0 0 5px #00ffcc);
         }
     </style>
 </head>
@@ -97,23 +94,28 @@
     </div>
 
     <script type="module">
-        // Initialize GenosDB with RTC for P2P
+        // P2P live tracking on top of GenosRTC data channels: positions are
+        // high-frequency, transient data, so they travel over an ephemeral
+        // channel and never touch the graph (no put / no storage writes).
         import { gdb } from "../dist/index.js";
-        const db = await gdb('grok-location-room', { rtc: true });
+        const db = await gdb('location-share-room', { rtc: true });
         const room = db.room;
 
         // Initialize Leaflet Map
-        const map = L.map('map').setView([0, 0], 2); // Default view
+        const map = L.map('map').setView([0, 0], 2); // World view until the first fix
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
         // Data structures
-        const peers = new Map(); // peerId -> { marker, route: [] }
+        const peers = new Map(); // peerId -> { marker, polyline, route: [] }
+        const MAX_ROUTE_POINTS = 500; // rolling cap: long sessions stay light
         let myLocationWatcher = null;
-        let myRoute = []; // Array of [lat, lng] for own route
+        let myRoute = [];
         let myMarker = null;
         let myPolyline = null;
+        let myLastPosition = null; // latest fix, re-sent to late joiners
+        let centeredOnFirstFix = false; // center once; afterwards the user owns the map
         const locationChannel = room.channel('shareloc');
 
         // UI Elements
@@ -122,6 +124,14 @@
         const statusDiv = document.getElementById('status');
         const peerListDiv = document.getElementById('peer-list');
 
+        // Deterministic neon color per peer so several routes stay distinguishable
+        const peerColor = (peerId) => `hsl(${parseInt(peerId.slice(0, 6), 36) % 360}, 100%, 60%)`;
+        const dotIcon = (color) => L.divIcon({ html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%;"></div>` });
+
+        // Channel messages come from any peer in a public room — validate them.
+        const isValidCoord = (lat, lng) =>
+            Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
         // Helper to update peer list UI
         function updatePeerList() {
             peerListDiv.innerHTML = 'Connected Peers:<br>';
@@ -129,6 +139,7 @@
                 const div = document.createElement('div');
                 div.className = 'peer-item';
                 div.textContent = `Peer ${peerId.slice(0, 8)}...`;
+                div.style.color = peerColor(peerId);
                 peerListDiv.appendChild(div);
             });
             if (peers.size === 0) {
@@ -136,103 +147,134 @@
             }
         }
 
-        // Handle peer join
+        // Handle peer join — and bring the newcomer up to date: watchPosition only
+        // fires on movement, so without this targeted send a late joiner could see
+        // an empty map for minutes.
         room.on('peer:join', (peerId) => {
             console.log(`Peer ${peerId} joined.`);
-            peers.set(peerId, { marker: null, route: [] });
+            peers.set(peerId, { marker: null, polyline: null, route: [] });
             updatePeerList();
+            if (myLastPosition) locationChannel.send(myLastPosition, peerId);
         });
 
         // Handle peer leave
         room.on('peer:leave', (peerId) => {
             console.log(`Peer ${peerId} left.`);
-            const data = peers.get(peerId);
-            if (data) {
-                if (data.marker) map.removeLayer(data.marker);
-                if (data.polyline) map.removeLayer(data.polyline);
-                peers.delete(peerId);
-            }
+            removePeerLayers(peerId);
+            peers.delete(peerId);
             updatePeerList();
         });
 
+        function removePeerLayers(peerId) {
+            const data = peers.get(peerId);
+            if (!data) return;
+            if (data.marker) map.removeLayer(data.marker);
+            if (data.polyline) map.removeLayer(data.polyline);
+            data.marker = null;
+            data.polyline = null;
+            data.route = [];
+        }
+
         // Receive location updates from peers
         locationChannel.on('message', (data, peerId) => {
-            const { lat, lng } = data;
+            // A peer pressed Stop: clear their footprint
+            if (data?.stopped) {
+                removePeerLayers(peerId);
+                return;
+            }
+            const { lat, lng } = data ?? {};
+            if (!isValidCoord(lat, lng)) return;
+
             let peerData = peers.get(peerId);
             if (!peerData) {
-                peerData = { marker: null, route: [], polyline: null };
+                peerData = { marker: null, polyline: null, route: [] };
                 peers.set(peerId, peerData);
+                updatePeerList();
             }
+            const color = peerColor(peerId);
 
             // Update marker
             if (peerData.marker) {
                 peerData.marker.setLatLng([lat, lng]);
             } else {
-                peerData.marker = L.marker([lat, lng], {
-                    icon: L.divIcon({ className: 'peer-marker', html: '<div style="background-color: #00ffcc; width: 20px; height: 20px; border-radius: 50%;"></div>' })
-                }).addTo(map).bindPopup(`Peer ${peerId.slice(0, 8)}`);
+                peerData.marker = L.marker([lat, lng], { icon: dotIcon(color) })
+                    .addTo(map).bindPopup(`Peer ${peerId.slice(0, 8)}`);
             }
 
-            // Update route
+            // Update route (rolling cap)
             peerData.route.push([lat, lng]);
+            if (peerData.route.length > MAX_ROUTE_POINTS) peerData.route.shift();
             if (peerData.polyline) {
                 peerData.polyline.setLatLngs(peerData.route);
             } else {
-                peerData.polyline = L.polyline(peerData.route, { color: '#00ffcc', dashArray: '5, 5' }).addTo(map);
+                peerData.polyline = L.polyline(peerData.route, { color, dashArray: '5, 5' }).addTo(map);
             }
-
-            // Pan to the new location if needed (optional)
-            // map.panTo([lat, lng]);
         });
 
         // Start sharing location
         startBtn.addEventListener('click', () => {
-            if (navigator.geolocation) {
-                myLocationWatcher = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const { latitude: lat, longitude: lng } = position.coords;
-
-                        // Update own marker and route
-                        if (myMarker) {
-                            myMarker.setLatLng([lat, lng]);
-                        } else {
-                            myMarker = L.marker([lat, lng], {
-                                icon: L.divIcon({ className: 'my-marker', html: '<div style="background-color: #ff00cc; width: 20px; height: 20px; border-radius: 50%;"></div>' })
-                            }).addTo(map).bindPopup('You');
-                        }
-
-                        myRoute.push([lat, lng]);
-                        if (myPolyline) {
-                            myPolyline.setLatLngs(myRoute);
-                        } else {
-                            myPolyline = L.polyline(myRoute, { color: '#ff00cc' }).addTo(map);
-                        }
-
-                        // Center map on own location
-                        map.setView([lat, lng], 15);
-
-                        // Send to peers
-                        locationChannel.send({ lat, lng });
-
-                        statusDiv.textContent = 'Status: Sharing location';
-                    },
-                    (error) => console.error('Geolocation error:', error),
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-            } else {
+            if (!navigator.geolocation) {
                 alert('Geolocation not supported.');
+                return;
             }
+            statusDiv.textContent = 'Status: Requesting location…';
+            myLocationWatcher = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude: lat, longitude: lng } = position.coords;
+                    myLastPosition = { lat, lng };
+
+                    // Update own marker and route
+                    if (myMarker) {
+                        myMarker.setLatLng([lat, lng]);
+                    } else {
+                        myMarker = L.marker([lat, lng], { icon: dotIcon('#ff00cc') })
+                            .addTo(map).bindPopup('You');
+                        statusDiv.textContent = 'Status: Sharing location';
+                    }
+
+                    myRoute.push([lat, lng]);
+                    if (myRoute.length > MAX_ROUTE_POINTS) myRoute.shift();
+                    if (myPolyline) {
+                        myPolyline.setLatLngs(myRoute);
+                    } else {
+                        myPolyline = L.polyline(myRoute, { color: '#ff00cc' }).addTo(map);
+                    }
+
+                    // Center only on the first fix — afterwards the user owns the
+                    // map (constant re-centering would fight panning/zooming to peers)
+                    if (!centeredOnFirstFix) {
+                        map.setView([lat, lng], 15);
+                        centeredOnFirstFix = true;
+                    }
+
+                    // Broadcast to every peer in the room
+                    locationChannel.send(myLastPosition);
+                },
+                (error) => {
+                    console.error('Geolocation error:', error);
+                    statusDiv.textContent = `Status: Location error (${error.message})`;
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
         });
 
-        // Stop sharing location
+        // Stop sharing location — clean up locally and tell peers to do the same
         stopBtn.addEventListener('click', () => {
             if (myLocationWatcher) {
                 navigator.geolocation.clearWatch(myLocationWatcher);
                 myLocationWatcher = null;
             }
+            if (myMarker) { map.removeLayer(myMarker); myMarker = null; }
+            if (myPolyline) { map.removeLayer(myPolyline); myPolyline = null; }
+            myRoute = [];
+            myLastPosition = null;
+            centeredOnFirstFix = false;
+            locationChannel.send({ stopped: true });
             startBtn.disabled = false;
             stopBtn.disabled = true;
             statusDiv.textContent = 'Status: Not sharing';
