@@ -27,6 +27,7 @@ A lightweight, decentralized graph database designed for modern web applications
 ![Nostr.band Followers](https://img.shields.io/nostr-band/followers/npub18c556t7n8xa3df2q82rwxejfglw5przds7sqvefylzjh8tjne28qld0we7) -->
 
 ## Table of Contents
+- [How it works](#how-it-works)
 - [Main Features](#main-features)
 - [Project Status](#project-status)
 - [Installation](#installation)
@@ -35,6 +36,20 @@ A lightweight, decentralized graph database designed for modern web applications
 - [License](#license)
 - [Business Inquiries Collaboration](#business-inquiries--collaboration)
 
+
+## How it works
+
+GenosDB runs **entirely in your browser** — there is no central database server. The Security Manager signs every operation with your key, nodes are stored locally in OPFS, and changes replicate **peer-to-peer over WebRTC**. Nostr relays only help peers discover each other — they never see your data.
+
+```mermaid
+graph TD
+    A["Your Browser + GenosDB"] -->|signs every action| B["Security Manager — your key"]
+    A -->|stores nodes| C["Graph store · OPFS"]
+    A -->|reactive queries| D["db.map subscriptions"]
+    C -->|P2P delta sync over WebRTC| E["Other Participants"]
+    C -->|cross-tab| F["BroadcastChannel"]
+    G["Nostr relays"] -.->|signaling / peer discovery only| A
+```
 
 ## Main Features
 
