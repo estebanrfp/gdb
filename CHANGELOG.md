@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-06-11
+
+### Fixed
+
+- **`db.clear()` left the peer silently divergent from the network.** Clearing wiped the local graph but kept the peer's sync watermark (`globalTimestamp` + its persisted `<dbName>_time` key) and its oplog. On reconnect the peer announced a recent watermark, so other peers computed an **empty delta** and the cleared peer never re-pulled pre-existing data — two peers in the same room could hold permanently different states with no error. The stale oplog could also serve "ghost" deltas referencing nodes that no longer existed locally. `clear()` now resets the watermark and empties the oplog (the Hybrid Logical Clock is deliberately untouched so new writes still win LWW), making its semantics coherent: *renounce the local copy and history, and take the documented full-state path on the next sync*. **Behavior change:** clearing while peers hold data means the data is restored from the network on reconnect — the correct P2P semantic (a distributed dataset cannot be deleted by wiping one local cache). Verified live: after `clear()`, the next handshake produces a `fullStateSync` on both sides and the room reconverges.
+
+### Changed
+
+- **Perf & Realtime Stress Test (`examples/perf-stress-test.html`) reworked.** Honest metrics: fulfilled and rejected puts are counted separately, and **ops/s** is computed over pure write time (UI yields excluded), with write vs wall time shown side by side. New **Sync Protocol Observatory** card counts `sync` / `deltaSync` / `fullStateSync` messages live — connect a second browser, close it, insert, and reopen it to watch the Hybrid Delta Protocol switch between delta and full-state catch-up. `saveDelay` and `oplogSize` are now configurable knobs at init.
+
 ## [0.15.1] - 2026-06-11
 
 ### Fixed

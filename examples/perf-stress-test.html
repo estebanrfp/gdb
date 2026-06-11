@@ -60,6 +60,10 @@
       color: inherit;
     }
 
+    input[type="number"] {
+      width: 90px;
+    }
+
     button {
       cursor: pointer;
     }
@@ -90,6 +94,10 @@
       background: #9992;
     }
 
+    .stat.highlight {
+      background: #4a8cff33;
+    }
+
     pre {
       background: #0002;
       border-radius: 8px;
@@ -113,6 +121,14 @@
     <h1>GenosDB – Perf & Realtime Stress Test</h1>
     <div class="row">
       <input id="dbName" value="perf-test" />
+      <div>
+        <label for="saveDelay">saveDelay (ms)</label>
+        <input id="saveDelay" type="number" min="0" value="100" />
+      </div>
+      <div>
+        <label for="oplogSize">oplogSize</label>
+        <input id="oplogSize" type="number" min="1" value="20" />
+      </div>
       <button id="btnInit" class="primary">Init DB</button>
       <button id="btnClear">Clear DB</button>
       <span id="status" class="muted">Not initialized</span>
@@ -153,7 +169,27 @@
           Pause realtime during bulk
         </label>
       </div>
-      <p class="muted">Inserts items in chunks using Promise.allSettled with a micro-yield between batches.</p>
+      <div class="stats" style="margin-top:8px">
+        <span class="stat highlight">ops/s: <b id="opsPerSec">—</b></span>
+        <span class="stat">write: <b id="writeMs">—</b></span>
+        <span class="stat">wall: <b id="wallMs">—</b></span>
+        <span class="stat">failed: <b id="failedCount">0</b></span>
+      </div>
+      <p class="muted">Chunked Promise.allSettled with a UI yield between batches. ops/s is computed over pure write
+        time (yields excluded), failures are counted separately.</p>
+    </div>
+
+    <div class="card">
+      <h3>Sync Protocol Observatory</h3>
+      <div class="stats">
+        <span class="stat">sync req: <b id="pSync">0</b></span>
+        <span class="stat">deltaSync: <b id="pDelta">0</b></span>
+        <span class="stat highlight">fullStateSync: <b id="pFull">0</b></span>
+      </div>
+      <p class="muted">While two peers are <b>online together</b>, changes travel live as <code>upsert</code> op
+        batches — delta/full-state are <b>catch-up</b> messages for missed history. To see them: connect a second
+        browser, <b>close it</b>, insert items here, then <b>reopen it</b> — bulks <b>within</b>
+        <code>oplogSize</code> arrive as <b>deltaSync</b>; larger ones force a <b>fullStateSync</b>.</p>
     </div>
 
     <div class="card">
@@ -182,7 +218,7 @@
 
     const logEl = document.getElementById("log");
 
-    // --- START: OPTIMIZED LOGGING LOGIC ---
+    // Batched DOM logging (50ms) keeps the main thread free during stress runs
     let logBatch = [];
     let logTimeout = null;
 
@@ -199,20 +235,20 @@
       const t = new Date().toLocaleTimeString();
       logBatch.push(`[${t}] ${msg}`);
       if (!logTimeout) {
-        logTimeout = setTimeout(flushLogs, 50); // Batch DOM updates every 50ms
+        logTimeout = setTimeout(flushLogs, 50);
       }
     };
-    // --- END: OPTIMIZED LOGGING LOGIC ---
 
     const set = (id, v) => document.getElementById(id).textContent = String(v);
 
     let db = null;
     let unsub = null;
     let counters = { initial: 0, added: 0, updated: 0, removed: 0 };
+    let protoCounters = { sync: 0, deltaSync: 0, fullStateSync: 0 };
     let lastResults = 0;
     let lastNestedId = null;
     let suppressRealtime = false; // Pause subscription callbacks during bulk
-    let isSubscribed = false; // Gate RX logs and map callbacks
+    let isSubscribed = false;     // Gate RX logs and map callbacks
 
     const resetCounters = () => { counters = { initial: 0, added: 0, updated: 0, removed: 0 }; renderCounters(); };
     const renderCounters = () => {
@@ -222,47 +258,66 @@
       set("cRem", counters.removed);
       set("cRes", lastResults);
     };
+    const renderProto = () => {
+      set("pSync", protoCounters.sync);
+      set("pDelta", protoCounters.deltaSync);
+      set("pFull", protoCounters.fullStateSync);
+    };
 
-    // Initialize DB
+    // Initialize DB — saveDelay and oplogSize are documented gdb() options:
+    // higher saveDelay batches disk writes under load; oplogSize bounds the
+    // delta window of the Hybrid Delta Protocol (beyond it: full-state fallback).
     document.getElementById("btnInit").addEventListener("click", async () => {
-      if (db) return append("DB already initialized.");
+      if (db) return append("DB already initialized (reload the page to change name/knobs).");
       const name = document.getElementById("dbName").value.trim() || "perf-test";
-      append(`Initializing DB '${name}'...`);
-      db = await gdb(name, { rtc: true, saveDelay: 100 });
-      document.getElementById("status").textContent = `Ready: ${name}`;
+      const saveDelay = Math.max(0, Number(document.getElementById("saveDelay").value || 100));
+      const oplogSize = Math.max(1, Number(document.getElementById("oplogSize").value || 20));
+      append(`Initializing DB '${name}' (saveDelay=${saveDelay}ms, oplogSize=${oplogSize})...`);
+      db = await gdb(name, { rtc: true, saveDelay, oplogSize });
+      document.getElementById("status").textContent = `Ready: ${name} · saveDelay ${saveDelay} · oplog ${oplogSize}`;
       document.getElementById("btnInit").textContent = "Ready";
       document.getElementById("btnInit").disabled = true;
       append("DB ready. You can Subscribe or start tests.");
 
-      // RX logs: BroadcastChannel updates from other tabs
+      // RX logs: BroadcastChannel updates from other tabs (gdb.js uses `graphdb_sync_<name>`)
       try {
         const bc = new BroadcastChannel(`graphdb_sync_${name}`);
-        bc.onmessage = (e) => { if (!isSubscribed) return; append(`[RX][BC] ${e.data}`); };
+        bc.onmessage = (e) => {
+          if (!isSubscribed) return;
+          const payload = typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
+          append(`[RX][BC] ${payload}`);
+        };
       } catch { /* ignore */ }
 
-      // RX logs: P2P messages types from peers (if available)
+      // RX logs + protocol observatory: P2P message types from peers.
+      // Channel listeners are a Set internally, so this diagnostic listener
+      // coexists safely with the database's own sync handler.
       try {
         const ch = db.syncChannel;
         if (ch && typeof ch.on === 'function') {
           ch.on('message', (data) => {
-            if (!isSubscribed) return;
             try {
               if (Array.isArray(data)) {
                 const types = data.map(d => d?.type).filter(Boolean);
                 const summary = types.reduce((acc, type) => (acc[type] = (acc[type] || 0) + 1, acc), {});
-                append(`[RX][P2P] ${JSON.stringify(summary)}`);
+                for (const t of types) if (t in protoCounters) protoCounters[t]++;
+                renderProto();
+                if (isSubscribed) append(`[RX][P2P] ${JSON.stringify(summary)}`);
               } else {
-                append(`[RX][P2P] ${data?.type || typeof data}`);
+                const t = data?.type;
+                if (t in protoCounters) protoCounters[t]++;
+                renderProto();
+                if (isSubscribed) append(`[RX][P2P] ${t || typeof data}`);
               }
             } catch {
-              append(`[RX][P2P] message`);
+              if (isSubscribed) append(`[RX][P2P] message`);
             }
           });
         }
         const room = db.room;
         if (room && typeof room.on === 'function') {
-          room.on('peer:join', (id) => { if (!isSubscribed) return; append(`[P2P] peer:join ${id.slice(0, 8)}...`); });
-          room.on('peer:leave', (id) => { if (!isSubscribed) return; append(`[P2P] peer:leave ${id.slice(0, 8)}...`); });
+          room.on('peer:join', (id) => append(`[P2P] peer:join ${id.slice(0, 8)}...`));
+          room.on('peer:leave', (id) => append(`[P2P] peer:leave ${id.slice(0, 8)}...`));
         }
       } catch { /* ignore */ }
     });
@@ -290,7 +345,7 @@
         resetCounters();
         append("Subscribing to map...");
 
-        // --- START: OPTIMIZED MAP CALLBACK ---
+        // Counters tally each action; rendering is batched per animation frame
         const { results, unsubscribe } = await db.map(({ action }) => {
           if (suppressRealtime) return; // skip updates while bulk inserting
 
@@ -299,12 +354,9 @@
           else if (action === 'updated') counters.updated++;
           else if (action === 'removed') counters.removed++;
 
-          // Render counters on next animation frame to batch updates
           requestAnimationFrame(renderCounters);
         });
-        // --- END: OPTIMIZED MAP CALLBACK ---
 
-        // Log a summary after the initial batch is processed
         append(`[RX][MAP] Initial batch processed. Count: ${counters.initial}`);
 
         lastResults = results.length; renderCounters();
@@ -320,7 +372,9 @@
       }
     });
 
-    // Mass insert in chunks
+    // Mass insert in chunks — honest metrics:
+    //  · fulfilled and rejected puts are counted separately
+    //  · ops/s is computed over pure write time (UI yields excluded)
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     async function* chunk(arr, size) { for (let i = 0; i < arr.length; i += size) yield arr.slice(i, i + size); }
 
@@ -330,6 +384,7 @@
       const size = Math.max(1, Number(document.getElementById("chunk").value || 50));
       const pause = document.getElementById("pauseRealtime").checked;
       append(`Inserting ${total} items in chunks of ${size}...`);
+      if (pause && isSubscribed) append("(counters will skip bulk events on purpose — see the final results count)");
 
       const items = Array.from({ length: total }, (_, i) => ({
         type: "task",
@@ -338,14 +393,19 @@
         meta: { tags: ["stress", "batch"], i, details: { nested: { depth: 2 } } }
       }));
 
-      let inserted = 0; const t0 = performance.now();
+      let ok = 0, failed = 0, writeMs = 0;
+      const t0 = performance.now();
       if (pause) suppressRealtime = true;
 
       for await (const batch of chunk(items, size)) {
-        await Promise.allSettled(batch.map(v => db.put(v)));
-        inserted += batch.length;
-        append(`Inserted ${inserted}/${total}`);
-        await sleep(0); // Yield back to the UI thread to prevent freezing
+        const t1 = performance.now();
+        const settled = await Promise.allSettled(batch.map(v => db.put(v)));
+        writeMs += performance.now() - t1;
+        const fulfilled = settled.filter(s => s.status === 'fulfilled').length;
+        ok += fulfilled;
+        failed += settled.length - fulfilled;
+        append(`Inserted ${ok}/${total}${failed ? ` (${failed} failed)` : ''}`);
+        await sleep(0); // Yield back to the UI thread (excluded from write time)
       }
 
       if (pause) {
@@ -353,8 +413,13 @@
         append("Realtime updates resumed.");
       }
 
-      const dt = (performance.now() - t0).toFixed(1);
-      append(`Done inserting. Elapsed: ${dt} ms`);
+      const wallMs = performance.now() - t0;
+      const opsPerSec = writeMs > 0 ? Math.round(ok / (writeMs / 1000)) : 0;
+      set("opsPerSec", opsPerSec.toLocaleString('en-US'));
+      set("writeMs", `${writeMs.toFixed(1)} ms`);
+      set("wallMs", `${wallMs.toFixed(1)} ms`);
+      set("failedCount", failed);
+      append(`Done. ok=${ok}, failed=${failed} · write ${writeMs.toFixed(1)} ms · wall ${wallMs.toFixed(1)} ms · ${opsPerSec.toLocaleString('en-US')} ops/s`);
 
       // Manually refresh current results count if subscribed
       if (unsub) {
@@ -394,7 +459,7 @@
     });
 
     // Helpful explicit log for multi-tab test
-    append("Tip: Open this page in a second tab with the same DB name to verify BroadcastChannel + P2P realtime.");
+    append("Tip: live peers exchange upsert batches; to see deltaSync/fullStateSync in the observatory, close the second browser, insert here, then reopen it (within oplogSize → delta; beyond → full state).");
   </script>
 </body>
 

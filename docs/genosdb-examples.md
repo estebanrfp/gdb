@@ -130,9 +130,7 @@ A clean, minimalist Canvas-based visualization with modern UI design. Features s
 An immersive 3D visualization of the Cellular Mesh network using Three.js. Features rotating cell geometries, glowing peer nodes, animated message particles with trails, and interactive camera controls.
 
 ### [GenosDB - Perf & Stress Test](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
-A dedicated environment for benchmarking GenosDB under high-load scenarios. 
-Allows you to test mass insertions, real-time P2P synchronization, and subscription performance. 
-Ideal for evaluating throughput, latency, and the stability of GDB in demanding use cases.
+A dedicated environment for benchmarking GenosDB under high-load scenarios: chunked mass insertions with honest metrics (**ops/s over pure write time**, fulfilled vs failed), realtime subscription counters, configurable `saveDelay` / `oplogSize` knobs, and a **Sync Protocol Observatory** that counts `sync` / `deltaSync` / `fullStateSync` messages live so you can watch the Hybrid Delta Protocol switch between delta and full-state catch-up across browsers.
 
 ### [GenosDB - Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox.html)
 A testing environment to experiment with GDB Operators and Natural Language for Queries examples
