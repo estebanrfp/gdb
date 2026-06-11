@@ -1,6 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geo Query Playground — powered by GenosDB</title>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -83,25 +89,25 @@
 <body>
   <div class="sidebar">
     <ul class="query-list" id="queryList">
-  <!-- Example 1: Places within 5 km of Times Square -->
+      <!-- Example 1: Places within 5 km of Times Square ($near) -->
       <li class="query-item"
-        data-query='{"query": {"$near": {"latitude": 40.7589, "longitude": -73.9851, "radius": 5}}, "order": "asc", "field": "name"}'>
-        <strong>Lugares a menos de 5 km de Times Square</strong><br>
-  Finds places within a 5 km radius from Times Square.
+        data-query='{"query": {"location": {"$near": {"latitude": 40.7589, "longitude": -73.9851, "radius": 5}}}, "order": "asc", "field": "name"}'>
+        <strong>Within 5 km of Times Square</strong><br>
+        $near — places inside a 5 km radius from Times Square.
       </li>
-  
-  <!-- Example 2: Places within 10 km of the Empire State Building -->
+
+      <!-- Example 2: Places within 10 km of the Empire State Building ($near) -->
       <li class="query-item"
-        data-query='{"query": {"$near": {"latitude": 40.7484, "longitude": -73.9857, "radius": 10}}, "order": "asc", "field": "name"}'>
-        <strong>Lugares a menos de 10 km del Empire State Building</strong><br>
-  Finds places within a 10 km radius from the Empire State Building.
+        data-query='{"query": {"location": {"$near": {"latitude": 40.7484, "longitude": -73.9857, "radius": 10}}}, "order": "asc", "field": "name"}'>
+        <strong>Within 10 km of the Empire State Building</strong><br>
+        $near — places inside a 10 km radius from the Empire State Building.
       </li>
-  
-  <!-- Example 3: Places within the Manhattan area -->
+
+      <!-- Example 3: Places within the Manhattan area ($bbox) -->
       <li class="query-item"
-        data-query='{"query": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}, "order": "asc", "field": "name"}'>
-        <strong>Lugares dentro del área de Manhattan</strong><br>
-  Finds places within a bounding box covering part of Manhattan.
+        data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
+        <strong>Inside the Manhattan area</strong><br>
+        $bbox — places within a bounding box covering part of Manhattan.
       </li>
     </ul>
   </div>
@@ -111,97 +117,103 @@
     <div class="results-panel">
       <div id="map"></div>
     </div>
-    <div class="status-bar" id="statusBar">Ready</div>
+    <div class="status-bar" id="statusBar">Loading sample data…</div>
   </div>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
-  import { gdb } from "../dist/index.js";
+    import { gdb } from "../dist/index.js";
 
-  // Standard initialization with geolocation
-  const db = await gdb('geolocationDB', { rtc: true, geo: true });
+    // The geo option activates the $near / $bbox operators.
+    const db = await gdb('geo-playground', { rtc: true, geo: true });
 
-  // Initialize the map with Leaflet
-  const map = L.map('map').setView([40.7128, -74.006], 12); // Initial coordinates and zoom
+    const statusBar = document.getElementById('statusBar');
+    const queryDisplay = document.getElementById('queryDisplay');
+
+    // Initialize the Leaflet map
+    const map = L.map('map').setView([40.7128, -74.006], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-  // Function to populate the database with geographic data
+    // Seed the database with geo-tagged places. Coordinates live in a nested
+    // `location` object — the field the documented geo queries target:
+    //   { location: { $near: { latitude, longitude, radius } } }
     async function populateSampleData() {
-      await db.put({ name: "Central Park", latitude: 40.7829, longitude: -73.9654 }, 'Central Park');
-      await db.put({ name: "Empire State Building", latitude: 40.7484, longitude: -73.9857 }, 'Empire State Building');
-      await db.put({ name: "Statue of Liberty", latitude: 40.6892, longitude: -74.0445 }, 'Statue of Liberty');
-      await db.put({ name: "Brooklyn Bridge", latitude: 40.7061, longitude: -73.9969 }, 'Brooklyn Bridge');
-      await db.put({ name: "Times Square", latitude: 40.7589, longitude: -73.9851 },'Times Square');
-      await db.put({ name: "Yankee Stadium", latitude: 40.8296, longitude: -73.9262 }, 'Yankee Stadium');
-      await db.put({ name: "Coney Island", latitude: 40.5755, longitude: -73.9813 }, 'Coney Island');
-      await db.put({ name: "The Met Museum", latitude: 40.7794, longitude: -73.9632 }, 'The Met Museum');
-  console.log("Sample data inserted successfully.");
+      const places = [
+        { name: "Central Park", latitude: 40.7829, longitude: -73.9654 },
+        { name: "Empire State Building", latitude: 40.7484, longitude: -73.9857 },
+        { name: "Statue of Liberty", latitude: 40.6892, longitude: -74.0445 },
+        { name: "Brooklyn Bridge", latitude: 40.7061, longitude: -73.9969 },
+        { name: "Times Square", latitude: 40.7589, longitude: -73.9851 },
+        { name: "Yankee Stadium", latitude: 40.8296, longitude: -73.9262 },
+        { name: "Coney Island", latitude: 40.5755, longitude: -73.9813 },
+        { name: "The Met Museum", latitude: 40.7794, longitude: -73.9632 },
+      ];
+      for (const { name, latitude, longitude } of places) {
+        await db.put({ name, location: { latitude, longitude } }, name);
+      }
+      console.log("Sample data inserted successfully.");
     }
-  // db.clear()
-  // Run the function to populate the database
-    populateSampleData();
 
-  // Function to execute a query and display results on the map
-    async function executeQuery(query) {
-      const { results } = await db.map();
-   
-      const statusBar = document.getElementById('statusBar');
+    // Execute a query (the textarea/data-query JSON is a db.map options object)
+    // and render the matching places on the map.
+    async function executeQuery(options) {
+      try {
+        const { results } = await db.map(options);
 
-  // Clear previous markers
-      map.eachLayer((layer) => {
-        if (layer instanceof L.Marker) map.removeLayer(layer);
-      });
-
-  // Show new markers on the map
-      if (results.length > 0) {
-        results.forEach((node) => {
-          const { latitude, longitude, name } = node.value;
-          if (latitude && longitude) {
-            console.log(latitude,longitude)
-            L.marker([latitude, longitude])
-              .addTo(map)
-              .bindPopup(name || "Unnamed Location");
-          }
+        // Clear previous markers
+        map.eachLayer((layer) => {
+          if (layer instanceof L.Marker) map.removeLayer(layer);
         });
 
-  // Center the map on the first result
-        map.setView([results[0].value.latitude, results[0].value.longitude], 12);
-        statusBar.textContent = `Query completed: ${results.length} results found`;
-        console.log(results)
-      } else {
-        statusBar.textContent = 'No results found';
+        if (results.length === 0) {
+          statusBar.textContent = 'No results found';
+          return;
+        }
+
+        const markers = results.map((node) => {
+          const { latitude, longitude } = node.value.location ?? node.value;
+          return L.marker([latitude, longitude])
+            .addTo(map)
+            .bindPopup(node.value.name || "Unnamed Location");
+        });
+
+        // Frame all results on the map
+        map.fitBounds(L.featureGroup(markers).getBounds().pad(0.25));
+        statusBar.textContent = `Query completed: ${results.length} result${results.length === 1 ? '' : 's'} found`;
+        console.log(results);
+      } catch (error) {
+        statusBar.textContent = `Query error: ${error.message}`;
+        console.error(error);
       }
     }
 
-  // Event listener for query list items
+    // Sidebar: run the clicked example (closest() so clicks on inner text work too)
     document.getElementById('queryList').addEventListener('click', async (event) => {
-      if (event.target.classList.contains('query-item')) {
-        document.querySelectorAll('.query-item').forEach(item => item.classList.remove('active'));
-        event.target.classList.add('active');
-        const query = JSON.parse(event.target.getAttribute('data-query'));
-        const queryDisplay = document.getElementById('queryDisplay');
-        queryDisplay.value = JSON.stringify(query, null, 2);
-        await executeQuery(query);
-      }
+      const item = event.target.closest('.query-item');
+      if (!item) return;
+      document.querySelectorAll('.query-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      const options = JSON.parse(item.getAttribute('data-query'));
+      queryDisplay.value = JSON.stringify(options, null, 2);
+      await executeQuery(options);
     });
 
-  // Event listener for manual query editing
-    document.getElementById('queryDisplay').addEventListener('keydown', async (event) => {
+    // Manual editing: Enter executes, Shift+Enter inserts a newline
+    queryDisplay.addEventListener('keydown', async (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        const queryDisplay = document.getElementById('queryDisplay');
         try {
-          const query = JSON.parse(queryDisplay.value);
-          await executeQuery(query);
-        } catch (error) {
+          await executeQuery(JSON.parse(queryDisplay.value));
+        } catch {
           alert('Invalid JSON format. Please correct the query.');
         }
       }
     });
+
+    // Seed data, then run the first example so the playground opens alive
+    await populateSampleData();
+    document.querySelector('.query-item').click();
   </script>
 </body>
 </html>

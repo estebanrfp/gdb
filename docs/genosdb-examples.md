@@ -60,6 +60,9 @@ A real-time peer-to-peer File Streaming app using GenosDB’s room feature.
 An interactive example that enables multiple users to share their live location on a map in real time, using Leaflet for visualization and GenosRTC as the P2P transport layer.
 Each participant can start or stop location sharing, track their own path, and follow other connected users’ movements live.
 
+### [Real-Time Geolocation](https://estebanrfp.github.io/gdb/examples/geo.html)
+Detects your current position, seeds sample nodes around it, and finds the ones within 50 km using the **Geo module's** `$near` operator — markers and results update on a Leaflet map wherever you are.
+
 ### [Real-Time collaborative rich‑text editor powered by GenosDB](https://estebanrfp.github.io/gdb/examples/collab.html)
 A real-time collaborative rich‑text editor powered by GenosDB: live typing sync, remote cursors/selections, RBAC + WebAuthn auth, Markdown/HTML split preview with draggable splitter, version history panel, file sharing, and video room.
 
@@ -133,6 +136,9 @@ Ideal for evaluating throughput, latency, and the stability of GDB in demanding 
 
 ### [GenosDB - Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox.html)
 A testing environment to experiment with GDB Operators and Natural Language for Queries examples
+
+### [GenosDB - Geo Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox-locations.html)
+An interactive playground for the **Geo module**: pick or edit `$near` / `$bbox` queries and watch the matching places render live on a Leaflet map of New York. Ideal for learning the documented geo query syntax.
 
 ### [Edge Operator Testbed](https://estebanrfp.github.io/gdb/examples/edge-operator-testbed.html)
 `$edge` Operator Testbed environment to experiment with GenosDB Operators

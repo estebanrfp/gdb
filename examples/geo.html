@@ -47,12 +47,20 @@
 
     // db.clear()
 
-    // Simulate some nodes with geographic coordinates
-    async function populateSampleData() {
-      // await db.put({ latitude: 34.53264501340196, longitude: -0.4273969105505087, name: "Node A" });
-      // await db.put({ latitude: 40.7306, longitude: -73.9352, name: "Node B" });
-      // await db.put({ latitude: 40.6501, longitude: -73.9496, name: "Node C" });
-      // await db.put({ latitude: 40.8404, longitude: -73.8688, name: "Node D" });
+    // Simulate nodes around the detected position (fixed offsets + fixed ids,
+    // so the demo shows nearby results wherever you are and reloads stay clean).
+    // Coordinates live in a nested `location` object — the field the documented
+    // geo queries target: { location: { $near: { latitude, longitude, radius } } }
+    async function populateSampleData(latitude, longitude) {
+      const offsets = [
+        { name: "Node A", dLat: 0.05, dLng: 0.03 },    // ~6 km away
+        { name: "Node B", dLat: -0.08, dLng: 0.10 },   // ~12 km away
+        { name: "Node C", dLat: 0.20, dLng: -0.15 },   // ~26 km away
+        { name: "Node D", dLat: 0.90, dLng: 0.60 },    // ~110 km away (outside the 50 km radius)
+      ];
+      for (const { name, dLat, dLng } of offsets) {
+        await db.put({ name, location: { latitude: latitude + dLat, longitude: longitude + dLng } }, name);
+      }
     }
 
     // Get the user's current location
@@ -70,7 +78,7 @@
 
     // Display the location on the map using Leaflet
     function displayMap(latitude, longitude, name = "You are here.") {
-      const map = L.map('map').setView([latitude, longitude], 12);
+      const map = L.map('map').setView([latitude, longitude], 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(map);
@@ -78,23 +86,29 @@
         .addTo(map)
         .bindPopup(name)
         .openPopup();
+      return map;
     }
 
-    // Find nearby nodes using the $near operator
-    async function findNearbyNodes(latitude, longitude) {
-      const { results } = await db.map();
-      // {
-      //   query: {
-      //     location: {
-      //       $near: { latitude, longitude, radius: 50 } // 50 km
-      //     }
-      //   }
-      // }
+    // Find nearby nodes using the documented $near operator (radius in km)
+    async function findNearbyNodes(latitude, longitude, map) {
+      const { results } = await db.map({
+        query: {
+          location: {
+            $near: { latitude, longitude, radius: 50 } // 50 km
+          }
+        },
+        field: "name",
+        order: "asc"
+      });
       console.log(results);
       const resultsDiv = document.getElementById("results");
       if (results.length > 0) {
-        resultsDiv.innerHTML = `<h3>Nearby nodes:</h3><ul>${results
-          .map(node => `<li>${node.value.name} (${node.value.latitude}, ${node.value.longitude})</li>`)
+        resultsDiv.innerHTML = `<h3>Nearby nodes (within 50 km):</h3><ul>${results
+          .map(node => {
+            const { latitude: lat, longitude: lng } = node.value.location ?? node.value;
+            L.marker([lat, lng]).addTo(map).bindPopup(node.value.name);
+            return `<li>${node.value.name} (${lat.toFixed(4)}, ${lng.toFixed(4)})</li>`;
+          })
           .join("")}</ul>`;
       } else {
         resultsDiv.innerHTML = "<p>No nearby nodes found.</p>";
@@ -104,21 +118,20 @@
     // Initialize the app
     async function initApp() {
       try {
-        // Fill sample data
-        await populateSampleData();
-        // Get current location
+        // Get current location first — sample nodes are seeded around it
         const position = await getCurrentLocation();
         const { latitude, longitude } = position.coords;
+        await populateSampleData(latitude, longitude);
         // Show location
         document.getElementById("status").textContent = "Location detected.";
         document.getElementById("current-location").innerHTML = `
           <strong>Latitude:</strong> ${latitude}<br>
           <strong>Longitude:</strong> ${longitude}
         `;
-        // Show map
-        displayMap(latitude, longitude);
-        // Find nearby nodes
-        await findNearbyNodes(latitude, longitude);
+        // Show map and nearby nodes (Node D is seeded ~110 km away on purpose,
+        // so the 50 km $near query returns A, B and C but not D)
+        const map = displayMap(latitude, longitude);
+        await findNearbyNodes(latitude, longitude, map);
       } catch (error) {
         console.error("Error:", error);
         document.getElementById("status").textContent = `Error: ${error}`;

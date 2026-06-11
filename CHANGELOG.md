@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-06-11
+
+### Fixed
+
+- **Geo module — `$near` / `$bbox` queries returned no results (operators were disconnected from the query engine).** The module registered its operators on a property the engine never reads, so every geo query silently matched nothing (and the top-level `{ $near: … }` form crashed). The module now resolves geo conditions itself through a geo-aware `db.map` wrapper: geo conditions are extracted from the query (both documented forms — field-wrapped and top-level), every remaining filter is delegated to the engine untouched, and `field`/`order`/`$after`/`$before`/`$limit` are re-applied **after** the geo filter with the engine's exact semantics. Realtime subscriptions emit correct `added`/`updated`/`removed` actions as nodes enter or leave the queried area, and both documented coordinate formats (flat and nested `location`) now work. Queries without geo conditions pass through byte-for-byte. Rebuilds `dist/geo.min.js`; no core engine changes.
+- **`dist/geo.min.js` was tracked as `Geo.min.js` (case mismatch).** The loader requests `./geo.min.js`, so on case-sensitive hosting (GitHub Pages, Linux) the dynamic import 404'd and `geo: true` failed to initialize. The tracked filename is now lowercase.
+- **Geo examples completed:** `examples/sandbox-locations.html` reworked as the **Geo Query Playground** (documented `$near`/`$bbox` queries wired to `db.map`, live Leaflet markers, editable query box) and `examples/geo.html` now seeds nodes around your detected position and renders the 50 km `$near` matches on the map — both had been left with stubbed queries since the module never returned results.
+
 ## [0.15.0] - 2026-06-10
 
 ### Removed
