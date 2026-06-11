@@ -2,7 +2,7 @@
 
 A lightweight, decentralized graph database designed for modern web applications, offering real-time peer-to-peer synchronization, SM ([Security Manager](https://github.com/estebanrfp/gdb/blob/main/docs/sm-architecture.md)) Provides WebAuthn-based authentication, role-based access control (RBAC), Access Control Lists ([ACLs](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md)), rule-based role promotion & demotion ([Governance](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md)), and efficient local storage utilizing OPFS.
 
-![GenosDB](https://i.imgur.com/7Xqrht1.png)
+[![GenosDB live demo — Cellular Mesh P2P sync](assets/genosdb-hero.gif)](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-examples.md)
 
 ---
 
