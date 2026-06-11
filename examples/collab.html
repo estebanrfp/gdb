@@ -977,9 +977,47 @@
       return a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;
     };
 
+    // ── XSS guard ────────────────────────────────────────────────────────────
+    // The document body travels P2P (docChannel) and persists in the graph, so any
+    // peer can craft its markup. Every write into the editor flows through this
+    // allowlist sanitizer — remote HTML can never execute in local browsers.
+    const SAFE_TAGS = new Set(['A', 'ABBR', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DEL', 'DIV', 'EM', 'FONT', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR', 'I', 'IMG', 'LI', 'OL', 'P', 'PRE', 'S', 'SPAN', 'STRIKE', 'STRONG', 'SUB', 'SUP', 'U', 'UL']);
+    const DROP_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'FRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'BASE', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'MATH', 'SVG']);
+    const SAFE_URL = /^(https?:|data:image\/)/i;
+    const sanitizeHTML = (html) => {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html ?? '';
+      // Presence artifacts (remote cursors/selections) must never persist as content.
+      tpl.content.querySelectorAll('.cursor, .selection-rect').forEach(el => el.remove());
+      for (const el of [...tpl.content.querySelectorAll('*')]) {
+        if (DROP_TAGS.has(el.tagName)) { el.remove(); continue; }
+        if (!SAFE_TAGS.has(el.tagName)) { el.replaceWith(...el.childNodes); continue; }
+        for (const { name, value } of [...el.attributes]) {
+          const keep =
+            (name === 'href' || name === 'src') ? SAFE_URL.test(value.trim()) :
+              (name === 'style') ? !/url\s*\(|expression\s*\(/i.test(value) :
+                ['color', 'face', 'size', 'align', 'target', 'rel'].includes(name);
+          if (!keep) el.removeAttribute(name);
+        }
+        if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+      }
+      return tpl.innerHTML;
+    };
+
     // Helpers for contenteditable
-    const getEditorHTML = () => editor.innerHTML;
-    const setEditorHTML = (html) => { editor.innerHTML = html || ''; };
+    // getEditorHTML strips the live presence overlays so cursors are never sent or saved as document content.
+    const getEditorHTML = () => {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = editor.innerHTML;
+      tpl.content.querySelectorAll('.cursor, .selection-rect').forEach(el => el.remove());
+      return tpl.innerHTML;
+    };
+    const setEditorHTML = (html) => {
+      editor.innerHTML = sanitizeHTML(html);
+      // The overlay elements were just wiped with the old DOM; drop the stale refs
+      // so the next cursor message recreates them cleanly.
+      for (const k of Object.keys(cursorMap)) delete cursorMap[k];
+    };
     const focusEditor = () => { editor.focus(); };
     // line numbers removed
 
@@ -1244,7 +1282,7 @@
         // summary compact mode
         authDiv.classList.add('compact');
         authSummary.style.display = 'flex';
-        authSummaryAddr.textContent = state.activeAddress || '—';
+        authSummaryAddr.textContent = state.abbrAddr || shortAddr(state.activeAddress) || '—';
         authSummary.setAttribute('aria-expanded', 'false');
         logoutBtn.style.display = 'inline-block';
         protectWebAuthnBtn.disabled = !!state.isWebAuthnProtected;
@@ -1256,7 +1294,6 @@
         protectWebAuthnBtn.style.display = state.isWebAuthnProtected ? 'none' : 'inline-block';
         // Hide mnemonic block to declutter when signed in
         mnemonicBlock.style.display = 'none';
-        editor.disabled = false;
       } else {
         // no compact when signed out
         authDiv.classList.remove('compact');
@@ -1265,10 +1302,13 @@
         authSummary.setAttribute('aria-expanded', 'false');
         logoutBtn.style.display = 'none';
         protectWebAuthnBtn.disabled = true;
-        // keep editor enabled for guest write demo
-        editor.disabled = false;
-        // Show sign-up/login controls again
-        signupWebAuthnBtn.style.display = 'inline-block';
+        // The editor stays editable: guest write is intentionally open in this demo
+        // (customRoles grants `guest` the `write` permission — the documented way
+        // to relax the zero-trust default for public apps).
+        // Show sign-up/login controls again — but while a freshly generated identity
+        // is pending (volatile), hide "Create identity" so the user saves that phrase
+        // and continues with it instead of minting another one (SM UX best practice).
+        signupWebAuthnBtn.style.display = state.hasVolatileIdentity ? 'none' : 'inline-block';
         loginWebAuthnBtn.style.display = state.hasWebAuthnHardwareRegistration ? 'inline-block' : 'none';
         if (mnemonicLoginSection) mnemonicLoginSection.style.display = 'block';
         protectWebAuthnBtn.style.display = 'inline-block';
@@ -1441,7 +1481,8 @@
       peerCount--;
       updateStatus();
       if (cursorMap[peerId]) {
-        cursorMap[peerId].remove();
+        cursorMap[peerId].cursor?.remove();
+        cursorMap[peerId].rects?.forEach(el => el.remove());
         delete cursorMap[peerId];
       }
       if (peerVideos[peerId]) {
@@ -1472,14 +1513,16 @@
     });
 
     db.room.on('stream:add', (stream, peerId) => {
-      if (!peerVideos[peerId] && stream.getVideoTracks().length > 0) {
-        const video = document.createElement('video');
+      if (stream.getVideoTracks().length === 0) return;
+      let video = peerVideos[peerId];
+      if (!video) {
+        video = document.createElement('video');
         video.autoplay = true;
         video.playsInline = true;
-        video.srcObject = stream;
         videoContainer.appendChild(video);
         peerVideos[peerId] = video;
       }
+      video.srcObject = stream; // always refresh — peers may restart their stream
     });
 
     // Check document existence
@@ -1495,21 +1538,28 @@
     updatePreview();
     ensureIconsVisible();
 
-    // Real-time document updates from DB
-    const { unsubscribe } = await db.map({
-      query: { id: docId }
-    }, ({ id, value, action }) => {
-      if (action === 'updated' && id === docId) {
-        const newTs = value.timestamp ? value.timestamp.physical : Date.now();
-        if (newTs > lastTimestamp) {
-          lastTimestamp = newTs;
-          setEditorHTML(value.content || '');
-          updateWordCount();
-        }
-      }
+    // Real-time document updates from the graph. db.get(id, cb) is the canonical
+    // single-node subscription: a direct lookup with built-in HLC gating (the
+    // callback only fires when the node's hybrid-clock timestamp actually advances).
+    const { unsubscribe } = await db.get(docId, (node) => {
+      if (!node?.value) return;
+      const incoming = node.value.content || '';
+      // Skip echoes of our own debounced save and states already applied via the
+      // live channel — repainting identical content would destroy the local caret.
+      if (incoming === getEditorHTML()) return;
+      const ts = node.timestamp?.physical ?? 0;
+      if (ts <= lastTimestamp) return;
+      lastTimestamp = ts;
+      setEditorHTML(incoming);
+      updateWordCount();
+      updatePreview();
     });
 
-    // Live broadcast while typing (throttled) + save when user stops (debounced)
+    // Live broadcast while typing (throttled) + save when user stops (debounced).
+    // NOTE — concurrency model: the whole document is ONE graph node resolved by
+    // LWW + Hybrid Logical Clock, so simultaneous edits resolve to the last writer
+    // (no per-character merge). Ideal for demos and small teams; for char-level
+    // merging integrate a CRDT (e.g. Yjs) and keep GenosDB as transport + storage.
     editor.addEventListener('input', async () => {
       const now = Date.now();
       pendingContent = getEditorHTML();
@@ -1519,7 +1569,9 @@
 
       // Live send (no RBAC requirement for demo; peers see changes immediately)
       const sendLive = () => {
-        const ts = Date.now();
+        // HLC-style bump: never emit a ts behind the newest one seen, so a peer
+        // with a slow wall clock is not silently ignored by the others.
+        const ts = Math.max(Date.now(), lastTimestamp + 1);
         if (ts > lastTimestamp) lastTimestamp = ts;
         docChannel.send({ content: pendingContent, ts });
         lastLiveSent = ts;
@@ -1712,8 +1764,12 @@
       }
     };
     const MAX_HISTORY_ITEMS = 30; // rolling limit suggestion
-    fileChannel.on('message', (message, peerId) => {
-      const { metadata, payload } = message;
+    // WebRTC data channels cap message size (~256KB depending on the browser), so
+    // larger files travel as ordered chunks reassembled per metadata.id — the
+    // official GenosRTC best practice for file transfer.
+    const FILE_CHUNK_BYTES = 64 * 1024;
+    const incomingFiles = {};
+    const renderReceivedFile = (metadata, payload, peerId) => {
       const blob = new Blob([payload], { type: metadata.type });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -1721,6 +1777,18 @@
       link.textContent = `File from ${peerId}: ${metadata.name}`;
       link.className = 'file-item';
       appendWithRollingLimit(versionList, link, MAX_HISTORY_ITEMS);
+    };
+    fileChannel.on('message', (message, peerId) => {
+      const { metadata, payload, chunk } = message || {};
+      if (!metadata) return;
+      if (!chunk) { renderReceivedFile(metadata, payload, peerId); return; } // small file: single message
+      const entry = (incomingFiles[metadata.id] ??= { parts: [], received: 0 });
+      entry.parts[chunk.seq] = payload;
+      entry.received++;
+      if (entry.received === chunk.total) {
+        renderReceivedFile(metadata, new Blob(entry.parts), peerId);
+        delete incomingFiles[metadata.id];
+      }
     });
 
     fileInput.addEventListener('change', async (event) => {
@@ -1730,11 +1798,19 @@
         await ensureActiveGuestIdentity();
         await db.sm.executeWithPermission("write");
         const buffer = await file.arrayBuffer();
-        const message = {
-          metadata: { name: file.name, type: file.type, id: `file-${Date.now()}` },
-          payload: buffer
-        };
-        fileChannel.send(message);
+        const metadata = { name: file.name, type: file.type, id: `file-${Date.now()}` };
+        if (buffer.byteLength <= FILE_CHUNK_BYTES) {
+          fileChannel.send({ metadata, payload: buffer });
+        } else {
+          const total = Math.ceil(buffer.byteLength / FILE_CHUNK_BYTES);
+          for (let seq = 0; seq < total; seq++) {
+            fileChannel.send({
+              metadata,
+              chunk: { seq, total },
+              payload: buffer.slice(seq * FILE_CHUNK_BYTES, (seq + 1) * FILE_CHUNK_BYTES)
+            });
+          }
+        }
       } catch (error) {
         showMsg('err', 'Error sharing file: ' + (error?.message || error));
       }
@@ -1778,8 +1854,12 @@
       }
     });
 
+    // Restore version history. Versions are children of the doc (db.link(docId, versionId)),
+    // so the doc is the $edge starting point and the sub-query filters its descendants.
     const { results } = await db.map({
-      query: { $edge: { id: docId } }
+      query: { id: docId, $edge: { content: { $exists: true } } },
+      field: 'timestamp',
+      order: 'desc'
     });
     results.forEach(node => {
       const btn = document.createElement('button');
