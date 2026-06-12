@@ -39,7 +39,7 @@ A lightweight, decentralized graph database designed for modern web applications
 
 ## How it works
 
-GenosDB runs **entirely in your browser** — there is no central database server. The Security Manager signs every operation with your key, nodes are stored locally in OPFS, and changes replicate **peer-to-peer over WebRTC**. Nostr relays only help peers discover each other — they never see your data.
+GenosDB runs **entirely in your browser** — there is no central database server. The Security Manager signs every operation with your key, nodes are stored locally in OPFS, and changes replicate **peer-to-peer over WebRTC** through [GenosRTC](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-api-reference.md), GenosDB's own networking layer. Nostr relays only help peers discover each other — they never see your data.
 
 ```ascii
 Nostr Relays
@@ -53,7 +53,7 @@ Browser + GenosDB
 │
 ├─► Graph Store (OPFS)    (stores nodes)
 │    │
-│    ├─► Other Peers      (WebRTC sync)
+│    ├─► Other Peers      (GenosRTC / WebRTC sync)
 │    │
 │    └─► BroadcastChannel (cross-tab)
 │
