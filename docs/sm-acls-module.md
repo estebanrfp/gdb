@@ -13,6 +13,32 @@ The **Access Control Lists (ACLs)** module provides fine-grained, node-level per
 - **Integration with RBAC**: Works alongside existing role-based permissions
 - **Automatic Middleware**: Enforces permissions on all database operations
 
+### How permissions work
+
+```ascii
+A node becomes ACL-protected the moment it is created with acls.set —
+the caller is its owner, who then grants access to other addresses.
+
+  Node
+   │
+   ├──► owner          full control — read · write · delete · grant / revoke
+   │
+   └──► collaborators  one access level per address, granted by the owner:
+          read    →  read
+          write   →  read + write
+          delete  →  read + write + delete
+
+   delete ⊃ write ⊃ read                    everyone else → no access
+
+Every put / remove is re-checked by the ACL middleware on EVERY peer,
+so a tampered client cannot touch a node it does not own:
+
+   owner                       ──►  allow
+   collaborator perm ≥ action  ──►  allow
+   node has no owner (plain)   ──►  allow     (ACLs are opt-in per node)
+   otherwise                   ──►  deny
+```
+
 ## Quick Start
 
 ### 1. Enable ACLs
