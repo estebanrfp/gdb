@@ -345,6 +345,11 @@
       background: var(--success);
     }
 
+    .badge--delete {
+      color: #fff;
+      background: var(--danger);
+    }
+
     .badge--none {
       color: var(--muted);
       background: var(--surface-2);
@@ -422,7 +427,7 @@
         <li>In one, press <strong>🛡️ Superadmin</strong> — it runs the governance engine that promotes guests.</li>
         <li>In the others, log in as <strong>Alice</strong> / <strong>Bob</strong>: they start as <code>guest</code> (no write
           access) and are promoted to <code>user</code> by the superadmin in ~5 seconds.</li>
-        <li>Once promoted, create notes and grant / revoke per-note access between Alice and Bob.</li>
+        <li>Once promoted, create notes and grant / revoke <strong>read, write or delete</strong> per note — the owner can even delegate <strong>delete</strong>, so Bob can remove a note Alice shared with him.</li>
       </div>
       <div class="login-row">
         <button id="login-superadmin" class="btn btn--dark">🛡️ Superadmin (demo)</button>
@@ -736,6 +741,7 @@
             <span class="spacer"></span>
             <button class="btn btn--ghost btn--sm" data-action="grant-read" ${perm === 'read' ? 'disabled' : ''}>Grant read</button>
             <button class="btn btn--ghost btn--sm" data-action="grant-write" ${perm === 'write' ? 'disabled' : ''}>Grant write</button>
+            <button class="btn btn--ghost btn--sm" data-action="grant-delete" ${perm === 'delete' ? 'disabled' : ''}>Grant delete</button>
             <button class="btn btn--ghost btn--sm" data-action="revoke" ${!perm ? 'disabled' : ''}>Revoke</button>
             <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
           </div>
@@ -745,7 +751,7 @@
     /** A note shared with the current user; editable only with `write` permission. */
     const renderShared = ({ id, value }) => {
       const perm = permFor(value.collaborators, myAddress);
-      const canWrite = perm === 'write';
+      const canWrite = perm === 'write' || perm === 'delete';
       return `
         <article class="note" data-id="${id}">
           <div class="note__head">
@@ -757,6 +763,7 @@
             <span class="badge">from ${label(value.owner)}</span>
             <span class="spacer"></span>
             ${canWrite ? '<button class="btn btn--sm" data-action="save">Save</button>' : ''}
+            ${perm === 'delete' ? '<button class="btn btn--danger btn--sm" data-action="delete">Delete</button>' : ''}
           </div>
         </article>`;
     };
@@ -783,6 +790,9 @@
         } else if (action === 'grant-write') {
           await db.sm.acls.grant(id, other().address, 'write');
           toast(`Granted write to ${other().name}`);
+        } else if (action === 'grant-delete') {
+          await db.sm.acls.grant(id, other().address, 'delete');
+          toast(`Granted delete to ${other().name}`);
         } else if (action === 'revoke') {
           await db.sm.acls.revoke(id, other().address);
           toast(`Revoked ${other().name}'s access`);
