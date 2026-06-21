@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-21
+
+### Added
+
+- **SM-ACLs — delegated deletion.** `db.sm.acls.grant(nodeId, address, 'delete')` now works: an owner can grant another user permission to **delete** a specific node, closing the gap where the API reference advertised `'delete'` as a grantable permission while `grant` accepted only `'read'`/`'write'` (and so threw at runtime). A `'delete'` collaborator may now remove the node — via `db.sm.acls.delete(id)` or a `remove` op — and, since delete implies write, edit it too; the ACL middleware enforces this on **every** peer, so a non-owner *without* the grant is still rejected (the delegation is scoped, never global). Owner-only deletion and `'read'`/`'write'` grants are unchanged — fully backward-compatible. The ACLs testbed ([examples/acls.html](https://github.com/estebanrfp/gdb/blob/main/examples/acls.html)) demonstrates it: the owner grants `delete` per note and the recipient gets a **Delete** button on a note shared with them. Rebuilds `dist/sm-acls.min.js`.
+
 ## [0.15.2] - 2026-06-11
 
 ### Fixed
