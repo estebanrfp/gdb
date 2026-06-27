@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-06-27
+
+### Fixed
+
+- **P2P discovery could stall completely when a single signaling relay was unreachable.** GenosRTC's gateway gated the entire announce/discovery phase behind a `Promise.all` over every relay's readiness — and a relay socket that never opens (down, slow, or hanging the WebSocket handshake) leaves its `ready` promise *pending forever* rather than rejecting, so the `Promise.all` never resolved and **no announce was ever sent on any relay**, including the healthy ones. Because GenosDB joins with a fixed `appId` and every peer derived the **same** deterministic relay set, one dead relay stalled discovery for **all** peers at once: the room existed and `db.room` responded, but peers never found each other and P2P sync silently never started. Each relay now subscribes and announces **independently** the moment it connects; a relay that never opens leaves only its own task pending and can no longer block the others, so discovery proceeds on the first available relay. `gdb()` / `join()` stay synchronous — the top-level-`await` contract is unchanged, only the internal barrier is removed. Rebuilds `dist/genosrtc.min.js` and `dist/genosrtc-cells.min.js`.
+
+### Changed
+
+- **Default Nostr relay set curated and discovery retuned for faster, more reliable peer connection.** The built-in relay list is replaced with **10 relays verified empirically** — each one publish→echo round-trip tested with the ephemeral event kind GenosRTC actually uses — dropping relays that don't relay ephemeral kinds, require payment / NIP-05 / PoW, or were unreachable. `defaultRedundancy` is raised **5 → 10** so every peer connects to the whole verified list instead of a 5-relay slice: previously a deterministic `appId`-seeded shuffle silently discarded the most reliable relays (well-known relays were in the list but never used). The shuffle is disabled, so all peers use the same list in the same fastest-RTT-first order, maximizing the relay overlap that ephemeral signaling depends on. `ANNOUNCE_INTERVAL_MS` is lowered **5333 → 2500 ms** to shorten the discovery window for late-arriving peers (announce payloads are tiny, so the extra traffic is negligible). Together these cut the time-to-first-peer and remove the intermittent-connection behavior caused by landing on a fixed set of slow or dead relays. Rebuilds `dist/genosrtc.min.js` and `dist/genosrtc-cells.min.js`.
+
 ## [0.16.0] - 2026-06-21
 
 ### Added
