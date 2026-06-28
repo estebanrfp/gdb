@@ -195,6 +195,11 @@ Real-Time P2P Real Estate Proof of Concept powered by GenosDB
 
 _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 
+### [dSocial](https://github.com/estebanrfp/dSocial)
+A from-scratch decentralized social network and the most complete GenosDB showcase: communities, posts, polls, votes, karma + badges, zero-trust governance (signed role promotion), end-to-end encrypted chat with hybrid public/private rooms, 1:1 P2P file transfer, live typing/presence and field-level `$text` search — vanilla JavaScript, one dependency, no framework. **[▶ Live demo](https://dsocial-genosdb.netlify.app)**.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
 ### [Pixel-Painting](https://github.com/estebanrfp/Pixel-Painting)
 Distributed Pixel Painting Application with GenosDB and Vanilla Javascript
 
