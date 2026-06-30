@@ -205,6 +205,11 @@ Distributed Pixel Painting Application with GenosDB and Vanilla Javascript
 
 _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 
+### [dMarket](https://github.com/estebanrfp/dMarket)
+A GenosDB × blockchain showcase: a live Polygon (Amoy) NFT marketplace **mirrored into GenosDB** — the chain is the source of truth, while GenosDB is the reactive, offline-capable, P2P read layer (`db.map`). The Security Manager identity doubles as the on-chain wallet, so **one key signs both your P2P operations and your Polygon transactions** (no MetaMask). Faithfully extracted from OVGrid's marketplace — UI and all — as a ~1,600-line, no-build reference that points back to the full project below. Vanilla JavaScript.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
 ### [OVGrid - Open Virtual Grid](https://ovgrid.com/)
 WebXR Educational Virtual World - Real-time shared experiences. ~ By [estebanrfp](https://github.com/estebanrfp)
 Project progress videos - [@ovgrid](https://odysee.com/@ovgrid:d)
