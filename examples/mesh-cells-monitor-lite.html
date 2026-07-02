@@ -740,37 +740,6 @@
       updatePending = false;
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // CACHED BRIDGE COMPUTATION
-    // ════════════════════════════════════════════════════════════════
-    let cachedBridgeMap = new Map(); // peerId -> isBridge
-    let cacheValid = false;
-
-    function invalidateCache() {
-      cacheValid = false;
-    }
-
-    function computeAllBridges() {
-      if (cacheValid) return cachedBridgeMap;
-      
-      cachedBridgeMap.clear();
-      const allPeers = getAllPeers();
-      const allPeerIds = [...allPeers.keys()];
-      
-      for (const [pid, st] of allPeers) {
-        const isBridge = isPeerBridge(pid, st.cellId, allPeerIds);
-        cachedBridgeMap.set(pid, isBridge);
-      }
-      
-      cacheValid = true;
-      return cachedBridgeMap;
-    }
-
-    function isCachedBridge(peerId) {
-      const map = computeAllBridges();
-      return map.get(peerId) || false;
-    }
-
     const getCellIndex = cid => {
       const m = String(cid || "").match(/cell-(\d+)/);
       return m ? Number(m[1]) : NaN;
@@ -798,57 +767,16 @@
       return all;
     }
 
+    // Bridge truth comes straight from the engine's state (selfState for
+    // self, gossiped mesh:peer-state for remotes) — never recomputed here.
+    const isBridgePeer = st => !!(st?.isBridge || st?.bridges?.length);
+
     // ════════════════════════════════════════════════════════════════
-    // BRIDGE DETECTION - Computed locally (same as D3 version)
+    // BRIDGE CONFIG
     // ════════════════════════════════════════════════════════════════
 
     function getBridgesPerEdge() {
       return selfState.bridgesPerEdge ?? CELLS_CONFIG.bridgesPerEdge;
-    }
-
-    function getCellSize() {
-      return selfState.cellSize || CELLS_CONFIG.cellSize;
-    }
-
-    function computeBridgesForCell(cellId, allPeerIds) {
-      const bridgesPerEdge = getBridgesPerEdge();
-      const bridges = new Set();
-      
-      // Si bridgesPerEdge es 0, no hay bridges
-      if (bridgesPerEdge === 0) return bridges;
-      
-      const cellIdx = getCellIndex(cellId);
-      if (Number.isNaN(cellIdx)) return bridges;
-
-      const cellSize = getCellSize();
-      const sorted = [...allPeerIds].sort();
-      const neighbors = neighborCells(cellId);
-
-      for (const neighborCell of neighbors) {
-        const neighborIdx = getCellIndex(neighborCell);
-        if (Number.isNaN(neighborIdx)) continue;
-
-        const minIdx = Math.min(cellIdx, neighborIdx);
-        const maxIdx = Math.max(cellIdx, neighborIdx);
-        const start = minIdx * cellSize;
-        const end = (maxIdx + 1) * cellSize;
-        const edgeGroup = sorted.slice(start, end);
-
-        if (edgeGroup.length === 0) continue;
-
-        const bridgePeers = edgeGroup.slice(0, bridgesPerEdge);
-        for (const pid of bridgePeers) {
-          bridges.add(pid);
-        }
-      }
-
-      return bridges;
-    }
-
-    function isPeerBridge(peerId, cellId, allPeerIds) {
-      if (!cellId) return false;
-      const bridges = computeBridgesForCell(cellId, allPeerIds);
-      return bridges.has(peerId);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -930,9 +858,8 @@
           // Cache position for animations
           nodePositions.set(peer.id, { x: px, y: py });
 
-          // Use cached bridge computation
           const isSelf = peer.id === selfId;
-          const isBridge = isSelf ? selfState.isBridge : isCachedBridge(peer.id);
+          const isBridge = isBridgePeer(peer);
 
           layout.peers.push({
             id: peer.id,
@@ -1105,12 +1032,9 @@
       const cells = new Set();
       let bridges = 0;
 
-      // Use cached bridge computation
-      const bridgeMap = computeAllBridges();
-      
       for (const [pid, st] of allPeers) {
         if (st.cellId) cells.add(st.cellId);
-        if (bridgeMap.get(pid)) bridges++;
+        if (isBridgePeer(st)) bridges++;
       }
 
       $("metricPeers").textContent = allPeers.size;
@@ -1141,8 +1065,7 @@
 
         for (const pid of [...peerSet].sort()) {
           const isSelf = pid === selfId;
-          // Use cached bridge detection
-          const isBridge = isCachedBridge(pid);
+          const isBridge = isBridgePeer(allPeers.get(pid));
 
           let badges = "";
           if (isSelf) badges += `<span class="badge badge-you">YOU</span>`;
@@ -1194,16 +1117,12 @@
         selfId = db.selfId;
 
         room.on("peer:join", id => {
-          log(`<span style="color:var(--green)">+ ${shortId(id)}</span>`);
-          invalidateCache();
-          scheduleUpdate();
+          log(`<span style="color:var(--green)">+ ${shortId(id)}</span>`);          scheduleUpdate();
         });
 
         room.on("peer:leave", id => {
           remotePeerStates.delete(id);
-          log(`<span style="color:var(--muted)">- ${shortId(id)}</span>`);
-          invalidateCache();
-          scheduleUpdate();
+          log(`<span style="color:var(--muted)">- ${shortId(id)}</span>`);          scheduleUpdate();
         });
 
         room.on("mesh:state", state => {
@@ -1213,9 +1132,7 @@
             bridges: Array.isArray(state.bridges) ? state.bridges : [],
             cellSize: state.cellSize || CELLS_CONFIG.cellSize,
             bridgesPerEdge: state.bridgesPerEdge ?? CELLS_CONFIG.bridgesPerEdge
-          };
-          invalidateCache();
-          scheduleUpdate();
+          };          scheduleUpdate();
         });
 
         room.on("mesh:peer-state", data => {
@@ -1225,9 +1142,7 @@
             cellId: data.cell,
             isBridge: data.isBridge === true,
             bridges: bridges
-          });
-          invalidateCache();
-          scheduleUpdate();
+          });          scheduleUpdate();
         });
 
         // Messages

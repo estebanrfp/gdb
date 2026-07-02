@@ -3,33 +3,60 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Simulación D3 P2PGraph (RT)</title>
+  <title>Simulación D3 P2PGraph (RT) · Cellular Mesh</title>
   <style>
+    :root {
+      --bg: #009dff;
+      --me: #FFFF00;
+      --peer: #00FF00;
+      --bridge: #FFA500;
+      --link: rgba(255, 255, 255, 0.7);
+    }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f0f0f0; }
-    .graph-container { width: 400px; height: 400px; margin: 20px; background: #009dff; border-radius: 8px; overflow: hidden; }
+    .graph-container { width: 400px; height: 400px; margin: 20px 20px 8px; background: var(--bg); border-radius: 8px; overflow: hidden; }
     svg { width: 100%; height: 100%; }
-    line { stroke: rgba(255,255,255,0.7); stroke-width: 1px; }
-    /* circle { stroke: #000; stroke-width: 1.5px; } */
+    line { stroke: var(--link); stroke-width: 1px; }
+    line.bridge { stroke: var(--bridge); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+    circle.me { fill: var(--me); }
+    circle.me.bridge { stroke: var(--bridge); stroke-width: 3px; }
+    circle.peer { fill: var(--peer); }
+    circle.peer.bridge { fill: var(--bridge); }
     text { font-size: 10px; fill: #000; pointer-events: none; }
+    .legend { display: flex; gap: 14px; margin: 0 20px 20px; font-size: 12px; color: #333; align-items: center; }
+    .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+    .legend .dot.me { background: var(--me); }
+    .legend .dot.peer { background: var(--peer); }
+    .legend .dot.bridge { background: var(--bridge); }
+    .legend .dash { display: inline-block; width: 18px; border-top: 2px dashed var(--bridge); margin-right: 4px; vertical-align: 3px; }
   </style>
 </head>
 <body>
   <div class="graph-container" id="graph"></div>
+  <div class="legend">
+    <span><i class="dot me"></i>You</span>
+    <span><i class="dot peer"></i>Peer</span>
+    <span><i class="dot bridge"></i>Bridge</span>
+    <span><i class="dash"></i>Cross-cell link</span>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script type="module">
     /**
-     * Real-time peers graph using GenosDB (GenosRTC) + D3.
+     * Real-time peers graph using GenosDB (GenosRTC Cellular Mesh) + D3.
      * - One local node ('me') and one link per connected peer.
-     * - Updates on 'peer:join' / 'peer:leave' events.
+     * - Bridge peers and cross-cell links are styled from the engine's
+     *   gossiped state (mesh:state / mesh:peer-state) — never recomputed.
+     * - Updates on 'peer:join' / 'peer:leave' / 'mesh:*' events.
      * Compact ES2020+ style per your rules.
      */
 
-    // 1) Load GenosDB with RTC enabled (room = db.room)
+    // 1) Load GenosDB with RTC + Cellular Mesh enabled (room = db.room)
 
     import { gdb } from "../dist/index.js"
-    
-    const db = await gdb("p2pgraph-demo", { rtc: true }); // room id = db name
+
+    const db = await gdb("p2pgraph-demo", {
+      rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } }
+    }); // room id = db name
 
     // 2) D3 setup
     const size = 400, rMe = 10, rPeer = 6;
@@ -39,6 +66,17 @@
     // 3) In-memory state (Maps for O(1) upserts)
     const nodes = new Map([['me', { id: 'me', me: true }]]);
     const links = new Map(); // key: `me->peerId`
+
+    // Cellular state, straight from the engine (never recomputed here)
+    let selfState = { cellId: null, isBridge: false, bridges: [] };
+    const peerStates = new Map(); // peerId -> { cellId, bridges }
+    const isBridgePeer = st => !!(st?.isBridge || st?.bridges?.length);
+    const stateOf = d => d.me ? selfState : peerStates.get(d.id);
+    const isCrossCell = pid => {
+      const pc = peerStates.get(pid)?.cellId;
+      return !!(pc && selfState.cellId && pc !== selfState.cellId);
+    };
+    const cellTag = st => st?.cellId ? ` ${st.cellId.replace('cell-', 'C')}` : '';
 
     // 4) D3 force simulation
     const sim = d3.forceSimulation([...nodes.values()])
@@ -83,22 +121,22 @@
       const N = [...nodes.values()], L = [...links.values()];
       linkSel = linkG.selectAll('line').data(L, d => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
       linkSel.exit().remove();
-      linkSel = linkSel.enter().append('line').merge(linkSel);
+      linkSel = linkSel.enter().append('line').merge(linkSel)
+        .attr('class', d => isCrossCell(d.target.id ?? d.target) ? 'bridge' : null);
 
       nodeSel = nodeG.selectAll('circle').data(N, d => d.id);
       nodeSel.exit().remove();
       nodeSel = nodeSel.enter().append('circle')
         .attr('r', d => d.me ? rMe : rPeer)
-        .attr('fill', d => d.me ? '#FFFF00' : '#00FF00')
         .call(drag)
-        .merge(nodeSel);
+        .merge(nodeSel)
+        .attr('class', d => (d.me ? 'me' : 'peer') + (isBridgePeer(stateOf(d)) ? ' bridge' : ''));
 
       labelSel = labelG.selectAll('text').data(N, d => d.id);
       labelSel.exit().remove();
       labelSel = labelSel.enter().append('text')
         .attr('dy', 4).attr('text-anchor', 'middle')
-        .text(d => short(d.id))
-        .merge(labelSel).text(d => short(d.id));
+        .merge(labelSel).text(d => short(d.id) + cellTag(stateOf(d)));
 
       // Rebind sim data efficiently
       sim.nodes(N);
@@ -106,12 +144,18 @@
       if (kick) sim.alpha(0.7).restart();
     };
 
-    // 7) Seed with current peers
-    [...(db.room.getPeers?.().keys?.() ?? [])].forEach(upsertPeer);
+    // 7) Seed with current peers (getPeers() returns a plain object)
+    Object.keys(db.room.getPeers?.() ?? {}).forEach(upsertPeer);
 
-    // 8) Real-time: when peers join/leave
+    // 8) Real-time: peers join/leave + cellular state gossip
     db.room.on?.('peer:join', id => upsertPeer(id));
-    db.room.on?.('peer:leave', id => removePeer(id));
+    db.room.on?.('peer:leave', id => { peerStates.delete(id); removePeer(id); });
+    db.room.on?.('mesh:state', st => { selfState = st; render(); });
+    db.room.on?.('mesh:peer-state', st => {
+      if (st.id === db.selfId) return;
+      peerStates.set(st.id, { cellId: st.cell, bridges: st.bridges ?? [] });
+      render();
+    });
 
     // 9) First paint
     render(true);
