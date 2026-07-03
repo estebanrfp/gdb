@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB To-Do List · Cellular Mesh</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: auto;
+      padding: 20px;
+      background-color: #f4f7fc;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      color: #444;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      background: none;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+      margin-bottom: 6px;
+    }
+
+    li span {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .completed {
+      text-decoration: line-through;
+      color: gray;
+    }
+
+    .edit-mode {
+      display: inline-block;
+      width: 70%;
+    }
+
+    .edit-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .icon-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>To-Do List · Cellular Mesh</h2>
+  <input type="text" id="taskInput" placeholder="New task">
+  <ul id="taskList"></ul>
+  <script type="module">
+    import { gdb } from "../dist/index.js";
+
+    // Same app as todolist.html — the ONLY change is enabling Cellular Mesh:
+    // the transport partitions into cells + bridges (O(cellSize) connections
+    // per peer instead of full mesh), while db.map/put/remove stay identical.
+    const db = await gdb('todoList-cell', {
+      rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } }
+    });
+
+    const currentNodeIds = new Set();
+
+    // Create DOM elements for each task
+    function createTaskElements(li, id, { text, completed }) {
+      const taskTextSpan = document.createElement('span');
+      taskTextSpan.className = completed ? 'completed' : '';
+      taskTextSpan.textContent = text;
+      taskTextSpan.onclick = () => toggleTask(id);
+
+      const taskEditTextInput = document.createElement('input');
+      taskEditTextInput.type = 'text';
+      taskEditTextInput.value = text;
+      taskEditTextInput.className = 'edit-mode hidden';
+      taskEditTextInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') await saveEdit(id, taskEditTextInput.value);
+      });
+
+      const iconContainer = document.createElement('div');
+      iconContainer.className = 'icon-container';
+
+      const editButton = document.createElement('button');
+      editButton.innerHTML = '✏️';
+      editButton.onclick = () => enableEditMode(li);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.innerHTML = '🗑️';
+      deleteButton.onclick = () => deleteTask(id);
+
+      const editButtonsContainer = document.createElement('div');
+      editButtonsContainer.className = 'edit-buttons hidden';
+
+      const saveButton = document.createElement('button');
+      saveButton.innerHTML = '💾';
+      saveButton.onclick = () => saveEdit(id, taskEditTextInput.value);
+
+      const cancelButton = document.createElement('button');
+      cancelButton.innerHTML = '❌';
+      cancelButton.onclick = () => cancelEdit(li);
+
+      editButtonsContainer.append(saveButton, cancelButton);
+      iconContainer.append(editButton, editButtonsContainer, deleteButton);
+      li.append(taskTextSpan, taskEditTextInput, iconContainer);
+    }
+
+    // Add task handler
+    function handleAddTask(id, value) {
+      if (!value || typeof value !== 'object') return;
+      const { text, completed } = value;
+      const li = document.createElement('li');
+      li.id = id;
+      createTaskElements(li, id, { text, completed });
+      document.getElementById('taskList').appendChild(li);
+      currentNodeIds.add(id);
+    }
+
+    // Update task handler
+    function handleUpdateTask(id, { text, completed }) {
+      const li = document.getElementById(id);
+      if (!li) return;
+
+      const taskTextSpan = li.querySelector('span');
+      const taskEditTextInput = li.querySelector('input');
+
+      taskTextSpan.textContent = text;
+      taskTextSpan.className = completed ? 'completed' : '';
+      taskEditTextInput.value = text;
+
+      // Exit edit mode if active
+      if (!taskEditTextInput.classList.contains('hidden')) {
+        cancelEdit(li);
+      }
+    }
+
+    // Delete task handler
+    function handleDeleteTask(id) {
+      const li = document.getElementById(id);
+      if (li) {
+        li.remove();
+        currentNodeIds.delete(id);
+      }
+    }
+
+    // UI logic: enable edit mode
+    function enableEditMode(li) {
+      li.querySelector('span').classList.add('hidden'); // Hide task text
+      li.querySelector('input').classList.remove('hidden'); // Show input field
+      li.querySelector('.edit-buttons').classList.remove('hidden'); // Show save/cancel buttons
+      li.querySelector('button:first-child').style.display = 'none'; // Hide edit button
+    }
+
+    // UI logic: cancel edit mode
+    function cancelEdit(li) {
+      li.querySelector('span').classList.remove('hidden'); // Show task text
+      li.querySelector('input').classList.add('hidden'); // Hide input field
+      li.querySelector('.edit-buttons').classList.add('hidden'); // Hide save/cancel buttons
+      li.querySelector('button:first-child').style.display = 'inline-block'; // Show edit button
+    }
+
+    // DB operation: toggle task completion
+    async function toggleTask(id) {
+      const li = document.getElementById(id);
+      if (!li) return;
+
+      const taskTextSpan = li.querySelector('span');
+      const completed = !taskTextSpan.classList.contains('completed');
+      taskTextSpan.classList.toggle('completed');
+      await db.put({
+        text: taskTextSpan.textContent,
+        completed
+      }, id);
+    }
+
+    // DB operation: save edited task
+    async function saveEdit(id, newText) {
+      if (!newText.trim()) return;
+
+      const li = document.getElementById(id);
+      if (!li) return;
+
+      const taskTextSpan = li.querySelector('span');
+      const completed = taskTextSpan.classList.contains('completed');
+      await db.put({ text: newText.trim(), completed }, id);
+      cancelEdit(li);
+    }
+
+    // DB operation: delete task
+    async function deleteTask(id) {
+      await db.remove(id);
+    }
+
+    // DB operation: add new task
+    async function addTask() {
+      const input = document.getElementById('taskInput');
+      if (!input.value.trim()) return;
+
+      await db.put({
+        text: input.value,
+        completed: false
+      });
+      input.value = '';
+    }
+
+    // Subscribe to real-time database changes
+    const { unsubscribe } = await db.map(({ id, value, action }) => {
+      if (action === "initial" || action === "added") handleAddTask(id, value);
+      if (action === "updated") handleUpdateTask(id, value);
+      if (action === "removed") handleDeleteTask(id);
+    });
+
+    // Add task on Enter key press
+    document.getElementById('taskInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addTask();
+    });
+  </script>
+</body>
+
+</html>
