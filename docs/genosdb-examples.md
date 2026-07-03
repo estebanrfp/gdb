@@ -129,6 +129,9 @@ A clean, minimalist Canvas-based visualization with modern UI design. Features s
 ### [GenosDB - Mesh Cells Monitor (3D Particles)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-particles.html)
 An immersive 3D visualization of the Cellular Mesh network using Three.js. Features rotating cell geometries, glowing peer nodes, animated message particles with trails, and interactive camera controls.
 
+### [GenosDB - Mesh Cells Reach Probe](https://estebanrfp.github.io/gdb/examples/mesh-cells-reach-probe.html)
+A minimal instrument that **measures** the Cellular Mesh instead of drawing it. Open it in several tabs — each is a peer, and past 10 peers the mesh splits into cells with elected bridges. Press **PING** to broadcast a `hello`; every peer auto-answers `world`, and **reach N/N** reports how many peers the message actually reached across the cells, with the coverage latency. The quickest way to confirm that a broadcast lands on every peer through the bridges — the live, measured counterpart to the topology monitors.
+
 ### [GenosDB - Perf & Stress Test](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
 A dedicated environment for benchmarking GenosDB under high-load scenarios: chunked mass insertions with honest metrics (**ops/s over pure write time**, fulfilled vs failed), realtime subscription counters, configurable `saveDelay` / `oplogSize` knobs, and a **Sync Protocol Observatory** that counts `sync` / `deltaSync` / `fullStateSync` messages live so you can watch the Hybrid Delta Protocol switch between delta and full-state catch-up across browsers.
 

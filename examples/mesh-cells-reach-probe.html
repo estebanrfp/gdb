@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GenosDB · Cellular Mesh Reach Probe</title>
+  <style>
+    :root {
+      --bg: #0b1410;
+      --fg: #9fe8b1;
+      --bright: #ffffff;
+      --muted: #5f8a70;
+      --me: #7fd4ff;
+      --line: #1e352a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.5 ui-monospace, SFMono-Regular, monospace;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 16px;
+      margin: 0 0 4px;
+      color: var(--bright);
+    }
+
+    .hint {
+      color: var(--muted);
+      margin: 0 0 18px;
+      max-width: 640px;
+    }
+
+    .grid {
+      display: flex;
+      gap: 22px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .kv b {
+      display: block;
+      font-size: 24px;
+      color: var(--bright);
+    }
+
+    .cells div {
+      padding: 3px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .me {
+      color: var(--me);
+    }
+
+    #ping {
+      margin: 4px 0 14px;
+    }
+
+    button {
+      background: #12251a;
+      color: var(--fg);
+      border: 1px solid var(--line);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1a3527;
+    }
+
+    #pingres {
+      margin-left: 12px;
+      color: var(--bright);
+    }
+
+    #pingres.ok {
+      color: #6effa0;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>GenosDB · Cellular Mesh Reach Probe</h1>
+  <p class="hint">
+    Open this page in several tabs (or share the URL) — each tab is a peer.
+    Beyond 10 peers the mesh splits into cells with elected bridges. Press
+    PING to broadcast a "hello": every peer auto-answers "world", and
+    <b>reach N/N</b> shows how many peers the message reached across the
+    cells, with the coverage latency.
+  </p>
+  <div class="grid">
+    <div class="kv">peers<b id="peers">1</b></div>
+    <div class="kv">cells<b id="cells">1</b></div>
+    <div class="kv">my cell<b id="mycell">–</b></div>
+    <div class="kv">bridge<b id="bridge">no</b></div>
+  </div>
+  <div id="ping">
+    <button id="pingbtn">PING — hello → world</button>
+    <span id="pingres">–</span>
+  </div>
+  <div class="cells" id="list"></div>
+
+  <script type="module">
+    // A GenosDB peer with Cellular Mesh enabled. It reports what it sees
+    // (peers, cells, own role) and offers a reach probe: broadcasting "hello"
+    // and counting the "world" replies measures real end-to-end delivery —
+    // does the broadcast reach every peer across every cell? — plus latency.
+    // Optional query params: ?room=<name>&size=<auto|N>&relay=<ws url,url>
+    import { gdb } from "../dist/index.js";
+
+    const q = new URLSearchParams(location.search);
+    const room = q.get("room") ?? "mesh-reach-probe";
+    const relay = q.get("relay"); // comma-separated relay URLs; empty = built-in
+    const rtc = { cells: { cellSize: q.get("size") ?? "auto", bridgesPerEdge: 2 } };
+    if (relay) rtc.relayUrls = relay.split(",");
+
+    const db = await gdb(room, { rtc });
+    window.db = db; // console probes
+
+    const states = new Map(); // peerId -> last gossiped state (+ arrival time)
+    let self = { cellId: null, isBridge: false };
+    const $ = id => document.getElementById(id);
+
+    const render = () => {
+      const cutoff = Date.now() - 90000; // expire silent gossip-only peers
+      for (const [id, st] of states) if (st.at < cutoff) states.delete(id);
+
+      const byCell = new Map();
+      const bump = (cell, id) => {
+        if (!byCell.has(cell)) byCell.set(cell, new Set());
+        byCell.get(cell).add(id);
+      };
+      bump(self.cellId ?? "cell-?", db.selfId);
+      for (const [id, st] of states) bump(st.cell ?? "cell-?", id);
+
+      $("peers").textContent = states.size + 1;
+      $("cells").textContent = byCell.size;
+      $("mycell").textContent = self.cellId ?? "–";
+      $("bridge").textContent = self.isBridge ? "YES" : "no";
+      document.title = `${states.size + 1}p ${byCell.size}c ${self.cellId ?? ""}`;
+
+      $("list").innerHTML = [...byCell.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([c, ids]) =>
+          `<div>${c === self.cellId ? `<span class="me">${c}</span>` : c} — ${ids.size} peers</div>`
+        ).join("");
+    };
+
+    // Seed with the current engine state: the initial mesh:state fires
+    // during join(), before this listener exists.
+    self = db.room.getState?.() ?? self;
+    db.room.on("mesh:state", st => { self = st; render(); });
+    db.room.on("mesh:peer-state", st => {
+      if (st.id === db.selfId) return;
+      states.set(st.id, { ...st, at: Date.now() });
+      render();
+    });
+    db.room.on("peer:leave", id => { states.delete(id); render(); });
+
+    // Reach probe: broadcast "hello", every peer auto-answers "world".
+    const mesh = db.room.mesh;
+    let ping = null; // { id, t0, seen:Set, total } for the ping I originated
+
+    const renderPing = () => {
+      if (!ping) return;
+      const dt = Math.round(performance.now() - ping.t0);
+      const reached = ping.seen.size + 1; // +1: I originate it, so I always have it
+      const done = ping.total > 0 && reached >= ping.total;
+      $("pingres").textContent = `reach ${reached}/${ping.total} · ${dt}ms${done ? " ✓" : ""}`;
+      $("pingres").className = done ? "ok" : "";
+    };
+
+    mesh.on("message", m => {
+      if (!m || typeof m !== "object") return;
+      if (m._p === "hello" && m.from !== db.selfId) {
+        mesh.send({ _p: "world", to: m.id, from: db.selfId }); // auto-answer
+      } else if (m._p === "world" && ping && m.to === ping.id) {
+        ping.seen.add(m.from);
+        renderPing();
+      }
+    });
+
+    $("pingbtn").onclick = () => {
+      // Denominator = total peers incl. me (same universe as the "peers"
+      // count), snapshotted now so it stays stable mid-measure.
+      ping = { id: `${db.selfId}:${Date.now()}`, t0: performance.now(), seen: new Set(), total: states.size + 1 };
+      mesh.send({ _p: "hello", id: ping.id, from: db.selfId });
+      renderPing();
+    };
+
+    setInterval(render, 5000); // ghost expiry pulse
+    render();
+  </script>
+</body>
+
+</html>
