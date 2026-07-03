@@ -606,10 +606,22 @@
     function doUpdate() {
       const needsRestart = scheduleUpdate._needsRestart || false;
       scheduleUpdate._needsRestart = false;
-
-      render(needsRestart);
       lastUpdateTime = Date.now();
       updatePending = false;
+
+      // Skip the whole render (DOM + force simulation) when the visible
+      // model is unchanged — keep-alives must not make the graph twitch.
+      // getAllPeers() also expires ghosts, so an expiry changes the print.
+      const all = getAllPeers();
+      let fp = `${selfState.cellSize}|${selfState.dynamicTTL}`;
+      for (const pid of [...all.keys()].sort()) {
+        const st = all.get(pid);
+        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}`;
+      }
+      if (!needsRestart && fp === doUpdate._lastFp) return;
+      doUpdate._lastFp = fp;
+
+      render(needsRestart);
     }
 
     // ════════════════════════════════════════════════════════════════
