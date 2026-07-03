@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-07-03
+
+### Added
+
+- **Opt-in debug logging: `gdb(name, { debug: true })`.** GenosDB's internal logs (~170 call sites: OPFS persistence, delta sync, security manager, plugins, GenosRTC network events) are now **silent by default and switchable at runtime** — previously they were stripped from the build entirely, so integrators could never surface them. Passing `debug: true` enables the full internal log stream across the core, **every lazy-loaded plugin bundle and the GenosRTC transport**. The logger is a build-injected, bundle-scoped shim (`log.info/warn/error` → gated `console`), so it adds **zero imports to the source, nothing to the page's globals, and ~1 KB gzip** to the main bundle; native `console` methods are bound directly, preserving the caller's `file:line` in DevTools. The production console is now **completely clean** — even the attribution banner only prints in debug mode. Host applications' own `console` is never touched.
+
+### Fixed
+
+- **`rtc: { cells: { debug: true } }` was a silent no-op in production.** The cellular overlay's verbose logger (`console.debug('[cells]', …)`, gated by the public `debug` option documented in the API) was stripped from `dist/genosrtc-cells.min.js` by the build's console dropping, so enabling the option never printed anything. Console stripping is removed from the build pipeline (logging is now runtime-gated), which brings the option back to life; the `[cells]` channel uses `console.debug`, so it lands in DevTools' "Verbose" level.
+
+### Changed
+
+- **Worker persistence errors report through one channel.** The OPFS worker's direct `console.error` calls are removed; failures already reach the main thread via the existing `postMessage({ type: 'error' })` → rejected-promise path, where they are logged (gated) with full context.
+
 ## [0.18.0] - 2026-07-03
 
 ### Added

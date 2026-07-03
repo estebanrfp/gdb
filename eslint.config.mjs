@@ -8,7 +8,8 @@ export default [
         SharedArrayBuffer: 'readonly',
         browser: true,
         node: true,
-        es6: true
+        es6: true,
+        log: 'readonly' // build-injected debug logger shim (see LOG_SHIM in esbun.js)
       }
     },
     rules: {
