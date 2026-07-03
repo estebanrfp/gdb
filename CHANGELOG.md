@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-03
+
+### Added
+
+- **Cellular Mesh — partitioned WebRTC transport.** Rooms can now organize themselves into cells with deterministically elected bridge peers, so each peer keeps connections only to its own cell plus its bridge relations instead of the whole room: **connections per peer scale with cell size, not room size** (measured live: 13–18 connections at 16 peers where a full mesh holds 30 — and the gap widens with every peer that joins). Cell assignment uses rendezvous (HRW) hashing over the signaling census, bridge election is a pure function of the shared roster — both endpoints derive the same verdict independently, no coordination messages — with guaranteed egress on both sides of every edge, and cross-cell delivery rides bridge forwarding with per-message dedup: **100% delivery verified across cells and across browsers**. The overlay is self-tuning and production-calibrated: cells of 10 with the first split at 11 peers (small rooms keep the optimal direct mesh), ring+fingers neighborhood for O(log C) diameter, orderly wave-based bootstrap (bounded dialing with a global half-open cap), automatic recycling of connections that never establish (keeps the browser's per-process connection budget clean across long sessions), and a periodic state keep-alive so late joiners converge on the full roster within seconds. Opt-in per app with one line — `gdb(name, { rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } } })` — while `db.map`/`put`/`remove` and sync stay identical, and `rtc: true` keeps the classic full mesh untouched. See the one-line migration in [examples/todolist-cell.html](https://github.com/estebanrfp/gdb/blob/main/examples/todolist-cell.html) and the live topology in the mesh monitors. Rebuilds `dist/genosrtc-cells.min.js` and `dist/genosrtc.min.js`.
+
+### Changed
+
+- **Mesh monitors report engine truth with calm rendering.** All five cell monitors (d3, lite, modern, particles, retro) now read bridge roles straight from the engine's gossiped state (single source of truth), expire peers that leave silently, and repaint only when the visible model actually changes — steady graphs, exact bridge badges, lower CPU. [examples/graph-p2p.html](https://github.com/estebanrfp/gdb/blob/main/examples/graph-p2p.html) joins the cellular mesh with bridge and cross-cell link styling plus cell tags.
+
 ## [0.17.0] - 2026-06-27
 
 ### Fixed
