@@ -756,7 +756,15 @@
 
     function getAllPeers() {
       const all = new Map();
+      // Expire gossip-only ghosts: no state for 90s (background tabs gossip
+      // ~1/min) AND no live RTC connection — physically connected peers stay.
+      const cutoff = Date.now() - 90000;
+      const connected = room?.getPeers?.() ?? {};
       for (const [pid, state] of remotePeerStates) {
+        if ((state.at ?? 0) < cutoff && !(pid in connected)) {
+          remotePeerStates.delete(pid);
+          continue;
+        }
         all.set(pid, { ...state });
       }
       all.set(selfId, {
@@ -1141,9 +1149,14 @@
           remotePeerStates.set(data.id, {
             cellId: data.cell,
             isBridge: data.isBridge === true,
-            bridges: bridges
+            bridges: bridges,
+            at: Date.now()
           });          scheduleUpdate();
         });
+
+        // Ghost sweep: gossip-only peers never emit peer:leave, so refresh
+        // periodically and let getAllPeers() expire the silent ones.
+        setInterval(() => scheduleUpdate(), 15000);
 
         // Messages
         mesh.on("message", (msg, from) => {
