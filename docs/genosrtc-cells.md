@@ -8,7 +8,7 @@
 
 - **Cellular Architecture**: Peers grouped into cells with bridges connecting adjacent cells
 - **Dynamic CellSize**: Automatically adjusts based on network size
-- **Health Scoring**: Intelligent bridge selection based on health metrics
+- **Deterministic Bridges**: Bridge election is a pure function of the shared roster (per-edge hash ranking)
 - **Dynamic TTL**: Message time-to-live calculated based on topology
 - **Deduplication**: Duplicate message prevention with tracking sets
 - **Heartbeat**: Periodic synchronization and cleanup of inactive peers
@@ -19,7 +19,7 @@
 
 ### Cell Topology
 
-Peers are organized into linear cells based on their position in the sorted roster:
+Peers are organized into a chain of cells, with power-of-two skip links between cells keeping the network diameter at O(log C):
 
 ```
 cell-0 ←──→ cell-1 ←──→ cell-2 ←──→ cell-3 ←──→ cell-4
@@ -29,18 +29,14 @@ cell-0 ←──→ cell-1 ←──→ cell-2 ←──→ cell-3 ←──→ 
 
 ### Peer-to-Cell Assignment
 
+Each peer maps to the cell where its rendezvous (HRW) hash score is highest:
+
 ```javascript
-const cellIndex = Math.floor(peerIndex / cellSize);
-const cellId = `cell-${cellIndex}`;
+// cell(peer) = argmax over c of hash(`${peerId}:${c}`)
+const cellId = `cell-${computeCellForPeer(peerId, totalCells)}`;
 ```
 
-**Example** with `cellSize = 3` and 9 sorted peers `[A, B, C, D, E, F, G, H, I]`:
-
-| Cell | Peers |
-|------|-------|
-| cell-0 | A, B, C |
-| cell-1 | D, E, F |
-| cell-2 | G, H, I |
+Assignment is deterministic and churn-stable: every peer derives the same mapping from the shared roster, and changing the cell count relocates only a minimal fraction of peers.
 
 ### Bridges
 
@@ -57,16 +53,13 @@ cell-0          cell-1
 
 #### Bridge Selection
 
-Bridges are selected from the "edge group" (peers at the boundary between two cells):
+Bridges are elected per edge `(lo, hi)` as a pure function of the shared roster: candidates from both cells are ranked by a per-edge hash, and the best candidate from **each side** is always included — guaranteeing egress in both directions — before filling up to `bridgesPerEdge`.
 
 ```javascript
-const edgeGroup = roster.slice(
-  Math.min(cellA, cellB) * cellSize,
-  (Math.max(cellA, cellB) + 1) * cellSize
-);
+const rank = id => hash(`${id}@${lo}~${hi}`); // per-edge ranking spreads load
 ```
 
-They are sorted by `healthScore` and the top `bridgesPerEdge` are selected.
+Every peer derives the same election independently, so connection admission stays symmetric with no coordination messages.
 
 ---
 
@@ -125,9 +118,9 @@ When `cellSize: 'auto'`, the cell size is calculated automatically:
 
 ```javascript
 const computeOptimalCellSize = (peerCount, targetCells, maxCellSize) => {
-  if (peerCount < 10) return 2;
+  if (peerCount <= 10) return Math.max(2, peerCount); // single cell until 11 peers
   const computed = Math.ceil(peerCount / targetCells);
-  return Math.max(2, Math.min(maxCellSize, computed));
+  return Math.max(10, Math.min(maxCellSize, computed));
 }
 ```
 
@@ -135,9 +128,9 @@ const computeOptimalCellSize = (peerCount, targetCells, maxCellSize) => {
 
 | Peers | Formula | cellSize |
 |-------|---------|----------|
-| 5 | minimum | 2 |
-| 100 | 100/100 = 1 → minimum | 2 |
-| 500 | 500/100 = 5 | 5 |
+| 10 | single cell | 10 |
+| 100 | 100/100 = 1 → floor | 10 |
+| 500 | 500/100 = 5 → floor | 10 |
 | 1,000 | 1000/100 = 10 | 10 |
 | 5,000 | 5000/100 = 50 | 50 |
 | 10,000 | 10000/100 = 100 → capped | 50 |
@@ -148,7 +141,7 @@ The cellSize is recalculated on each `refreshState()` to adapt to network change
 
 ## Metrics System (PeerMetrics)
 
-Each peer has associated metrics used for bridge selection:
+Each peer keeps health metrics for monitoring and diagnostics (bridge election itself is deterministic — see above):
 
 ```javascript
 class PeerMetrics {
@@ -191,16 +184,16 @@ The message Time-To-Live is calculated based on network size:
 ```javascript
 const dynamicTTL = () => {
   const totalCells = Math.ceil(roster.length / cellSize);
-  return Math.min(150, totalCells + 3);  // Capped at 150
+  return Math.min(150, Math.ceil(Math.log2(totalCells + 1)) * 2 + 3);
 }
 ```
 
 | Peers | Cells | TTL |
 |-------|-------|-----|
-| 50 | 5 | 8 |
-| 200 | 20 | 23 |
-| 1,000 | 100 | 103 |
-| 5,000+ | 147+ | 150 (max) |
+| 50 | 5 | 9 |
+| 200 | 20 | 13 |
+| 1,000 | 100 | 17 |
+| 10,000 | 200 | 19 |
 
 TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 
@@ -257,11 +250,11 @@ TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 The system periodically broadcasts state and cleans up inactive peers:
 
 ```javascript
-const HEARTBEAT_INTERVAL = 5000;  // 5 seconds
+const HEARTBEAT_INTERVAL = 2000;  // 2 seconds
 const PEER_TIMEOUT = 30000;       // 30 seconds
 
 setInterval(() => {
-  sendState();  // Broadcast current state
+  sendState();  // Gossip own state on change, plus a ~10s keep-alive
   
   // Remove stale peers
   for (const [id, metrics] of peerMetrics) {
@@ -426,10 +419,9 @@ room.on('mesh:health', healthData => {
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `SEEN_MAX` | 5000 | Maximum IDs in `seen` set |
-| `WARMUP_MS` | 1500 | Initial warmup time |
 | `RTT_TIMEOUT` | 3000 | Ping timeout (ms) |
 | `PEER_TIMEOUT` | 30000 | Time to mark peer as stale |
-| `HEARTBEAT_INTERVAL` | 5000 | Heartbeat interval (ms) |
+| `HEARTBEAT_INTERVAL` | 2000 | Heartbeat interval (ms) |
 
 ---
 

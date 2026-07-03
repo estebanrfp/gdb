@@ -216,7 +216,7 @@ db.room.on("mesh:peer-state", (data) => {
 
 | Metric | Standard | Cellular (10k peers) |
 |--------|----------|----------------------|
-| Connections/peer | ~10,000 | ~100 |
+| Connections/peer | ~10,000 | ≈ cell size + bridges (tens) |
 | Message hops | 1 | ~10 |
 | Max peers | ~100 | Massive scale |
 

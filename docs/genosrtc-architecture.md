@@ -26,21 +26,19 @@ GenosRTC is composed of several distinct logical layers that work together to es
 
 ### 1. Signaling Layer (Peer Discovery)
 
-Unlike traditional WebRTC implementations that rely on a custom, centralized WebSocket server for signaling, **GenosRTC utilizes the decentralized Nostr (Notes and Other Stuff from Transmitted Relays) network**. This layer is architected with a sophisticated, hybrid strategy for selecting relays, ensuring an instant startup, maximum flexibility, and proactive resilience.
+Unlike traditional WebRTC implementations that rely on a custom, centralized WebSocket server for signaling, **GenosRTC utilizes the decentralized Nostr (Notes and Other Stuff from Transmitted Relays) network**. This layer is architected with a simple, resilient strategy for selecting relays, ensuring instant startup and maximum flexibility.
 
 -   **Function**: The signaling layer is responsible for the "handshake" process where peers discover each other and exchange the necessary metadata (like network addresses and media capabilities) to establish a direct connection.
--   **Relay Selection Mechanism**: GenosRTC employs a hybrid, non-blocking strategy to determine which Nostr relays to connect to. This approach prioritizes immediate connectivity while building a resilient network in the background.
+-   **Relay Selection Mechanism**: GenosRTC employs a non-blocking strategy: it connects to every configured relay in parallel and treats each one independently.
 
     1.  **Developer-Provided or Built-in Relays (Instant Connection)**: The initial connection is always immediate.
-        -   **Developer Control (Highest Priority)**: Developers can pass a `relayUrls` array during GDB initialization (e.g., `gdb('dbName', { rtc: { relayUrls: [...] } })`). GenosRTC will use this custom set of relays for its primary, instant connection attempt. This is ideal for private networks or applications that rely on a curated list of high-performance relays.
-        -   **Default Behavior**: If no custom list is provided, GenosRTC immediately connects to a built-in, hardcoded list of historically stable relays. This strategy eliminates any network latency for fetching remote lists, guaranteeing the fastest possible application startup.
+        -   **Developer Control (Highest Priority)**: Developers can pass a `relayUrls` array during GDB initialization (e.g., `gdb('dbName', { rtc: { relayUrls: [...] } })`). GenosRTC will use this custom set of relays. This is ideal for private networks or applications that rely on a curated list of high-performance relays.
+        -   **Default Behavior**: If no custom list is provided, GenosRTC immediately connects to a built-in list of curated relays, each one empirically verified to relay the ephemeral events GenosRTC uses for signaling. This strategy eliminates any network latency for fetching remote lists, guaranteeing the fastest possible application startup.
 
-    2.  **Dynamic Fallback Relays (Proactive Resilience)**: In parallel to the immediate connection attempt, GenosRTC activates a smart, non-blocking fallback mechanism to ensure long-term connectivity.
-        -   It loads an extended list of relays from the browser's local storage. This local cache is periodically and automatically updated in the background by fetching verified online relays from community sources like `nostr.watch`.
-        -   It then schedules a connection to these fallback relays with a dynamic delay. This delay is intelligently calculated: it is shorter if few initial connections were successful and longer if the network is already robust. This optimizes resource usage while proactively strengthening the connection mesh.
+    2.  **Independent, Non-Blocking Connections**: Every relay connection is established independently — subscription and announcements begin on each relay the moment it connects. A slow or unreachable relay cannot delay or block discovery on the healthy ones, so peers find each other at the speed of the fastest relay.
 
--   **Key Advantages**: This multi-layered, hybrid approach provides several architectural benefits:
-    -   **Instant Startup & Resilience**: By connecting to a base list of relays instantly and scheduling fallbacks in the background, the system offers an immediate user experience without sacrificing long-term robustness. It avoids any single point of failure and is inherently more resilient to network disruptions or censorship.
+-   **Key Advantages**: This approach provides several architectural benefits:
+    -   **Instant Startup & Resilience**: By connecting to the entire relay list in parallel and treating every relay independently, the system offers an immediate user experience with no single point of failure, and is inherently more resilient to network disruptions or censorship.
     -   **Zero Infrastructure Overhead**: Developers are freed from the complexity and cost of deploying, scaling, and maintaining their own signaling servers, yet they retain the option to use them if needed.
     -   **Adaptive Network Intelligence**: The architecture is not passive; it actively manages its connections to the Nostr network. It can identify non-performant or restrictive relays—for example, those requiring Proof-of-Work (PoW)—and dynamically adapt. Upon detecting a PoW requirement or other connection-blocking issue, the system automatically disconnects from that specific relay and excludes it from future use during the session. This self-healing behavior ensures that resources are focused on healthy signaling paths, dramatically increasing the reliability and speed of peer discovery.
 
@@ -79,7 +77,7 @@ Once a P2P connection is established, GenosRTC provides two distinct, high-level
 From an architectural perspective, the typical flow for a peer is as follows:
 
 1.  **Initialization**: A client instantiates `GDB` with `rtc: true`, joining a specific room and optionally providing a custom list of relays.
-2.  **Discovery**: The client instantly connects to the Nostr network using its base relays (user-provided or built-in) and subscribes to the room's topic. In parallel, it schedules connections to fallback relays to ensure resilience.
+2.  **Discovery**: The client instantly connects to the Nostr network using its relays (user-provided or built-in) and subscribes to the room's topic on each relay as soon as it opens.
 3.  **Signaling Handshake**: The client securely exchanges connection offers, answers, and network candidates with other peers via the established Nostr relay connections.
 4.  **Direct Connection**: A direct `RTCPeerConnection` is established with each peer. The signaling relay is no longer needed for communication between these two peers.
 5.  **Communication**: The application uses the high-level Data Channel and Media Stream APIs to send and receive information directly with other peers.
@@ -112,10 +110,10 @@ When enabled via `rtc: { cells: true }`, GenosRTC introduces a **Cellular Mesh O
 
 ### Architectural Components
 
--   **Cells**: Logical groups of ~20-50 peers with full mesh connectivity within the cell. Peers are assigned to cells via consistent hashing for stability during churn.
--   **Bridge Nodes**: Peers elected to maintain connections between adjacent cells in the hash ring. Multiple bridges per edge (configurable via `bridgesPerEdge`) provide redundancy.
--   **Dynamic TTL**: Message hop limit calculated based on network topology (`2 × numberOfCells + buffer`), preventing infinite propagation while ensuring delivery.
--   **Consistent Hashing**: Peers assigned to cells via hash ring, ensuring stable cell membership even as peers join and leave.
+-   **Cells**: Logical groups of peers (10 by default in auto mode, up to `maxCellSize`) with full mesh connectivity within the cell. Small rooms stay a single direct mesh; the first split happens past 10 peers.
+-   **Bridge Nodes**: Peers deterministically elected to maintain connections between neighboring cells — adjacent cells plus power-of-two skip links, giving the topology an O(log C) diameter. Multiple bridges per edge (configurable via `bridgesPerEdge`) provide redundancy, and the election always includes the best candidate from each side of an edge, guaranteeing egress in both directions.
+-   **Dynamic TTL**: Message hop limit derived from the topology (`2 × log₂(cells + 1) + 3`, capped at 150), preventing infinite propagation while ensuring delivery.
+-   **Rendezvous (HRW) Hashing**: Each peer maps to the cell with the highest `hash(peerId:cell)` score, so membership stays stable as peers join and leave, and a cell-count change relocates only a minimal fraction of peers.
 
 ### Message Propagation
 
@@ -145,5 +143,5 @@ When enabled via `rtc: { cells: true }`, GenosRTC introduces a **Cellular Mesh O
 Security is a fundamental component of the GenosRTC architecture.
 
 -   **Transport Encryption**: All WebRTC communications (both data and media) are mandatorily encrypted using DTLS (Datagram Transport Layer Security) and SRTP (Secure Real-time Transport Protocol). This prevents eavesdropping on the P2P link.
--   **End-to-End Encryption (E2EE)**: GenosRTC adds an additional layer of security. By providing an optional `password` during initialization, all signaling data exchanged over Nostr relays is encrypted. Furthermore, all data sent through the `Data Channels` is also end-to-end encrypted using this shared secret. This ensures that not even the signaling relays can decipher the application's data.
--   **Cellular Mesh Security**: In cellular mode, inter-cell messages maintain the same encryption guarantees. Bridge nodes forward encrypted payloads without access to plaintext content.
+-   **Signaling Encryption**: By providing an optional `password` during initialization, all signaling data exchanged over Nostr relays (connection offers, answers and candidates) is end-to-end encrypted with that shared secret — the relays never see connection metadata in plaintext, and only peers holding the password can complete a handshake into the room.
+-   **Cellular Mesh Security**: In cellular mode, every inter-cell hop is a direct DTLS-encrypted peer link. Bridge peers — regular, password-authenticated members of the same room — relay messages between cells as part of normal forwarding, handling payloads exactly like any other room member; applications that require payload confidentiality across forwarding peers can encrypt at the application layer before sending.
