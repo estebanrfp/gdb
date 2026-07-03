@@ -7,106 +7,273 @@
   <title>GenosDB · Cellular Mesh Reach Probe</title>
   <style>
     :root {
-      --bg: #0b1410;
-      --fg: #9fe8b1;
-      --bright: #ffffff;
-      --muted: #5f8a70;
-      --me: #7fd4ff;
-      --line: #1e352a;
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #161616;
+      --bg-tertiary: #232323;
+      --text-primary: #ffffff;
+      --text-secondary: #8a939b;
+      --text-tertiary: #5a5f66;
+      --accent: #2081e2;
+      --accent-hover: #3a93ee;
+      --success: #34c759;
+      --border-subtle: #232830;
+      --border-default: #333a42;
+      --bar-track: #22262c;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-full: 9999px;
+      --transition: 160ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      background: var(--bg);
-      color: var(--fg);
-      font: 14px/1.5 ui-monospace, SFMono-Regular, monospace;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      font-size: 16px;
-      margin: 0 0 4px;
-      color: var(--bright);
-    }
-
-    .hint {
-      color: var(--muted);
-      margin: 0 0 18px;
-      max-width: 640px;
-    }
-
-    .grid {
+      min-height: 100vh;
       display: flex;
-      gap: 22px;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .probe {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    /* Header */
+    .probe__head {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .probe__eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .probe__title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
       margin-bottom: 12px;
     }
 
-    .kv b {
-      display: block;
-      font-size: 24px;
-      color: var(--bright);
+    .probe__hint {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      max-width: 380px;
+      margin: 0 auto;
     }
 
-    .cells div {
-      padding: 3px 0;
-      border-bottom: 1px dashed var(--line);
+    /* Stat cards */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
     }
 
-    .me {
-      color: var(--me);
+    .stat {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 6px;
+      text-align: center;
     }
 
-    #ping {
-      margin: 4px 0 14px;
+    .stat__value {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.1;
+      color: var(--text-primary);
     }
 
-    button {
-      background: #12251a;
-      color: var(--fg);
-      border: 1px solid var(--line);
-      padding: 8px 16px;
-      border-radius: 6px;
-      font: inherit;
+    .stat__value--sm {
+      font-size: 16px;
+    }
+
+    .stat__label {
+      margin-top: 7px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    .stat--bridge .stat__value {
+      color: var(--text-secondary);
+    }
+
+    .stat--bridge.is-bridge .stat__value {
+      color: var(--accent);
+    }
+
+    /* Action row */
+    .probe__action {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      flex: none;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      padding: 11px 24px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
+      transition: var(--transition);
     }
 
-    button:hover {
-      background: #1a3527;
+    .btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
     }
 
-    #pingres {
-      margin-left: 12px;
-      color: var(--bright);
+    .btn:active {
+      transform: translateY(0);
     }
 
-    #pingres.ok {
-      color: #6effa0;
-      font-weight: bold;
+    .reach {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .reach.is-complete {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* Cell distribution */
+    .cells-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 14px;
+    }
+
+    .cell-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .cell-row__name {
+      flex: none;
+      width: 52px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .cell-row--me .cell-row__name {
+      color: var(--accent);
+    }
+
+    .cell-row__bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bar-track);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .cell-row__fill {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: inherit;
+      transition: width var(--transition);
+    }
+
+    .cell-note {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .cell-row__count {
+      flex: none;
+      width: 20px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 420px) {
+      .probe__title { font-size: 21px; }
+      .stat__value { font-size: 19px; }
     }
   </style>
 </head>
 
 <body>
-  <h1>GenosDB · Cellular Mesh Reach Probe</h1>
-  <p class="hint">
-    Open this page in several tabs (or share the URL) — each tab is a peer.
-    Beyond 10 peers the mesh splits into cells with elected bridges. Press
-    PING to broadcast a "hello": every peer auto-answers "world", and
-    <b>reach N/N</b> shows how many peers the message reached across the
-    cells, with the coverage latency.
-  </p>
-  <div class="grid">
-    <div class="kv">peers<b id="peers">1</b></div>
-    <div class="kv">cells<b id="cells">1</b></div>
-    <div class="kv">my cell<b id="mycell">–</b></div>
-    <div class="kv">bridge<b id="bridge">no</b></div>
-  </div>
-  <div id="ping">
-    <button id="pingbtn">PING — hello → world</button>
-    <span id="pingres">–</span>
-  </div>
-  <div class="cells" id="list"></div>
+  <main class="probe">
+    <div class="probe__head">
+      <div class="probe__eyebrow">GenosDB · Cellular Mesh</div>
+      <h1 class="probe__title">Reach Probe</h1>
+      <p class="probe__hint">
+        Open in several tabs — each is a peer. Past 10 peers the mesh splits
+        into cells with elected bridges. Press <b>Ping</b>: every peer answers,
+        and reach shows how many the broadcast reached across the cells.
+      </p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat__value" id="peers">1</div>
+        <div class="stat__label">peers</div>
+      </div>
+      <div class="stat">
+        <div class="stat__value" id="cells">1</div>
+        <div class="stat__label">cells</div>
+      </div>
+      <div class="stat">
+        <div class="stat__value stat__value--sm" id="mycell">–</div>
+        <div class="stat__label">my cell</div>
+      </div>
+      <div class="stat stat--bridge" id="bridgeStat">
+        <div class="stat__value" id="bridge">no</div>
+        <div class="stat__label">bridge</div>
+      </div>
+    </div>
+
+    <div class="probe__action">
+      <button class="btn" id="pingbtn">Ping</button>
+      <span class="reach" id="pingres">—</span>
+    </div>
+
+    <div class="cells-title">Cell distribution</div>
+    <div id="list"></div>
+  </main>
 
   <script type="module">
     // A GenosDB peer with Cellular Mesh enabled. It reports what it sees
@@ -143,15 +310,32 @@
 
       $("peers").textContent = states.size + 1;
       $("cells").textContent = byCell.size;
-      $("mycell").textContent = self.cellId ?? "–";
-      $("bridge").textContent = self.isBridge ? "YES" : "no";
+      $("mycell").textContent = self.cellId?.replace("cell-", "C") ?? "–";
+      $("bridge").textContent = self.isBridge ? "yes" : "no";
+      $("bridgeStat").classList.toggle("is-bridge", !!self.isBridge);
       document.title = `${states.size + 1}p ${byCell.size}c ${self.cellId ?? ""}`;
 
-      $("list").innerHTML = [...byCell.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([c, ids]) =>
-          `<div>${c === self.cellId ? `<span class="me">${c}</span>` : c} — ${ids.size} peers</div>`
-        ).join("");
+      const rows = [...byCell.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      if (rows.length < 2) {
+        // A single cell isn't a distribution yet — say so instead of drawing
+        // one lonely full bar.
+        $("list").innerHTML = `<div class="cell-note">Single cell — the mesh splits past 10 peers.</div>`;
+        return;
+      }
+      const max = Math.max(1, ...rows.map(([, ids]) => ids.size));
+      $("list").innerHTML = rows.map(([c, ids]) => {
+        const me = c === self.cellId;
+        return `<div class="cell-row${me ? " cell-row--me" : ""}">
+          <span class="cell-row__name">${c.replace("cell-", "cell ")}</span>
+          <span class="cell-row__bar"><span class="cell-row__fill"></span></span>
+          <span class="cell-row__count">${ids.size}</span>
+        </div>`;
+      }).join("");
+      // The fill width is data — set it on the element (works without the
+      // inline-style attribute a strict CSP would strip).
+      $("list").querySelectorAll(".cell-row__fill").forEach((el, i) => {
+        el.style.width = `${Math.round((rows[i][1].size / max) * 100)}%`;
+      });
     };
 
     // Seed with the current engine state: the initial mesh:state fires
@@ -175,7 +359,7 @@
       const reached = ping.seen.size + 1; // +1: I originate it, so I always have it
       const done = ping.total > 0 && reached >= ping.total;
       $("pingres").textContent = `reach ${reached}/${ping.total} · ${dt}ms${done ? " ✓" : ""}`;
-      $("pingres").className = done ? "ok" : "";
+      $("pingres").classList.toggle("is-complete", done);
     };
 
     mesh.on("message", m => {
