@@ -71,7 +71,7 @@ Browser + GenosDB
     - **Between Tabs:** Uses BroadcastChannel for instant, local synchronization.
     - **Massive Scalability:** Optional Cellular Mesh topology (`{ rtc: { cells: true } }`) enables horizontal scaling to large-scale networks by organizing peers into cells with bridge interconnections. ([GenosRTC Cells](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md))
 - **Optimized Data Handling:** Efficiently serializes data with MessagePack and compresses it with Pako to reduce storage footprint and network payload.
-- **Extensible & Modular:** The core is lightweight, but its capabilities can be easily extended with external modules for features like advanced indexing (e.g., Radix Tree).
+- **Extensible & Modular:** The core is lightweight, but its capabilities can be easily extended with external modules for features like geospatial queries, AI and natural-language queries.
 
 ## Project Status
 

@@ -44,8 +44,6 @@ Creates and configures a database connection.
     - `sm` `{Object}` – Enables and configures the Security Manager. Provide at least `superAdmins` (an array of authorized addresses).
     - `ai` `{boolean}` – If `true`, loads the AI module.
     - `nlq` `{boolean}` – If `true`, loads the Natural Language for Queries module.
-    - `rx` `{boolean}` – If `true`, loads the Radix Index module.
-    - `ii` `{boolean}` – If `true`, loads the Inverted Index module.
     - `geo` `{boolean}` – If `true`, loads the Geo module.
     - `audit` `{boolean}` – If `true`, loads the Audit module.
     - `password` `{string}` – Optional encryption key.

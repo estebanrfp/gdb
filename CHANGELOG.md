@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-07-03
+
+### Removed
+
+- **Radix Index (`rx`) and Inverted Index (`ii`) modules.** A code audit showed neither ever operated as documented: they were never wired into the query engine (queries always ran the engine's own scan), the `rx` extension of `db.map` threw a `TypeError` on the exact query it claimed to accelerate, indexes went stale on P2P-synced data, and `ii` indexed property names rather than content. Prefix and text queries are — and always were — served correctly by the core operators: **`$startsWith`, `$endsWith`, `$contains` and `$text` keep working unchanged, no migration needed.** Apps still passing `rx: true` / `ii: true` are not affected: unknown options are ignored. Removes `dist/rx.min.js` and `dist/ii.min.js` and the `db.searchByPrefix` method (use `db.map` with `$startsWith`).
+
 ## [0.19.0] - 2026-07-03
 
 ### Added

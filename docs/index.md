@@ -33,7 +33,6 @@ Welcome to the official technical documentation for GenosDB.
   ---
 
   - 🧭 [GenosRTC Guide (rtc)](genosrtc-guide.md) (Tutorials for data channels and media streaming)
-  - 🌳 [Radix Tree (rx)](rx-radix-tree.md) (Prefix index with $startsWith and searchByPrefix)
   - 🕵️ [Audit Option (audit)](audit.md) (Asynchronous moderation of the oplog with custom prompt)
   - 🤖 [NLQ Module](nlq-module.md) (Natural Language for Queries in db.map using prompts)
   - 📍 [GEO Query Module (geo)](geo-module.md) (Geo queries with $near and $bbox operators)

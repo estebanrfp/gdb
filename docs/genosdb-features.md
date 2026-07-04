@@ -7,8 +7,6 @@
     *   `sm`: Activates the Security Manager for identity, RBAC, and encryption.
     *   `ai`: Loads the AI module.
     *   `nlq`: Loads the Natural Language for Queries module.
-    *   `rx`: Loads the Radix Index module.
-    *   `ii`: Loads the Inverted Index module for efficient value-based searches.
     *   `geo`: Loads the Geo-spatial module.
 
 *   **Storage and Persistence:**
