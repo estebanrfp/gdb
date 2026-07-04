@@ -166,7 +166,9 @@
 
     async function loadPosts(cursor) {
       console.log("Loading data from the database...");
-      const options = { $after: cursor, $limit: 20 };
+      // field/order make the cursor deterministic — without them $after walks
+      // the graph's insertion order, which differs between P2P peers.
+      const options = { field: "id", order: "asc", $after: cursor, $limit: 20 };
       try {
         const { results } = await db.map(options);
         if (results.length === 0) {
