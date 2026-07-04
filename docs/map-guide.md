@@ -63,7 +63,16 @@ unsubscribe()
 
 #### **c) Callback with Detailed Notifications**
 
-The callback can receive additional details about changes if it accepts more than one parameter. This allows you to distinguish between nodes being added, removed, or updated.
+The callback receives **one object per node** — the node's data plus the `action` that triggered the notification — letting you react to each kind of change:
+
+| Action | When it fires |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| `initial` | Once per node already matching the query when the subscription starts, delivered in `field`/`order` order. |
+| `added`   | A node starts matching the query (created locally or received from a peer).                               |
+| `updated` | A matching node's value, edges or timestamp changed.                                                      |
+| `removed` | A node was deleted or stopped matching the query.                                                         |
+
+> With `$limit`, `added` and `removed` also fire when a node enters or falls out of the result window.
 
 ```javascript
 const { results, unsubscribe } = await db.map(
@@ -72,7 +81,9 @@ const { results, unsubscribe } = await db.map(
     realtime: true,
   },
   ({ id, value, action }) => {
-    if (action === "added") {
+    if (action === "initial") {
+      console.log(`Existing node: ${id}`, value)
+    } else if (action === "added") {
       console.log(`Node added: ${id}`, value)
     } else if (action === "removed") {
       console.log(`Node removed: ${id}`)
@@ -88,7 +99,7 @@ unsubscribe()
 
 - **Supported Parameters**:
   - An object with configuration options.
-  - A callback with three arguments: `(id, value, action)`.
+  - A callback receiving a single object per node: `{ id, value, edges, timestamp, action }`.
 
 ---
 
@@ -227,8 +238,8 @@ const { results, unsubscribe } = await db.map(
     query: { status: "active" },
     realtime: true,
   },
-  (newResults) => {
-    console.log("Real-time results:", newResults)
+  ({ id, value, action }) => {
+    console.log(`[${action}] ${id}`, value)
   }
 )
 
