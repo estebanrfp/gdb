@@ -72,7 +72,24 @@ Copy this `:root` block as-is. Every color, radius and spacing in your app must 
 
 ### Color mode: dark only
 
-GenosDB applications ship **dark-only by default**. A light mode or a sun/moon toggle doubles the CSS surface, adds persistent state, and dilutes visual identity — complexity the ecosystem does not want in examples, testbeds or reference apps. If a production application truly needs a light theme, implement it by swapping the token values under a `[data-theme="light"]` selector; the component CSS must not change.
+GenosDB applications ship **dark-only by default** — examples, testbeds and instruments add no theme state at all.
+
+For **consumer-facing product apps**, a theme toggle is a sanctioned opt-in pattern, with exact rules:
+
+1. **One icon button** in the top bar, next to the session pill, with an `aria-label`. The icon shows the mode you'll switch **to** (🌙 while in light, ☀️ while in dark).
+2. Implementation: a `data-theme` attribute on `<html>`, a `[data-theme="light"]` block that **redefines tokens only**, `localStorage` persistence, and `prefers-color-scheme` as the first-visit default.
+
+```javascript
+const applyTheme = (t) => {
+  document.documentElement.dataset.theme = t
+  localStorage.theme = t
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙'
+}
+applyTheme(localStorage.theme ?? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
+themeBtn.onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')
+```
+
+3. **The golden rule:** if enabling the toggle requires touching any component CSS, the token system is broken — fix the tokens, never patch components. A well-built toggle costs ~25 lines total and doubles as living proof that the design tokens work.
 
 ---
 
@@ -112,13 +129,23 @@ modal.onclick = (e) => { if (e.target === modal) modal.close() }
 
 …and the security state callback closes it on login — the user never dismisses it manually after authenticating.
 
+**The modal is a three-phase state machine** (button visibility per phase):
+
+| Phase | Visible | Hidden |
+| --- | --- | --- |
+| Signed out (fresh) | `Generate identity` · `Login with mnemonic` · `Login with passkey` *(only if a WebAuthn registration exists)* | `Copy phrase` · `Protect with passkey` |
+| After generating | `Copy phrase` · `Protect with passkey` *(labelled Recommended)* · `Login with mnemonic` *(must remain — no dead ends)* | `Generate identity` *(one identity at a time)* |
+| Session active | — modal auto-closes; on logout the textarea resets to editable and phase 1 returns | |
+
 ### 4.2 Session: always top-right
 
-An authenticated session renders as a **pill anchored to the top-right** of the content area (the universal convention users scan for):
+An authenticated session renders **anchored to the top-right** of the content area (the universal convention users scan for), in the canonical format — abbreviated address first, role second:
 
 ```
-[ 0x1234...abcd  ROLE  Logout ]
+0x1234...abcd [role]   Logout
 ```
+
+The address is `--mono` + `--text-secondary`; the role reads as a quiet bracketed tag. **Restraint over decoration**: no saturated filled pills, no competing colors — the session area is chrome, not content.
 
 - Signed out → the same spot shows a single `Sign in / Register` button that opens the modal.
 - The top bar is `position: sticky` over the content scroll, with a subtle bottom border.
@@ -126,7 +153,7 @@ An authenticated session renders as a **pill anchored to the top-right** of the 
 
 ### 4.3 Role badges
 
-The live role (watched reactively on the `user:<address>` node) renders as an uppercase pill. Map **ascending trust tiers** to a fixed color ramp so every GenosDB app reads the same way:
+The live role (watched reactively on the `user:<address>` node) renders as a quiet uppercase tag — **tier color applied to the text (or a subtle border), never a filled background**. Map ascending trust tiers to a fixed color ramp so every GenosDB app reads the same way:
 
 | Tier | Token | Meaning |
 | --- | --- | --- |
@@ -221,7 +248,7 @@ Before shipping a GenosDB app or example, verify:
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Dark theme only; no toggle unless the product truly requires it.
 3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow.
-4. ☐ Session pill (abbrAddr + role badge + logout) sits top-right; signed-out shows one Sign-in button there.
+4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out shows one Sign-in button there.
 5. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
 6. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
 7. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
