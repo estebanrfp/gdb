@@ -112,9 +112,8 @@ const options = {
 
 // With real-time updates
 const { results, unsubscribe } = await db.map(
-  { category: "news" },
-  { ...options, realtime: true },
-  (newResults) => updateUI(newResults)
+  { query: { category: "news" }, ...options, realtime: true },
+  ({ id, value, action }) => updateUI(id, value, action)
 )
 ```
 
