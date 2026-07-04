@@ -10,6 +10,7 @@ Welcome to the official technical documentation for GenosDB.
  
   - 🧪 [GenosDB Examples](genosdb-examples.md) (Live demos and community projects)
   - ✨ [GenosDB Features](genosdb-features.md) (Comprehensive feature overview and architecture)
+  - 🎨 [GenosDB Design Guide](genosdb-design-guide.md) (Opinionated UI patterns, design tokens, and page architectures for GenosDB applications — for humans and AIs)
   - ↔️ [Cursor-Based-Pagination](cursor-based-pagination.md) (Efficient paging with $after/$before/$limit)
   - 📚 [Resources](genosdb-resources.md) (Helpful links: whitepaper, docs, wiki, npm, discussions)
 
