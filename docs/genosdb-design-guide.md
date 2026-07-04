@@ -2,7 +2,16 @@
 
 Opinionated UI patterns, design tokens and page architectures for applications built on GenosDB — written for **humans and AIs alike**. If you (or your AI assistant) are building a GenosDB application and want it to look and behave like a first-class citizen of the ecosystem, follow this guide.
 
-The goal is coherence without complexity: every rule here is implementable in plain HTML + CSS + JavaScript, with no framework and no build step, matching the spirit of the official examples.
+The goal is coherence without complexity: every rule here is implementable in plain HTML + CSS + JavaScript, with no UI framework required.
+
+### Two deployment shapes, one design language
+
+GenosDB applications ship in two shapes, and this guide applies equally to both:
+
+- **No-build (examples, testbeds, prototypes):** three files — `index.html`, `styles.css`, `app.js` — importing GenosDB from a CDN. Zero tooling.
+- **Bundled (production apps):** installed from npm and bundled into the app. **Bun is the recommended bundler and runtime** — `bun build` inlines GenosDB's core, and the engine's optional `*.min.js` plugins are copied next to the output bundle. See [Bundler Configuration](bundler-configuration.md) for Bun, Vite, Webpack and esbuild setups.
+
+The design language is identical in both — tokens and patterns don't care how the bytes arrived.
 
 ---
 
@@ -11,7 +20,7 @@ The goal is coherence without complexity: every rule here is implementable in pl
 1. **Content is the protagonist.** Chrome (navigation, session, widgets) stays visually quiet; data takes the full viewport height. Never let a fixed panel steal reading space.
 2. **Dark, minimal, precise.** One dark theme, generous whitespace, subtle borders instead of shadows, restrained color reserved for meaning (roles, status, actions).
 3. **The API dictates the UX.** GenosDB's methods have natural interface consequences — mnemonic identity wants a focused modal, the security state callback wants a reactive session pill, governance roles want visible badges, realtime deltas want live DOM. Design *from* the API, not against it.
-4. **No frameworks, no dependencies for style.** Design tokens + plain CSS cover everything. The only sanctioned UI dependencies are functional (e.g. DOMPurify for untrusted content).
+4. **No UI frameworks, no dependencies for style.** Design tokens + plain CSS cover everything, whether the app is a three-file example or a Bun-bundled product. The only sanctioned UI dependencies are functional (e.g. DOMPurify for untrusted content).
 5. **Small surface, strong opinions.** When in doubt, do less.
 
 ---
@@ -190,7 +199,7 @@ Minimal CSS contracts — copy and restyle only via tokens.
 ## 7. Realtime UI Rules
 
 1. **The DOM is the state.** Subscribe once with `db.map(options, callback)` and let deltas mutate the interface directly — no mirrored arrays or Maps for a single view. (An app-wide store fed by one subscription is legitimate when *many* views consume the same data.)
-2. **Handle all four actions explicitly** — `initial`, `added`, `updated`, `removed` — each with its own branch. `initial` arrives already sorted when you pass `field`/`order`; `added`/`updated` items are the newest by definition and belong at the top.
+2. **Handle all four actions explicitly** — `initial`, `added`, `updated`, `removed` — each with its own branch. The canonical DOM gestures: `initial` → append (arrives already sorted when you pass `field`/`order`), `added` → prepend (newest by definition), `updated` → rebuild and move to top, `removed` → remove. The full event contract (`{ id, value, edges, timestamp, action }`) lives in the [MAP Guide](map-guide.md) — reference it, don't re-document it.
 3. **Let the engine own the ordering and the window.** Pass `field` + `order` instead of sorting in the app; pass `$limit` and let the engine emit `added`/`removed` as nodes enter or leave the window. Cursors (`$after`/`$before`) are only meaningful over an explicit `field` order.
 4. **Live-first verification:** after any data-loading change, test with two browsers — creation in one must appear in the other without reloads.
 
