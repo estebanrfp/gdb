@@ -387,13 +387,24 @@
       display: block;
     }
 
-    /* Signed out, the status hint is the contextual re-entry to the identity modal */
-    #status.signin-cta {
+    /* Status segments: the peers counter toggles the versions panel, and the
+       signed-out hint re-opens the identity modal — text-shaped buttons. */
+    #statusPeers {
+      background: none;
+      border: none;
+      font: inherit;
+      color: inherit;
+      padding: 0;
       cursor: pointer;
     }
 
-    #status.signin-cta:hover {
+    #statusPeers:hover,
+    #statusRole.signin-cta:hover {
       color: #0ea5e9;
+    }
+
+    #statusRole.signin-cta {
+      cursor: pointer;
     }
 
     /* Top-right identity area: a single Sign-in button, or the session chip.
@@ -692,32 +703,6 @@
     }
 
     /* green for files */
-    /* Floating green dot button (versions toggle) */
-    #versionsToggleBtn {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      width: 18px;
-      height: 18px;
-      border-radius: 9999px;
-      background: #22c55e;
-      /* green-500 */
-      border: 2px solid #16a34a;
-      /* green-600 */
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-      cursor: pointer;
-      z-index: 1200;
-    }
-
-    #versionsToggleBtn:hover {
-      background: #16a34a;
-    }
-
-    #versionsToggleBtn:focus {
-      outline: 2px solid #86efac;
-      outline-offset: 2px;
-    }
-
     /* Versions panel (hidden by default) */
     #versionsPanel[hidden] {
       display: none;
@@ -726,8 +711,8 @@
     #versionsPanel {
       position: fixed;
       right: 1rem;
-      bottom: 2.8rem;
-      /* sit above the toggle */
+      bottom: 3.4rem;
+      /* sit above the status bar, which toggles it */
       width: 280px;
       max-height: 240px;
       background: #0b0b0b;
@@ -933,9 +918,11 @@
       <div id="previewContent" aria-live="polite"></div>
     </div>
   </div>
-  <div id="status">Connected peers: 0</div>
-  <!-- Floating versions toggle and panel -->
-  <button id="versionsToggleBtn" title="Show versions" aria-label="Show versions"></button>
+  <!-- Status bar: each segment is its own affordance — the peers counter
+       toggles the versions/files panel, the read-only hint opens the modal. -->
+  <div id="status"><button id="statusPeers" aria-expanded="false"
+      title="Show saved versions &amp; shared files">Connected peers: 0</button><span id="statusRole"></span><span
+      id="statusSaved"></span></div>
   <div id="versionsPanel" hidden aria-label="Saved versions">
     <div id="versionList"></div>
   </div>
@@ -1078,8 +1065,10 @@
     const btnClear = document.getElementById('btnClear');
     const fileList = document.getElementById('fileList');
     const versionList = document.getElementById('versionList');
-    const versionsToggleBtn = document.getElementById('versionsToggleBtn');
     const versionsPanel = document.getElementById('versionsPanel');
+    const statusPeers = document.getElementById('statusPeers');
+    const statusRole = document.getElementById('statusRole');
+    const statusSaved = document.getElementById('statusSaved');
     const videoContainer = document.getElementById('videoContainer');
     const docId = 'main-doc';
     let peerCount = 0;
@@ -1399,27 +1388,31 @@
       });
     };
 
-    // Update status (peers + live write capability + save flash)
+    // Update status — three fixed segments so each keeps its own click
+    // affordance: peers (toggles the versions panel), role hint (opens the
+    // identity modal while signed out), save flash (plain text).
     const updateStatus = () => {
-      const savedSuffix = Date.now() < showSavedUntil ? ' | Saved' : '';
-      const roleSuffix = !myAddress ? ' | read-only — sign in to edit'
+      statusPeers.textContent = `Connected peers: ${peerCount}`;
+      statusRole.textContent = !myAddress ? ' | read-only — sign in to edit'
         : !can('write') ? ' | read-only (editor role pending)' : '';
-      status.textContent = `Connected peers: ${peerCount}${roleSuffix}${savedSuffix}`;
+      statusSaved.textContent = Date.now() < showSavedUntil ? ' | Saved' : '';
     };
     // Versions panel toggle
     const setVersionsOpen = (open) => {
       if (open) {
         versionsPanel.removeAttribute('hidden');
-        versionsToggleBtn.setAttribute('aria-expanded', 'true');
+        statusPeers.setAttribute('aria-expanded', 'true');
       } else {
         versionsPanel.setAttribute('hidden', '');
-        versionsToggleBtn.setAttribute('aria-expanded', 'false');
+        statusPeers.setAttribute('aria-expanded', 'false');
       }
       try { localStorage.setItem('collab2.versions.open', open ? '1' : '0'); } catch { }
     };
     const initialOpen = (() => { try { return localStorage.getItem('collab2.versions.open') === '1'; } catch { return false; } })();
     setVersionsOpen(initialOpen);
-    versionsToggleBtn.addEventListener('click', () => {
+    // The peers counter IS the versions toggle (no floating dot competing
+    // with the status bar for the same corner).
+    statusPeers.addEventListener('click', () => {
       const isOpen = !versionsPanel.hasAttribute('hidden');
       setVersionsOpen(!isOpen);
     });
@@ -1473,8 +1466,8 @@
       startVideoBtn.disabled = !myAddress;
       startVideoBtn.title = myAddress ? 'Start video' : 'Sign in to share your camera';
       // Signed out, the status hint doubles as the re-entry point to the modal.
-      status.classList.toggle('signin-cta', !myAddress);
-      status.title = myAddress ? '' : 'Open the identity dialog';
+      statusRole.classList.toggle('signin-cta', !myAddress);
+      statusRole.title = myAddress ? '' : 'Open the identity dialog';
       renderVersions(); // the admin-only delete affordance follows the live role
       updateStatus();
     };
@@ -1552,7 +1545,7 @@
     // --- Identity modal (three-phase state machine, see the Design Guide) ---
     // No standing Sign-in button: the modal auto-opens while signed out (boot,
     // logout), and the read-only status hint below re-opens it contextually.
-    status.addEventListener('click', () => {
+    statusRole.addEventListener('click', () => {
       if (!myAddress) { setPhase('welcome'); identityModal.showModal(); }
     });
     const openSessionPhase = () => { setPhase('session'); identityModal.showModal(); };
