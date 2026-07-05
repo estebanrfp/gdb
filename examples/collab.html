@@ -387,6 +387,15 @@
       display: block;
     }
 
+    /* Signed out, the status hint is the contextual re-entry to the identity modal */
+    #status.signin-cta {
+      cursor: pointer;
+    }
+
+    #status.signin-cta:hover {
+      color: #0ea5e9;
+    }
+
     /* Top-right identity area: a single Sign-in button, or the session chip.
        All identity flows live in the centered #identityModal dialog. */
     #auth {
@@ -946,10 +955,10 @@
   <div id="versionsPanel" hidden aria-label="Saved versions">
     <div id="versionList"></div>
   </div>
-  <!-- Identity top-right: sign-in button or live session chip (address + role).
+  <!-- Identity top-right: the live session chip (address + role) — and nothing
+       while signed out: the auto-opened identity modal IS the door.
        Clicking the chip opens the modal in its session phase. -->
   <div id="auth">
-    <button id="openLoginBtn" class="btn">🔑 Sign in</button>
     <div id="sessionChip" class="summary" role="button" tabindex="0" title="Account options">
       <span class="dot" aria-hidden="true"></span>
       <span id="chipAddr" class="addr">—</span>
@@ -1045,7 +1054,6 @@
     const togglePreviewBtn = document.getElementById('togglePreview');
     const resetSplitBtn = document.getElementById('resetSplit');
     const status = document.getElementById('status');
-    const openLoginBtn = document.getElementById('openLoginBtn');
     const sessionChip = document.getElementById('sessionChip');
     const chipAddr = document.getElementById('chipAddr');
     const chipRole = document.getElementById('chipRole');
@@ -1480,6 +1488,9 @@
       // broadcasting yourself (camera/mic) requires a signed-in identity.
       startVideoBtn.disabled = !myAddress;
       startVideoBtn.title = myAddress ? 'Start video' : 'Sign in to share your camera';
+      // Signed out, the status hint doubles as the re-entry point to the modal.
+      status.classList.toggle('signin-cta', !myAddress);
+      status.title = myAddress ? '' : 'Open the identity dialog';
       renderVersions(); // the admin-only delete affordance follows the live role
       updateStatus();
     };
@@ -1513,7 +1524,6 @@
     const onSecurityState = (state) => {
       if (state.isActive) {
         myAddress = state.activeAddress;
-        openLoginBtn.style.display = 'none';
         sessionChip.style.display = 'flex';
         chipAddr.textContent = state.abbrAddr || shortAddr(state.activeAddress) || '—';
         sessionAddr.textContent = state.activeAddress || '—';
@@ -1526,7 +1536,6 @@
         myAddress = null; myRole = null;
         chipRole.textContent = '[guest]';
         chipRole.dataset.role = 'guest';
-        openLoginBtn.style.display = '';
         sessionChip.style.display = 'none';
         webauthnLoginBtn.style.display = state.hasWebAuthnHardwareRegistration ? '' : 'none';
         protectBtn.style.display = '';
@@ -1542,7 +1551,11 @@
     db.sm.setSecurityStateChangeCallback(onSecurityState);
 
     // --- Identity modal (three-phase state machine, see the Design Guide) ---
-    openLoginBtn.addEventListener('click', () => { setPhase('welcome'); identityModal.showModal(); });
+    // No standing Sign-in button: the modal auto-opens while signed out (boot,
+    // logout), and the read-only status hint below re-opens it contextually.
+    status.addEventListener('click', () => {
+      if (!myAddress) { setPhase('welcome'); identityModal.showModal(); }
+    });
     const openSessionPhase = () => { setPhase('session'); identityModal.showModal(); };
     sessionChip.addEventListener('click', openSessionPhase);
     sessionChip.addEventListener('keydown', (e) => {
@@ -1623,7 +1636,8 @@
     logoutBtn.addEventListener('click', async () => {
       try {
         await db.sm.clearSecurity();
-        identityModal.close();
+        // Signed-out IS the modal's welcome phase (the state callback set it);
+        // dismiss with × to keep reading as a guest.
         toast('Signed out');
       } catch { toast('Could not sign out', true); }
     });
@@ -1693,11 +1707,13 @@
       video.srcObject = stream; // always refresh — peers may restart their stream
     });
 
-    // Check document existence
+    // Load the doc if this peer already has it. NO bootstrap write: a virgin
+    // peer booting before sync must not materialize an empty doc — its newer
+    // LWW timestamp would wipe the shared content for everyone. The reactive
+    // subscription below paints the document as soon as sync delivers it,
+    // and the first real edit creates the node.
     const { result: initialDoc } = await db.get(docId);
-    if (!initialDoc) {
-      await db.put({ content: '' }, docId);
-    } else {
+    if (initialDoc) {
       setEditorHTML(initialDoc.value.content || '');
       lastTimestamp = initialDoc.timestamp ? initialDoc.timestamp.physical : Date.now();
     }
@@ -2086,14 +2102,12 @@
     } catch { }
     applyPermissionsToUI();
 
-    // First-visit onboarding: a distributed app has no server-side login page,
-    // so surface the identity modal ONCE for newcomers. Dismissible, flagged on
-    // show (never again — not even after logout); the top-right Sign in button
-    // remains the permanent entry point.
+    // The modal IS the door: a distributed app has no server-side login page,
+    // so every load without an active session opens the identity dialog.
+    // Passkey users never see it (their session resumes silently and the
+    // security callback closes it); dismiss with × to read as a guest.
     try {
-      const PROMPTED = 'collab.identityPrompted';
-      if (!db.sm.isSecurityActive() && !db.sm.hasExistingWebAuthnRegistration?.() && !localStorage.getItem(PROMPTED)) {
-        localStorage.setItem(PROMPTED, '1');
+      if (!db.sm.isSecurityActive()) {
         setPhase('welcome');
         identityModal.showModal();
       }

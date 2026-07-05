@@ -137,20 +137,16 @@ modal.onclick = (e) => { if (e.target === modal) modal.close() }
 | After generating | `Copy phrase` · `Protect with passkey` *(labelled Recommended)* · `Login with mnemonic` *(must remain — no dead ends)* | `Generate identity` *(one identity at a time)* |
 | Session active | — modal auto-closes; on logout the textarea resets to editable and phase 1 returns | |
 
-**First visit: open the modal automatically — once.** A distributed app has no server-side login redirect, so the identity modal doubles as onboarding: open it programmatically on the very first visit, and the newcomer immediately learns what an identity is and how roles are earned. Strict conditions, or it degenerates into a nag popup:
-
-- Only when **all** hold: no active session, no WebAuthn registration on the device, and no "already prompted" flag in `localStorage`.
-- Set the flag **when showing**, not on dismissal — the modal appears exactly once, ever.
-- It must be dismissible (×, backdrop click, `Esc`), with the app fully usable as a read-only guest behind it.
-- Never auto-reopen after logout or on later visits; the top-right **Sign in** button remains the permanent entry point.
+**No standing "Sign in" button — the modal IS the door.** A distributed app has no server-side login page, so don't emulate one with a persistent button. Open the identity modal automatically on **every load without an active session**: the newcomer immediately learns what an identity is and how roles are earned, and returning passkey users never see it — their session resumes silently and the security callback closes it.
 
 ```javascript
-const PROMPTED = "myapp.identityPrompted"
-if (!db.sm.isSecurityActive() && !db.sm.hasExistingWebAuthnRegistration() && !localStorage.getItem(PROMPTED)) {
-  localStorage.setItem(PROMPTED, "1")
-  identityModal.showModal()
-}
+// Boot: signed-out state = the identity dialog (dismissible)
+if (!db.sm.isSecurityActive()) identityModal.showModal()
 ```
+
+- **Dismissible** (×, backdrop click, `Esc`) — the app stays fully usable as a read-only guest behind it.
+- **Logging out returns to phase 1 with the modal open** — signed-out *is* the modal's state.
+- **Re-entry without reloading is contextual**, not chrome: a clickable read-only status hint, or the explanatory affordance of a gated control, re-opens the modal. The top-right area belongs to the session chip alone and stays empty while signed out.
 
 ### 4.2 Session: always top-right
 
@@ -162,7 +158,7 @@ An authenticated session renders **anchored to the top-right** of the content ar
 
 The address is `--mono` + `--text-secondary`; the role reads as a quiet bracketed tag. **Restraint over decoration**: no saturated filled pills, no competing colors — the session area is chrome, not content.
 
-- Signed out → the same spot shows a single `Sign in / Register` button that opens the modal.
+- Signed out → the spot stays **empty**: the auto-opened modal is the door (§4.1), and contextual CTAs re-open it. No standing Sign-in button.
 - The top bar is `position: sticky` over the content scroll, with a subtle bottom border.
 - `db.sm.setSecurityStateChangeCallback(...)` is the **single source of truth**: it toggles the pill/button, closes the modal, and resets the mnemonic textarea on logout. No UI state duplicates it.
 
@@ -278,8 +274,8 @@ Before shipping a GenosDB app or example, verify:
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Dark theme only; no toggle unless the product truly requires it.
-3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens **once** for first-time visitors (localStorage-flagged, dismissible).
-4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out shows one Sign-in button there.
+3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible) — no standing Sign-in button, re-entry via contextual CTAs.
+4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
 5. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
 6. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
 7. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
