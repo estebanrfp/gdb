@@ -137,6 +137,21 @@ modal.onclick = (e) => { if (e.target === modal) modal.close() }
 | After generating | `Copy phrase` · `Protect with passkey` *(labelled Recommended)* · `Login with mnemonic` *(must remain — no dead ends)* | `Generate identity` *(one identity at a time)* |
 | Session active | — modal auto-closes; on logout the textarea resets to editable and phase 1 returns | |
 
+**First visit: open the modal automatically — once.** A distributed app has no server-side login redirect, so the identity modal doubles as onboarding: open it programmatically on the very first visit, and the newcomer immediately learns what an identity is and how roles are earned. Strict conditions, or it degenerates into a nag popup:
+
+- Only when **all** hold: no active session, no WebAuthn registration on the device, and no "already prompted" flag in `localStorage`.
+- Set the flag **when showing**, not on dismissal — the modal appears exactly once, ever.
+- It must be dismissible (×, backdrop click, `Esc`), with the app fully usable as a read-only guest behind it.
+- Never auto-reopen after logout or on later visits; the top-right **Sign in** button remains the permanent entry point.
+
+```javascript
+const PROMPTED = "myapp.identityPrompted"
+if (!db.sm.isSecurityActive() && !db.sm.hasExistingWebAuthnRegistration() && !localStorage.getItem(PROMPTED)) {
+  localStorage.setItem(PROMPTED, "1")
+  identityModal.showModal()
+}
+```
+
 ### 4.2 Session: always top-right
 
 An authenticated session renders **anchored to the top-right** of the content area (the universal convention users scan for), in the canonical format — abbreviated address first, role second:
@@ -164,6 +179,22 @@ The live role (watched reactively on the `user:<address>` node) renders as a qui
 | Superadmin | `--violet` | Root of trust — signs promotions |
 
 Permission-gated controls (a "New post" button, a publish selector) show or hide from the same watched role — the UI *reflects* permissions, while the engine *enforces* them.
+
+### 4.4 Presence & contribution: gate by degrees
+
+Realtime collaboration surfaces are not all equal. Gate each one by the **smallest trust step it actually needs** — read-only guests stay welcome, while every contribution becomes attributable:
+
+| Surface | Requires | Why |
+| --- | --- | --- |
+| Watching (content, live updates, remote cursors) | Nothing | Zero-trust guests read for free |
+| Broadcasting yourself (camera / mic streams) | A signed-in identity | Everyone should know *who* is on screen |
+| Contributing content (edits, messages, files) | An earned `write` role | Persistent, signed, verified by peers |
+| Moderating (deleting others' content) | An elevated tier | Same ramp as the role badges |
+
+Two implementation rules:
+
+- **Disable gated controls, don't hide them** (`disabled` + an explanatory `title` such as *"Sign in to share your camera"*): a visible-but-locked control teaches the trust model; a missing one just looks broken.
+- Ephemeral channel traffic (GenosRTC) does **not** pass through the graph's RBAC — the role gate on the UI keeps honest peers silent, and the **signed graph remains the source of truth** that corrects any transient view.
 
 ---
 
@@ -247,14 +278,15 @@ Before shipping a GenosDB app or example, verify:
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Dark theme only; no toggle unless the product truly requires it.
-3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow.
+3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens **once** for first-time visitors (localStorage-flagged, dismissible).
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out shows one Sign-in button there.
 5. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
 6. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
 7. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
 8. ☐ Feedback via toasts — no `alert()`/`confirm()` except destructive-action confirms.
 9. ☐ Realtime: one subscription, four actions handled, ordering/window delegated to the engine.
-10. ☐ Verified live with two browsers.
+10. ☐ Presence gated by degrees: watch anonymously · broadcast with an identity · contribute with an earned role (gated controls disabled, not hidden).
+11. ☐ Verified live with two browsers.
 
 ---
 

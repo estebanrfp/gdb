@@ -1476,7 +1476,10 @@
       editor.setAttribute('contenteditable', String(canWrite));
       document.querySelectorAll('#toolbar button, #toolbar select, #sideToolbar button, #sideToolbar input')
         .forEach(el => { el.disabled = !canWrite; });
-      startVideoBtn.disabled = false; // presence (video/cursors) is ephemeral — open to all
+      // Presence by degrees: watching and live cursors stay anonymous, but
+      // broadcasting yourself (camera/mic) requires a signed-in identity.
+      startVideoBtn.disabled = !myAddress;
+      startVideoBtn.title = myAddress ? 'Start video' : 'Sign in to share your camera';
       renderVersions(); // the admin-only delete affordance follows the live role
       updateStatus();
     };
@@ -1665,8 +1668,9 @@
       }
     });
 
-    // Video chat
+    // Video chat — broadcasting yourself requires a signed-in identity
     startVideoBtn.addEventListener('click', async () => {
+      if (!myAddress) return toast('Sign in to share your camera', true);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         db.room.addStream(stream);
@@ -2081,6 +2085,19 @@
       });
     } catch { }
     applyPermissionsToUI();
+
+    // First-visit onboarding: a distributed app has no server-side login page,
+    // so surface the identity modal ONCE for newcomers. Dismissible, flagged on
+    // show (never again — not even after logout); the top-right Sign in button
+    // remains the permanent entry point.
+    try {
+      const PROMPTED = 'collab.identityPrompted';
+      if (!db.sm.isSecurityActive() && !db.sm.hasExistingWebAuthnRegistration?.() && !localStorage.getItem(PROMPTED)) {
+        localStorage.setItem(PROMPTED, '1');
+        setPhase('welcome');
+        identityModal.showModal();
+      }
+    } catch { }
 
     // Leave the room on real unload only — never pagehide (tab-freeze fires it).
     addEventListener('beforeunload', () => db.room?.leave?.());
