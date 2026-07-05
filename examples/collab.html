@@ -387,29 +387,23 @@
       display: block;
     }
 
+    /* Top-right identity area: a single Sign-in button, or the session chip.
+       All identity flows live in the centered #identityModal dialog. */
     #auth {
       position: fixed;
       top: 0.5rem;
       right: 0.5rem;
-      background-color: #111827;
-      padding: 0.75rem 0.75rem 0.5rem;
-      border-radius: 8px;
-      display: none;
-      width: 320px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-      border: 1px solid #27272a;
-    }
-
-    #auth.compact {
-      width: auto;
-      padding: 0.4rem 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 1300;
     }
 
     #auth .summary {
       display: none;
       align-items: center;
       gap: 8px;
-      padding: 6px 8px;
+      padding: 6px 10px;
       background: #0b0b0b;
       border: 1px solid #1f2937;
       border-radius: 6px;
@@ -440,50 +434,48 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
-    #auth .summary .chev {
-      opacity: 0.8;
+    /* Live role tag: color only on the text, one tier one color */
+    .role-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      color: #9ca3af;
     }
 
-    #auth.compact #authDetails {
-      display: none;
-    }
+    .role-tag[data-role="editor"] { color: #0ea5e9; }
+    .role-tag[data-role="admin"] { color: #f59e0b; }
+    .role-tag[data-role="superadmin"] { color: #a78bfa; }
 
-    #auth.compact .summary {
-      display: flex;
-    }
-
-    #auth .row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    #auth .label {
+    #identityModal .label {
       font-size: 0.8rem;
       color: #9ca3af;
     }
 
-    #auth .value {
+    #identityModal .value {
       font-size: 0.85rem;
       color: #e5e7eb;
       word-break: break-all;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
-    #auth .actions {
+    #identityModal .actions {
       display: flex;
       gap: 0.5rem;
       flex-wrap: wrap;
       margin-top: 0.5rem;
     }
 
-    #auth .hint {
-      font-size: 0.75rem;
+    #identityModal .hint {
+      font-size: 0.78rem;
       color: #9ca3af;
-      margin-top: 0.25rem;
+      margin: 0.25rem 0 0.5rem;
+      line-height: 1.4;
     }
 
-    #auth .msg {
+    #identityModal .hint.warn {
+      color: #fbbf24;
+    }
+
+    #identityModal .msg {
       margin-top: 0.5rem;
       padding: 0.5rem;
       border-radius: 6px;
@@ -494,34 +486,23 @@
       text-overflow: ellipsis;
     }
 
-    #auth .msg.show {
+    #identityModal .msg.show {
       display: block;
     }
 
-    #auth .msg.ok {
+    #identityModal .msg.ok {
       background: #072;
       color: #d1fae5;
       border: 1px solid #065f46;
     }
 
-    #auth .msg.err {
+    #identityModal .msg.err {
       background: #3b0d0d;
       color: #fecaca;
       border: 1px solid #7f1d1d;
     }
 
-    #auth .badge {
-      display: inline-block;
-      padding: 0.15rem 0.4rem;
-      border-radius: 9999px;
-      font-size: 0.7rem;
-      background: #27272a;
-      color: #e5e7eb;
-      border: 1px solid #3f3f46;
-    }
-
-    #auth .input,
-    #auth .textarea {
+    #identityModal .textarea {
       width: 100%;
       background: #0b1220;
       border: 1px solid #334155;
@@ -529,14 +510,13 @@
       border-radius: 6px;
       padding: 0.4rem 0.5rem;
       box-sizing: border-box;
-    }
-
-    #auth .textarea {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.75rem;
+      resize: vertical;
     }
 
     #auth .btn,
+    #identityModal .btn,
     #fileInput,
     #saveVersion,
     #startVideo {
@@ -546,31 +526,146 @@
       padding: 0.5rem;
       border-radius: 4px;
       cursor: pointer;
-      margin-right: 0.5rem;
     }
 
     #auth .btn:hover,
+    #identityModal .btn:hover,
     #fileInput:hover,
     #saveVersion:hover,
     #startVideo:hover {
       background: #0284c7;
     }
 
-    #auth .btn.secondary {
+    #identityModal .btn.secondary {
       background: #374151;
     }
 
-    #auth .btn.secondary:hover {
+    #identityModal .btn.secondary:hover {
       background: #4b5563;
     }
 
-    #auth .btn.ghost {
+    #identityModal .btn.ghost {
       background: transparent;
       border: 1px solid #374151;
     }
 
-    #auth .btn.ghost:hover {
+    #identityModal .btn.ghost:hover {
       background: #111827;
+    }
+
+    /* Centered identity dialog (three-phase flow, see the Design Guide) */
+    #identityModal {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      width: min(92vw, 400px);
+      padding: 1rem;
+      position: relative;
+    }
+
+    #identityModal::backdrop {
+      background: rgba(0, 0, 0, 0.65);
+    }
+
+    #identityModal h3 {
+      margin: 0 0 0.25rem;
+      color: #0ea5e9;
+      font-size: 1.05rem;
+    }
+
+    #identityModal .modal-close {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.5rem;
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 1.1rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    #identityModal .modal-close:hover {
+      color: #e5e7eb;
+    }
+
+    /* Phase gating: elements tagged .ph-w/.ph-b/.ph-s show only in their phase
+       (welcome / backup / session). Untagged elements show in every phase. */
+    #identityModal[data-phase="welcome"] :is(.ph-b, .ph-s):not(.ph-w) { display: none; }
+    #identityModal[data-phase="backup"] :is(.ph-w, .ph-s):not(.ph-b) { display: none; }
+    #identityModal[data-phase="session"] :is(.ph-w, .ph-b):not(.ph-s) { display: none; }
+
+    #identityModal .superadmin-btn {
+      margin-top: 0.75rem;
+      width: 100%;
+      background: transparent;
+      border: 1px dashed #3f3f46;
+      color: #a78bfa;
+      padding: 0.4rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    #identityModal .superadmin-btn:hover {
+      border-color: #a78bfa;
+    }
+
+    /* Toast for feedback outside the modal (never alert()) */
+    #toast {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 1400;
+      max-width: 80vw;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.error {
+      border-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    /* Role-gated tools: guests see the editing UI disabled, not hidden */
+    #toolbar button:disabled,
+    #sideToolbar button:disabled,
+    #toolbar select:disabled,
+    #sideToolbar input:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Version rows: restore button + admin-only delete */
+    .version-row {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .version-row .version-del {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 0 0.2rem;
+      font-size: 0.85rem;
     }
 
     #videoContainer {
@@ -851,63 +946,90 @@
   <div id="versionsPanel" hidden aria-label="Saved versions">
     <div id="versionList"></div>
   </div>
+  <!-- Identity top-right: sign-in button or live session chip (address + role).
+       Clicking the chip opens the modal in its session phase. -->
   <div id="auth">
-    <div id="authSummary" class="summary" role="button" tabindex="0" title="Show account options" aria-expanded="false"
-      style="display:none;">
+    <button id="openLoginBtn" class="btn">🔑 Sign in</button>
+    <div id="sessionChip" class="summary" role="button" tabindex="0" title="Account options">
       <span class="dot" aria-hidden="true"></span>
-      <span id="authSummaryAddr" class="addr">—</span>
-      <span class="chev" aria-hidden="true">▾</span>
-    </div>
-    <div id="authDetails">
-      <div id="authMsg" class="msg"></div>
-
-      <div class="actions" style="margin-top: 0.5rem;">
-        <button id="signupWebAuthn" class="btn">Create identity</button>
-        <button id="protectWebAuthn" class="btn secondary" disabled>Protect with WebAuthn</button>
-        <button id="loginWebAuthn" class="btn">WebAuthn Login</button>
-        <button id="logoutBtn" class="btn ghost" style="margin-left:auto; display:none;">Sign out</button>
-      </div>
-
-      <div id="mnemonicBlock" style="display:none; margin-top:0.5rem;">
-        <div class="label">Mnemonic (store it safely)</div>
-        <textarea id="mnemonicInput" class="textarea" rows="3" readonly></textarea>
-        <div class="actions" style="margin-top:0.4rem;">
-          <button id="copyMnemonic" class="btn secondary">Copy</button>
-          <button id="downloadMnemonic" class="btn secondary">Download .txt</button>
-          <button id="hideMnemonic" class="btn ghost">Hide</button>
-        </div>
-        <div class="hint">Tip: after creating/recovering an identity, protect it with WebAuthn for passwordless login.
-        </div>
-      </div>
-
-      <div style="margin-top:0.5rem;">
-        <input id="mnemonicLoginInput" class="input" type="text" placeholder="Paste your mnemonic to sign in" />
-        <div class="actions" style="margin-top:0.4rem;">
-          <button id="loginMnemonic" class="btn secondary">Sign in with Mnemonic</button>
-        </div>
-      </div>
+      <span id="chipAddr" class="addr">—</span>
+      <span id="chipRole" class="role-tag" data-role="guest">[guest]</span>
     </div>
   </div>
+
+  <!-- Centered identity modal — three-phase state machine (Design Guide):
+       welcome (paste or generate) → backup (save the phrase) → session (manage). -->
+  <dialog id="identityModal" data-phase="welcome">
+    <button id="closeModalBtn" class="modal-close" aria-label="Close">×</button>
+    <h3>Your identity</h3>
+    <p class="hint ph-w">Everyone can read and watch live edits. Sign in and the governance
+      rules promote you to <em>editor</em> (~10&nbsp;s while a superadmin is online);
+      saving 3 versions earns <em>admin</em>.</p>
+    <p class="hint warn ph-b">Save this phrase — it is the ONLY way back into this identity.</p>
+    <div class="ph-s">
+      <div class="label">Signed in as</div>
+      <div id="sessionAddr" class="value">—</div>
+      <p class="hint" id="sessionPasskeyHint">Protect this identity with a passkey for passwordless login on this
+        device.</p>
+    </div>
+    <textarea id="mnemonicBox" class="textarea ph-w ph-b" rows="3" spellcheck="false"
+      placeholder="Paste your mnemonic phrase — or generate a new identity"></textarea>
+    <div class="actions">
+      <button id="generateBtn" class="btn ph-w">Generate identity</button>
+      <button id="loginBtn" class="btn ph-w ph-b">Login with mnemonic</button>
+      <button id="webauthnLoginBtn" class="btn secondary ph-w">Login with passkey</button>
+      <button id="copyBtn" class="btn secondary ph-b">Copy</button>
+      <button id="downloadBtn" class="btn secondary ph-b">Download .txt</button>
+      <button id="protectBtn" class="btn ph-b ph-s">Protect with passkey</button>
+      <button id="logoutBtn" class="btn ghost ph-s">Sign out</button>
+    </div>
+    <div id="authMsg" class="msg"></div>
+    <button id="superadminBtn" class="superadmin-btn ph-w" title="Runs the governance engine in this browser">🛡️ Demo
+      superadmin</button>
+  </dialog>
+
+  <div id="toast"></div>
 
   <div id="videoContainer"></div>
 
   <script type="module">
     import { gdb } from "../dist/index.js";
 
-    // Initialize GenosDB with P2P and Security Module
-    const db = await gdb("collab-doc", {
+    // Demo superadmin — SHOWCASE ONLY. Its mnemonic is public so any visitor can
+    // run the governance engine. Replace both for a real deployment.
+    const DEMO_SUPERADMIN = {
+      address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA",
+      mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper"
+    };
+
+    // Zero-trust RBAC: the document is communal, but WRITING it must be earned.
+    // Guests read and watch live edits; editors write; admins moderate versions.
+    const ROLES = {
+      superadmin: { can: ["assignRole"], inherits: ["admin"] }, // signs promotions
+      admin: { can: ["delete", "deleteAny"], inherits: ["editor"] }, // cleans up versions
+      editor: { can: ["write", "link", "sync"], inherits: ["guest"] }, // edits & saves versions
+      guest: { can: ["read", "sync"] } // watches the live document only
+    };
+
+    // Public advancement rules (last-match-wins, low demo thresholds). The engine
+    // runs while a superadmin is online and signs every promotion.
+    const MEMBER = { $in: ["editor", "admin"] };
+    const GOVERNANCE_RULES = [
+      { if: { role: "guest" }, offsetTimestamp: 10000, then: { assignRole: "editor" } }, // onboarding gate
+      { if: { role: MEMBER }, then: { assignRole: "editor" } }, // floor
+      { if: { role: MEMBER, versionsSaved: { $gte: 3 } }, then: { assignRole: "admin" } } // climb
+    ];
+
+    // Initialize GenosDB with P2P, Security Module and Governance
+    const db = await gdb("collab", {
       rtc: true,
       sm: {
-        superAdmins: ["0x62c48827e883f114821211673Dc309a29Aae7e6A", "0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"],
-        customRoles: {
-          // Allow everyone to write initially via 'guest'
-          guest: { can: ["read", "sync", "write"] },
-          viewer: { can: ["read", "sync", "write"] },
-          editor: { can: ["write", "sync"], inherits: ["viewer"] },
-          superadmin: { can: ["write", "sync"], inherits: ["viewer"] }
-        }
+        superAdmins: [DEMO_SUPERADMIN.address],
+        customRoles: ROLES,
+        governanceRules: GOVERNANCE_RULES
       }
     });
+    globalThis.db = db; // console handle (matches the official examples)
     const room = db.room;
     const docChannel = room.channel("docUpdates");
     const cursorChannel = room.channel("cursorPos");
@@ -923,23 +1045,25 @@
     const togglePreviewBtn = document.getElementById('togglePreview');
     const resetSplitBtn = document.getElementById('resetSplit');
     const status = document.getElementById('status');
-    const authDiv = document.getElementById('auth');
-    const authSummary = document.getElementById('authSummary');
-    const authSummaryAddr = document.getElementById('authSummaryAddr');
-    const authDetails = document.getElementById('authDetails');
-    const loginWebAuthnBtn = document.getElementById('loginWebAuthn');
-    const signupWebAuthnBtn = document.getElementById('signupWebAuthn');
-    const protectWebAuthnBtn = document.getElementById('protectWebAuthn');
+    const openLoginBtn = document.getElementById('openLoginBtn');
+    const sessionChip = document.getElementById('sessionChip');
+    const chipAddr = document.getElementById('chipAddr');
+    const chipRole = document.getElementById('chipRole');
+    const identityModal = document.getElementById('identityModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const sessionAddr = document.getElementById('sessionAddr');
+    const sessionPasskeyHint = document.getElementById('sessionPasskeyHint');
+    const mnemonicBox = document.getElementById('mnemonicBox');
+    const generateBtn = document.getElementById('generateBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const webauthnLoginBtn = document.getElementById('webauthnLoginBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const protectBtn = document.getElementById('protectBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const authMsg = document.getElementById('authMsg');
-    const mnemonicBlock = document.getElementById('mnemonicBlock');
-    const mnemonicInput = document.getElementById('mnemonicInput');
-    const copyMnemonicBtn = document.getElementById('copyMnemonic');
-    const downloadMnemonicBtn = document.getElementById('downloadMnemonic');
-    const hideMnemonicBtn = document.getElementById('hideMnemonic');
-    const mnemonicLoginInput = document.getElementById('mnemonicLoginInput');
-    const mnemonicLoginSection = mnemonicLoginInput ? mnemonicLoginInput.parentElement : null;
-    const loginMnemonicBtn = document.getElementById('loginMnemonic');
+    const superadminBtn = document.getElementById('superadminBtn');
+    const toastEl = document.getElementById('toast');
     const fileInput = document.getElementById('fileInput');
     const saveVersionBtn = document.getElementById('saveVersion');
     const startVideoBtn = document.getElementById('startVideo');
@@ -975,9 +1099,12 @@
     let liveScheduled = null;
     let pendingContent = '';
     let saveDebounceTimer;
-    let guestWriteNoticeShown = false;
     let showSavedUntil = 0;
     let savedFlashTimer = null;
+    // Live identity state (fed by the SM callback + the reactive role watcher)
+    let myAddress = null;
+    let myRole = null;
+    let renderVersions = () => { }; // bound once the version store exists (below)
     const cursorMap = {};
     const peerVideos = {};
 
@@ -1280,10 +1407,12 @@
       });
     };
 
-    // Update status
+    // Update status (peers + live write capability + save flash)
     const updateStatus = () => {
       const savedSuffix = Date.now() < showSavedUntil ? ' | Saved' : '';
-      status.textContent = `Connected peers: ${peerCount}${savedSuffix}`;
+      const roleSuffix = !myAddress ? ' | read-only — sign in to edit'
+        : !can('write') ? ' | read-only (editor role pending)' : '';
+      status.textContent = `Connected peers: ${peerCount}${roleSuffix}${savedSuffix}`;
     };
     // Versions panel toggle
     const setVersionsOpen = (open) => {
@@ -1303,236 +1432,207 @@
       setVersionsOpen(!isOpen);
     });
 
-    // UI helpers
-    const showMsg = (type, text) => {
-      const t = String(text || '');
-      // Suppress centered success messages for version saves; use minimalist status flash instead
-      if (type === 'ok' && /(version|saved)/i.test(t)) {
-        try {
-          showSavedUntil = Date.now() + 1500;
-          updateStatus();
-          if (savedFlashTimer) clearTimeout(savedFlashTimer);
-          savedFlashTimer = setTimeout(() => { updateStatus(); }, 1600);
-        } catch { }
-        return;
-      }
+    // ============================== UI feedback ==============================
+    // Toast for feedback outside the modal (Design Guide: never alert()).
+    const toast = (msg, isError = false) => {
+      toastEl.textContent = msg;
+      toastEl.className = 'show' + (isError ? ' error' : '');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => (toastEl.className = ''), 3200);
+    };
+    // Inline feedback inside the identity modal.
+    const modalMsg = (type, text) => {
       authMsg.className = 'msg show ' + (type === 'ok' ? 'ok' : 'err');
-      authMsg.textContent = t;
+      authMsg.textContent = String(text || '');
     };
     const clearMsg = () => {
       authMsg.className = 'msg';
       authMsg.textContent = '';
     };
-    const updateMnemonicBlock = () => {
-      try {
-        const m = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery?.();
-        if (m) {
-          mnemonicInput.value = m;
-          mnemonicBlock.style.display = 'block';
-          protectWebAuthnBtn.disabled = false;
-        } else {
-          mnemonicBlock.style.display = 'none';
-        }
-      } catch { }
+    // Minimalist "Saved" flash next to the peer counter.
+    const flashSaved = () => {
+      showSavedUntil = Date.now() + 1500;
+      updateStatus();
+      if (savedFlashTimer) clearTimeout(savedFlashTimer);
+      savedFlashTimer = setTimeout(() => updateStatus(), 1600);
     };
-    const setAuthUI = (state) => {
-      authDiv.style.display = 'block';
-      if (state.isActive) {
-        // summary compact mode
-        authDiv.classList.add('compact');
-        authSummary.style.display = 'flex';
-        authSummaryAddr.textContent = state.abbrAddr || shortAddr(state.activeAddress) || '—';
-        authSummary.setAttribute('aria-expanded', 'false');
-        logoutBtn.style.display = 'inline-block';
-        protectWebAuthnBtn.disabled = !!state.isWebAuthnProtected;
-        // Hide sign-up/login controls
-        signupWebAuthnBtn.style.display = 'none';
-        loginWebAuthnBtn.style.display = 'none';
-        if (mnemonicLoginSection) mnemonicLoginSection.style.display = 'none';
-        // Show protect if not protected yet; otherwise hide it
-        protectWebAuthnBtn.style.display = state.isWebAuthnProtected ? 'none' : 'inline-block';
-        // Hide mnemonic block to declutter when signed in
-        mnemonicBlock.style.display = 'none';
-      } else {
-        // no compact when signed out
-        authDiv.classList.remove('compact');
-        authSummary.style.display = 'none';
-        authSummaryAddr.textContent = '—';
-        authSummary.setAttribute('aria-expanded', 'false');
-        logoutBtn.style.display = 'none';
-        protectWebAuthnBtn.disabled = true;
-        // The editor stays editable: guest write is intentionally open in this demo
-        // (customRoles grants `guest` the `write` permission — the documented way
-        // to relax the zero-trust default for public apps).
-        // Show sign-up/login controls again — but while a freshly generated identity
-        // is pending (volatile), hide "Create identity" so the user saves that phrase
-        // and continues with it instead of minting another one (SM UX best practice).
-        signupWebAuthnBtn.style.display = state.hasVolatileIdentity ? 'none' : 'inline-block';
-        loginWebAuthnBtn.style.display = state.hasWebAuthnHardwareRegistration ? 'inline-block' : 'none';
-        if (mnemonicLoginSection) mnemonicLoginSection.style.display = 'block';
-        protectWebAuthnBtn.style.display = 'inline-block';
-      }
-      updateMnemonicBlock();
-    };
-    // Security state change callback
-    db.sm.setSecurityStateChangeCallback((state) => setAuthUI(state));
 
-    // Toggle details when clicking/pressing on summary
-    const toggleAuthDetails = () => {
-      const isCompact = authDiv.classList.contains('compact');
-      if (isCompact) {
-        authDiv.classList.remove('compact');
-        authSummary.setAttribute('aria-expanded', 'true');
-      } else if (db.sm.isSecurityActive && db.sm.isSecurityActive()) {
-        // Only auto-compact when signed in
-        authDiv.classList.add('compact');
-        authSummary.setAttribute('aria-expanded', 'false');
-      }
-    };
-    if (authSummary) {
-      authSummary.addEventListener('click', toggleAuthDetails);
-      authSummary.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAuthDetails(); }
-      });
-    }
-
-    // Ensure we have an active temporary identity for demo (signed ops)
-    const ensureActiveGuestIdentity = async () => {
-      if (db.sm.isSecurityActive && db.sm.isSecurityActive()) return true;
-      try {
-        const temp = await db.sm.startNewUserRegistration();
-        if (temp?.mnemonic) {
-          const identity = await db.sm.loginOrRecoverUserWithMnemonic(temp.mnemonic);
-          if (identity?.address) {
-            setAuthUI({
-              isActive: true,
-              activeAddress: identity.address,
-              isWebAuthnProtected: false,
-              hasWebAuthnHardwareRegistration: db.sm.hasExistingWebAuthnRegistration ? db.sm.hasExistingWebAuthnRegistration() : false
-            });
-            return true;
-          }
-        }
-      } catch (e) {
-        console.warn('Could not auto-activate temporary identity', e);
+    // ========================= Identity & governance =========================
+    // Role check walking the inherits chain of ROLES. Client-side UX only —
+    // peers verify every persistent operation cryptographically regardless.
+    const can = (permission) => {
+      let role = myRole;
+      while (role && ROLES[role]) {
+        if (ROLES[role].can.includes(permission)) return true;
+        role = ROLES[role].inherits?.[0];
       }
       return false;
     };
 
-    // WebAuthn login
-    loginWebAuthnBtn.addEventListener('click', async () => {
+    // Gate the editing surface by the LIVE role. The document, remote cursors
+    // and video stay visible to everyone — collaboration is public to read.
+    const applyPermissionsToUI = () => {
+      const canWrite = can('write');
+      editor.setAttribute('contenteditable', String(canWrite));
+      document.querySelectorAll('#toolbar button, #toolbar select, #sideToolbar button, #sideToolbar input')
+        .forEach(el => { el.disabled = !canWrite; });
+      startVideoBtn.disabled = false; // presence (video/cursors) is ephemeral — open to all
+      renderVersions(); // the admin-only delete affordance follows the live role
+      updateStatus();
+    };
+
+    const setPhase = (phase) => {
+      identityModal.dataset.phase = phase;
+      if (phase === 'welcome') mnemonicBox.readOnly = false;
+      clearMsg();
+    };
+
+    // Reactive role watcher: db.get(user:<address>, cb) fires on every signed
+    // role change (governance promotions land here live).
+    let unsubRole = null;
+    const watchMyRole = async () => {
+      unsubRole?.();
+      ({ unsubscribe: unsubRole } = await db.get(`user:${myAddress}`, (node) => {
+        const next = node?.value?.role ?? 'guest';
+        if (next === myRole) return;
+        const hadWrite = can('write');
+        const firstSight = myRole === null;
+        myRole = next;
+        chipRole.textContent = `[${myRole}]`;
+        chipRole.dataset.role = myRole;
+        applyPermissionsToUI();
+        if (!hadWrite && can('write')) toast(`Write access unlocked — role: ${myRole}`);
+        else if (firstSight && next === 'guest') toast('Signed in as guest — the editor role arrives in ~10 s while a superadmin is online');
+      }));
+    };
+
+    // Security state drives the top-right chip and the modal phase.
+    const onSecurityState = (state) => {
+      if (state.isActive) {
+        myAddress = state.activeAddress;
+        openLoginBtn.style.display = 'none';
+        sessionChip.style.display = 'flex';
+        chipAddr.textContent = state.abbrAddr || shortAddr(state.activeAddress) || '—';
+        sessionAddr.textContent = state.activeAddress || '—';
+        protectBtn.style.display = state.isWebAuthnProtected ? 'none' : '';
+        sessionPasskeyHint.style.display = state.isWebAuthnProtected ? 'none' : '';
+        identityModal.close();
+        watchMyRole();
+      } else {
+        unsubRole?.(); unsubRole = null;
+        myAddress = null; myRole = null;
+        chipRole.textContent = '[guest]';
+        chipRole.dataset.role = 'guest';
+        openLoginBtn.style.display = '';
+        sessionChip.style.display = 'none';
+        webauthnLoginBtn.style.display = state.hasWebAuthnHardwareRegistration ? '' : 'none';
+        protectBtn.style.display = '';
+        // While a freshly generated identity is pending (volatile), stay in the
+        // backup phase so the user saves that phrase instead of minting another.
+        if (!state.hasVolatileIdentity) {
+          setPhase('welcome');
+          mnemonicBox.value = ''; // never leave a signed-out mnemonic on display
+        }
+        queueMicrotask(() => applyPermissionsToUI());
+      }
+    };
+    db.sm.setSecurityStateChangeCallback(onSecurityState);
+
+    // --- Identity modal (three-phase state machine, see the Design Guide) ---
+    openLoginBtn.addEventListener('click', () => { setPhase('welcome'); identityModal.showModal(); });
+    const openSessionPhase = () => { setPhase('session'); identityModal.showModal(); };
+    sessionChip.addEventListener('click', openSessionPhase);
+    sessionChip.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSessionPhase(); }
+    });
+    closeModalBtn.addEventListener('click', () => identityModal.close());
+    identityModal.addEventListener('click', (e) => { if (e.target === identityModal) identityModal.close(); });
+
+    generateBtn.addEventListener('click', async () => {
+      try {
+        clearMsg();
+        const identity = await db.sm.startNewUserRegistration();
+        if (!identity) return modalMsg('err', 'Could not create identity');
+        mnemonicBox.value = identity.mnemonic;
+        mnemonicBox.readOnly = true;
+        setPhase('backup');
+      } catch (error) {
+        modalMsg('err', 'Error creating identity: ' + (error?.message || error));
+      }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      const mnemonic = mnemonicBox.value.trim();
+      if (!mnemonic) return modalMsg('err', 'Paste (or generate) a mnemonic first');
+      try {
+        clearMsg();
+        const identity = await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
+        if (identity) toast(`Signed in as ${shortAddr(identity.address)}`);
+        else modalMsg('err', 'Invalid mnemonic');
+      } catch (error) {
+        modalMsg('err', 'Mnemonic login error: ' + (error?.message || error));
+      }
+    });
+
+    webauthnLoginBtn.addEventListener('click', async () => {
       try {
         clearMsg();
         const address = await db.sm.loginCurrentUserWithWebAuthn();
-        if (address) showMsg('ok', `Signed in as ${shortAddr(address)}`);
-        else showMsg('err', 'WebAuthn login failed');
+        if (address) toast(`Signed in as ${shortAddr(address)}`);
+        else modalMsg('err', 'WebAuthn login failed');
       } catch (error) {
-        showMsg('err', 'WebAuthn login error: ' + (error?.message || error));
+        modalMsg('err', 'WebAuthn login error: ' + (error?.message || error));
       }
     });
 
-    // WebAuthn signup
-    signupWebAuthnBtn.addEventListener('click', async () => {
+    // Protect the current (or volatile) identity with a passkey.
+    protectBtn.addEventListener('click', async () => {
       try {
         clearMsg();
-        const newIdentity = await db.sm.startNewUserRegistration();
-        if (newIdentity) {
-          mnemonicInput.value = newIdentity.mnemonic;
-          mnemonicBlock.style.display = 'block';
-          protectWebAuthnBtn.disabled = false;
-          showMsg('ok', 'Identity created. Save your mnemonic, then protect it with WebAuthn.');
-        } else {
-          showMsg('err', 'Could not create identity');
-        }
+        const address = await db.sm.protectCurrentIdentityWithWebAuthn();
+        if (address) toast(`Identity ${shortAddr(address)} protected with a passkey`);
+        else modalMsg('err', 'Could not protect identity');
       } catch (error) {
-        showMsg('err', 'Error creating identity: ' + (error?.message || error));
+        modalMsg('err', 'Passkey error (HTTPS required): ' + (error?.message || error));
       }
     });
 
-    // Protect current/volatile identity with WebAuthn
-    protectWebAuthnBtn.addEventListener('click', async () => {
+    copyBtn.addEventListener('click', async () => {
       try {
-        clearMsg();
-        const pk = undefined; // usa la identidad volátil si existe
-        const address = await db.sm.protectCurrentIdentityWithWebAuthn(pk);
-        if (address) {
-          showMsg('ok', `Identity ${shortAddr(address)} protected with WebAuthn`);
-          mnemonicBlock.style.display = 'none';
-        } else {
-          showMsg('err', 'Could not protect identity');
-        }
-      } catch (error) {
-        showMsg('err', 'Error protecting identity: ' + (error?.message || error));
-      }
+        await navigator.clipboard.writeText(mnemonicBox.value);
+        modalMsg('ok', 'Mnemonic copied — store it safely');
+      } catch { modalMsg('err', 'Could not copy'); }
     });
 
-    // Mnemonic login
-    loginMnemonicBtn.addEventListener('click', async () => {
-      const mnemonic = mnemonicLoginInput.value.trim();
-      if (mnemonic) {
-        try {
-          clearMsg();
-          const identity = await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
-          if (identity) {
-            mnemonicInput.value = identity.mnemonic || mnemonic;
-            // Clean UI to highlight logged-in state
-            mnemonicBlock.style.display = 'none';
-            if (mnemonicLoginSection) mnemonicLoginSection.style.display = 'none';
-            signupWebAuthnBtn.style.display = 'none';
-            loginWebAuthnBtn.style.display = 'none';
-            protectWebAuthnBtn.disabled = false;
-            protectWebAuthnBtn.style.display = 'inline-block';
-            showMsg('ok', `Signed in as ${shortAddr(identity.address)}. Protect it with WebAuthn to secure this device.`);
-          } else {
-            showMsg('err', 'Invalid mnemonic');
-          }
-        } catch (error) {
-          showMsg('err', 'Mnemonic login error: ' + (error?.message || error));
-        }
-      }
-    });
-
-    // Copy/Download/Hide mnemonic
-    copyMnemonicBtn.addEventListener('click', async () => {
+    downloadBtn.addEventListener('click', () => {
       try {
-        await navigator.clipboard.writeText(mnemonicInput.value);
-        // Also prefill the login field and focus it
-        if (mnemonicLoginInput) {
-          mnemonicLoginInput.value = mnemonicInput.value;
-          mnemonicLoginInput.focus();
-          // optionally select it for quick replace if needed
-          try { mnemonicLoginInput.select?.(); } catch { }
-        }
-        showMsg('ok', 'Mnemonic copied and filled into the login field');
-      } catch { showMsg('err', 'Could not copy'); }
-    });
-    downloadMnemonicBtn.addEventListener('click', () => {
-      try {
-        const blob = new Blob([mnemonicInput.value + "\n"], { type: 'text/plain' });
+        const blob = new Blob([mnemonicBox.value + "\n"], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = 'mnemonic.txt'; a.click();
         URL.revokeObjectURL(url);
       } catch { }
     });
-    hideMnemonicBtn.addEventListener('click', () => { mnemonicBlock.style.display = 'none'; });
 
-    // Logout
+    // One-click demo superadmin: runs the governance engine in this browser.
+    superadminBtn.addEventListener('click', () => db.sm.loginOrRecoverUserWithMnemonic(DEMO_SUPERADMIN.mnemonic));
+
     logoutBtn.addEventListener('click', async () => {
       try {
-        clearMsg();
         await db.sm.clearSecurity();
-        showMsg('ok', 'Signed out');
-      } catch (e) { showMsg('err', 'Could not sign out'); }
+        identityModal.close();
+        toast('Signed out');
+      } catch { toast('Could not sign out', true); }
     });
 
     // Handle peer joins/leaves
     room.on('peer:join', (peerId) => {
       peerCount++;
       updateStatus();
-      // Send current doc to the new peer to quickly sync their view
+      // Editors send the current doc to the new peer for an instant view; other
+      // peers receive it anyway through the signed graph sync moments later.
       const current = getEditorHTML();
-      if (current) {
+      if (current && can('write')) {
         docChannel.send({ content: current, ts: lastTimestamp }, peerId);
       }
     });
@@ -1550,7 +1650,12 @@
       }
     });
 
-    // Handle document updates via channel
+    // Handle live document updates via channel.
+    // DESIGN NOTE — trust boundary: GenosRTC channels are ephemeral and do NOT
+    // go through the graph's RBAC (only persistent operations are verified by
+    // signature). The role gate on the editor UI keeps honest peers silent as
+    // guests, but the SIGNED GRAPH is the source of truth: whatever arrives
+    // here is a transient view, corrected by the next db.get repaint.
     docChannel.on('message', (data, fromPeerId) => {
       if (data.ts > lastTimestamp) {
         lastTimestamp = data.ts;
@@ -1567,7 +1672,7 @@
         db.room.addStream(stream);
         startVideoBtn.style.display = 'none';
       } catch (error) {
-        showMsg('err', 'Could not access camera/microphone: ' + (error?.message || error));
+        toast('Could not access camera/microphone: ' + (error?.message || error), true);
       }
     });
 
@@ -1620,13 +1725,13 @@
     // (no per-character merge). Ideal for demos and small teams; for char-level
     // merging integrate a CRDT (e.g. Yjs) and keep GenosDB as transport + storage.
     editor.addEventListener('input', async () => {
+      if (!can('write')) return; // read-only until governance grants `editor`
       const now = Date.now();
       pendingContent = getEditorHTML();
-      // line numbers removed
       updateWordCount();
       updatePreview();
 
-      // Live send (no RBAC requirement for demo; peers see changes immediately)
+      // Live send: throttled ephemeral broadcast for the real-time feel
       const sendLive = () => {
         // HLC-style bump: never emit a ts behind the newest one seen, so a peer
         // with a slow wall clock is not silently ignored by the others.
@@ -1643,35 +1748,22 @@
         liveScheduled = setTimeout(sendLive, liveThrottleMs - (now - lastLiveSent));
       }
 
-      // Debounced persistent save
+      // Debounced persistent save — a signed write every honest peer verifies.
       clearTimeout(saveDebounceTimer);
       isSaving = true; // indicate intent to save soon
       updateStatus();
       saveDebounceTimer = setTimeout(async () => {
         try {
-          // Make sure operations will be signed and accepted by peers
-          await ensureActiveGuestIdentity();
-          await db.sm.executeWithPermission("write");
-        } catch (e) {
-          // As a last resort, attempt to persist locally
-          if (!guestWriteNoticeShown) {
-            showMsg('ok', 'Temporary identity in use for demo.');
-            guestWriteNoticeShown = true;
-          }
-        }
-        try {
+          await db.sm.executeWithPermission("write"); // throws for non-editors
           const ts = Date.now();
           if (ts > lastTimestamp) lastTimestamp = ts;
           await db.put({ content: pendingContent }, docId);
+          flashSaved();
+        } catch {
+          toast('Not saved — the editor role is required to persist changes', true);
         } finally {
           isSaving = false;
-          // Show 'Saved' briefly, then revert
-          showSavedUntil = Date.now() + 1500;
           updateStatus();
-          if (savedFlashTimer) clearTimeout(savedFlashTimer);
-          savedFlashTimer = setTimeout(() => {
-            updateStatus();
-          }, 1600);
         }
       }, 600);
     });
@@ -1815,12 +1907,13 @@
     });
 
     // File sharing
-    // Append file items into the same versions panel, styled in green
+    // Received files stack on top of the versions panel, styled in green.
+    // Only file items count against the rolling limit — the live version list
+    // below them manages its own cap.
     const appendWithRollingLimit = (container, element, limit) => {
       container.insertBefore(element, container.firstChild);
-      while (container.children.length > limit) {
-        container.removeChild(container.lastChild);
-      }
+      const files = container.querySelectorAll('.file-item');
+      if (files.length > limit) files[files.length - 1].remove();
     };
     const MAX_HISTORY_ITEMS = 30; // rolling limit suggestion
     // WebRTC data channels cap message size (~256KB depending on the browser), so
@@ -1854,8 +1947,7 @@
       const file = event.target.files[0];
       if (!file) return;
       try {
-        await ensureActiveGuestIdentity();
-        await db.sm.executeWithPermission("write");
+        await db.sm.executeWithPermission("write"); // contributing content is for editors
         const buffer = await file.arrayBuffer();
         const metadata = { name: file.name, type: file.type, id: `file-${Date.now()}` };
         if (buffer.byteLength <= FILE_CHUNK_BYTES) {
@@ -1871,68 +1963,104 @@
           }
         }
       } catch (error) {
-        showMsg('err', 'Error sharing file: ' + (error?.message || error));
+        toast('Error sharing file: ' + (error?.message || error), true);
       }
     });
 
-    // Version history
+    // ============================ Version history ============================
+    // A version is a SIGNED graph node linked as a child of the doc
+    // (db.link(docId, versionId)) and doubles as the governance metric:
+    // `versionsSaved` on the user node climbs editors to admin.
+
+    /** Aggregate the governance metric (spread keeps `role` intact!). */
+    const bumpVersionsSaved = async () => {
+      const id = `user:${myAddress}`;
+      const { result } = await db.get(id);
+      await db.put({ ...result.value, versionsSaved: (result.value.versionsSaved ?? 0) + 1 }, id);
+    };
+
     saveVersionBtn.addEventListener('click', async () => {
       try {
-        await ensureActiveGuestIdentity();
         await db.sm.executeWithPermission("write");
         const versionId = `version-${Date.now()}`;
-        await db.put({ content: getEditorHTML(), timestamp: new Date().toISOString() }, versionId);
+        await db.put({ type: 'version', content: getEditorHTML(), savedAt: Date.now(), author: myAddress }, versionId);
         await db.link(docId, versionId);
-        const tsIso = new Date().toISOString();
-        const btn = document.createElement('button');
-        btn.textContent = `Version ${tsIso}`;
-        btn.addEventListener('click', async () => {
-          try {
-            const { result: node } = await db.get(versionId);
-            if (node && node.value) {
-              setEditorHTML(node.value.content || '');
-              updateWordCount();
-              updatePreview();
-              const ts = Date.now();
-              if (ts > lastTimestamp) lastTimestamp = ts;
-              docChannel.send({ content: getEditorHTML(), ts });
-            }
-          } catch { }
-        });
-        // Prepend newest first and enforce rolling limit
-        if (versionList.firstChild) versionList.insertBefore(btn, versionList.firstChild);
-        else versionList.appendChild(btn);
-        while (versionList.children.length > MAX_HISTORY_ITEMS) versionList.removeChild(versionList.lastChild);
-        // Minimalist status flash like typing-save: show "Saved" near Connected peers
-        showSavedUntil = Date.now() + 1500;
-        updateStatus();
-        if (savedFlashTimer) clearTimeout(savedFlashTimer);
-        savedFlashTimer = setTimeout(() => { updateStatus(); }, 1600);
+        await bumpVersionsSaved();
+        flashSaved(); // the live subscription below renders the new row on every peer
       } catch (error) {
-        showMsg('err', 'Error saving version: ' + (error?.message || error));
+        toast('Error saving version: ' + (error?.message || error), true);
       }
     });
 
-    // Restore version history. Versions are children of the doc (db.link(docId, versionId)),
-    // so the doc is the $edge starting point and the sub-query filters its descendants.
-    const { results } = await db.map({
-      query: { id: docId, $edge: { content: { $exists: true } } },
-      field: 'timestamp',
+    const restoreVersion = async (versionId) => {
+      if (!can('write')) return toast('The editor role is required to restore versions', true);
+      const { result: node } = await db.get(versionId);
+      if (!node?.value) return;
+      setEditorHTML(node.value.content || '');
+      updateWordCount();
+      updatePreview();
+      const ts = Date.now();
+      if (ts > lastTimestamp) lastTimestamp = ts;
+      docChannel.send({ content: getEditorHTML(), ts });
+      try {
+        await db.sm.executeWithPermission("write");
+        await db.put({ content: getEditorHTML() }, docId); // restoring persists
+        flashSaved();
+      } catch {
+        toast('Not saved — the editor role is required', true);
+      }
+    };
+
+    const deleteVersion = async (versionId) => {
+      try {
+        await db.sm.executeWithPermission("deleteAny"); // admin moderation
+        await db.remove(versionId);
+        toast('Version deleted');
+      } catch (error) {
+        toast(error?.message || 'Delete failed', true);
+      }
+    };
+
+    // LIVE version list. Versions are children of the doc, so the doc is the
+    // $edge starting point and the sub-query filters its descendants. The
+    // realtime engine re-evaluates the traversal on every graph change:
+    // versions saved or deleted by ANY peer appear here instantly, no reload.
+    const versionRowsHost = document.createElement('div');
+    versionList.appendChild(versionRowsHost);
+    const versions = new Map(); // id → value (fed by the live subscription)
+
+    renderVersions = () => {
+      versionRowsHost.innerHTML = '';
+      const ordered = [...versions.entries()]
+        .sort((a, b) => (b[1].savedAt ?? 0) - (a[1].savedAt ?? 0))
+        .slice(0, MAX_HISTORY_ITEMS);
+      for (const [id, v] of ordered) {
+        const row = document.createElement('div');
+        row.className = 'version-row';
+        const restore = document.createElement('button');
+        restore.textContent = `Version ${new Date(v.savedAt ?? 0).toLocaleString()}`;
+        if (v.author) restore.title = `Saved by ${shortAddr(v.author)}`;
+        restore.addEventListener('click', () => restoreVersion(id));
+        row.appendChild(restore);
+        if (can('deleteAny')) {
+          const del = document.createElement('button');
+          del.className = 'version-del';
+          del.textContent = '×';
+          del.title = 'Delete version (admin)';
+          del.addEventListener('click', () => deleteVersion(id));
+          row.appendChild(del);
+        }
+        versionRowsHost.appendChild(row);
+      }
+    };
+
+    db.map({
+      query: { id: docId, $edge: { type: 'version' } },
+      field: 'savedAt',
       order: 'desc'
-    });
-    results.forEach(node => {
-      const btn = document.createElement('button');
-      btn.textContent = `Version ${node.value.timestamp}`;
-      btn.addEventListener('click', () => {
-        setEditorHTML(node.value.content || '');
-        updateWordCount();
-        updatePreview();
-        const ts = Date.now();
-        if (ts > lastTimestamp) lastTimestamp = ts;
-        docChannel.send({ content: getEditorHTML(), ts });
-      });
-      // Append older items at the end; overall list will be trimmed by subsequent insertions
-      versionList.appendChild(btn);
+    }, ({ id, value, action }) => {
+      action === 'removed' ? versions.delete(id) : versions.set(id, value);
+      renderVersions();
     });
 
 
@@ -1941,18 +2069,21 @@
     updateStatus();
     status.classList.add('active');
 
-    // Initial auth state
+    // Initial auth state: if the SM silently resumed a session before our
+    // callback was registered, hydrate the UI from the current state; otherwise
+    // boot as a read-only guest. No interactive WebAuthn prompt on load.
     try {
-      const initialState = {
+      onSecurityState({
         isActive: db.sm.isSecurityActive(),
-        activeAddress: db.sm.getActiveEthAddress ? db.sm.getActiveEthAddress() : null,
-        isWebAuthnProtected: db.sm.isCurrentSessionProtectedByWebAuthn ? db.sm.isCurrentSessionProtectedByWebAuthn() : false,
-        hasWebAuthnHardwareRegistration: db.sm.hasExistingWebAuthnRegistration ? db.sm.hasExistingWebAuthnRegistration() : false
-      };
-      setAuthUI(initialState);
+        activeAddress: db.sm.getActiveEthAddress?.() ?? null,
+        isWebAuthnProtected: db.sm.isCurrentSessionProtectedByWebAuthn?.() ?? false,
+        hasWebAuthnHardwareRegistration: db.sm.hasExistingWebAuthnRegistration?.() ?? false
+      });
     } catch { }
+    applyPermissionsToUI();
 
-    // No auto interactive WebAuthn login on load. The SM performs a silent resume if applicable.
+    // Leave the room on real unload only — never pagehide (tab-freeze fires it).
+    addEventListener('beforeunload', () => db.room?.leave?.());
 
   </script>
 </body>
