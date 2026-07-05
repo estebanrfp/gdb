@@ -584,22 +584,6 @@
       font-size: 1.05rem;
     }
 
-    #identityModal .modal-close {
-      position: absolute;
-      top: 0.4rem;
-      right: 0.5rem;
-      background: none;
-      border: none;
-      color: #9ca3af;
-      font-size: 1.1rem;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    #identityModal .modal-close:hover {
-      color: #e5e7eb;
-    }
-
     /* Phase gating: elements tagged .ph-w/.ph-b/.ph-s show only in their phase
        (welcome / backup / session). Untagged elements show in every phase. */
     #identityModal[data-phase="welcome"] :is(.ph-b, .ph-s):not(.ph-w) { display: none; }
@@ -969,7 +953,6 @@
   <!-- Centered identity modal — three-phase state machine (Design Guide):
        welcome (paste or generate) → backup (save the phrase) → session (manage). -->
   <dialog id="identityModal" data-phase="welcome">
-    <button id="closeModalBtn" class="modal-close" aria-label="Close">×</button>
     <h3>Your identity</h3>
     <p class="hint ph-w">Everyone can read and watch live edits. Sign in and the governance
       rules promote you to <em>editor</em> (~10&nbsp;s while a superadmin is online);
@@ -1029,11 +1012,13 @@
       { if: { role: MEMBER, versionsSaved: { $gte: 3 } }, then: { assignRole: "admin" } } // climb
     ];
 
+    const SUPER_ADMINS = [DEMO_SUPERADMIN.address];
+
     // Initialize GenosDB with P2P, Security Module and Governance
     const db = await gdb("collab", {
       rtc: true,
       sm: {
-        superAdmins: [DEMO_SUPERADMIN.address],
+        superAdmins: SUPER_ADMINS,
         customRoles: ROLES,
         governanceRules: GOVERNANCE_RULES
       }
@@ -1058,7 +1043,6 @@
     const chipAddr = document.getElementById('chipAddr');
     const chipRole = document.getElementById('chipRole');
     const identityModal = document.getElementById('identityModal');
-    const closeModalBtn = document.getElementById('closeModalBtn');
     const sessionAddr = document.getElementById('sessionAddr');
     const sessionPasskeyHint = document.getElementById('sessionPasskeyHint');
     const mnemonicBox = document.getElementById('mnemonicBox');
@@ -1503,21 +1487,36 @@
 
     // Reactive role watcher: db.get(user:<address>, cb) fires on every signed
     // role change (governance promotions land here live).
+    //
+    // Superadmin status is special: the engine derives it from the LOCAL
+    // superAdmins config — verification and governance immunity both check the
+    // list, never the node — so the UI must do the same. The user node is only
+    // a synced mirror, and a mirror can lag (or lose a LWW race with another
+    // peer's welcome write); trusting it would show a working superadmin as a
+    // locked-out guest.
+    const effectiveRole = (nodeRole) =>
+      SUPER_ADMINS.includes(myAddress) ? 'superadmin' : (nodeRole ?? 'guest');
+
     let unsubRole = null;
+    const applyRoleUpdate = (nodeRole, nodeSeen) => {
+      const next = effectiveRole(nodeRole);
+      if (next === myRole) return;
+      const hadWrite = can('write');
+      const firstSight = myRole === null;
+      myRole = next;
+      chipRole.textContent = `[${myRole}]`;
+      chipRole.dataset.role = myRole;
+      applyPermissionsToUI();
+      if (!hadWrite && can('write')) toast(`Write access unlocked — role: ${myRole}`);
+      // Only announce "guest" once the node has actually arrived — a null
+      // during sync is not a standing, just a mirror that hasn't landed yet.
+      else if (firstSight && nodeSeen && next === 'guest') toast('Signed in as guest — the editor role arrives in ~10 s while a superadmin is online');
+    };
     const watchMyRole = async () => {
       unsubRole?.();
-      ({ unsubscribe: unsubRole } = await db.get(`user:${myAddress}`, (node) => {
-        const next = node?.value?.role ?? 'guest';
-        if (next === myRole) return;
-        const hadWrite = can('write');
-        const firstSight = myRole === null;
-        myRole = next;
-        chipRole.textContent = `[${myRole}]`;
-        chipRole.dataset.role = myRole;
-        applyPermissionsToUI();
-        if (!hadWrite && can('write')) toast(`Write access unlocked — role: ${myRole}`);
-        else if (firstSight && next === 'guest') toast('Signed in as guest — the editor role arrives in ~10 s while a superadmin is online');
-      }));
+      if (SUPER_ADMINS.includes(myAddress)) applyRoleUpdate(null, false); // config-declared, no sync needed
+      ({ unsubscribe: unsubRole } = await db.get(`user:${myAddress}`, (node) =>
+        applyRoleUpdate(node?.value?.role, !!node)));
     };
 
     // Security state drives the top-right chip and the modal phase.
@@ -1561,7 +1560,8 @@
     sessionChip.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSessionPhase(); }
     });
-    closeModalBtn.addEventListener('click', () => identityModal.close());
+    // No × close button: dismissal is the backdrop click or Esc (native to
+    // <dialog>) — the modal is a door, not a window.
     identityModal.addEventListener('click', (e) => { if (e.target === identityModal) identityModal.close(); });
 
     generateBtn.addEventListener('click', async () => {
@@ -1637,7 +1637,7 @@
       try {
         await db.sm.clearSecurity();
         // Signed-out IS the modal's welcome phase (the state callback set it);
-        // dismiss with × to keep reading as a guest.
+        // dismiss (backdrop / Esc) to keep reading as a guest.
         toast('Signed out');
       } catch { toast('Could not sign out', true); }
     });
@@ -1992,11 +1992,18 @@
     // (db.link(docId, versionId)) and doubles as the governance metric:
     // `versionsSaved` on the user node climbs editors to admin.
 
-    /** Aggregate the governance metric (spread keeps `role` intact!). */
+    /** Aggregate the governance metric — spread keeps `role` intact, and the
+     *  brief retry (dSocial's pattern) avoids clobbering a role that hasn't
+     *  synced into this peer yet. */
     const bumpVersionsSaved = async () => {
       const id = `user:${myAddress}`;
-      const { result } = await db.get(id);
-      await db.put({ ...result.value, versionsSaved: (result.value.versionsSaved ?? 0) + 1 }, id);
+      let node = null;
+      for (let i = 0; i < 4 && !node; i++) {
+        ({ result: node } = await db.get(id));
+        if (!node) await new Promise(r => setTimeout(r, 400));
+      }
+      const base = node?.value ?? { ethAddress: myAddress, role: effectiveRole(null) };
+      await db.put({ ...base, versionsSaved: (base.versionsSaved ?? 0) + 1 }, id);
     };
 
     saveVersionBtn.addEventListener('click', async () => {
@@ -2105,7 +2112,7 @@
     // The modal IS the door: a distributed app has no server-side login page,
     // so every load without an active session opens the identity dialog.
     // Passkey users never see it (their session resumes silently and the
-    // security callback closes it); dismiss with × to read as a guest.
+    // security callback closes it); dismiss (backdrop / Esc) to read as a guest.
     try {
       if (!db.sm.isSecurityActive()) {
         setPhase('welcome');

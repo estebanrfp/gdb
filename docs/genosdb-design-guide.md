@@ -121,9 +121,10 @@ The modal contains, in order:
 Wiring rules:
 
 ```javascript
-openBtn.onclick = () => modal.showModal()
-closeBtn.onclick = () => modal.close()
-// Backdrop click closes (the dialog itself is the event target then)
+// Backdrop click closes (the dialog itself is the event target then);
+// Esc is native to <dialog>. No × close button in the corner: the modal
+// is a door, not a window — a corner × reads as app-window chrome and,
+// in the backup phase, invites closing before the phrase is saved.
 modal.onclick = (e) => { if (e.target === modal) modal.close() }
 ```
 
@@ -144,7 +145,7 @@ modal.onclick = (e) => { if (e.target === modal) modal.close() }
 if (!db.sm.isSecurityActive()) identityModal.showModal()
 ```
 
-- **Dismissible** (×, backdrop click, `Esc`) — the app stays fully usable as a read-only guest behind it.
+- **Dismissible** (backdrop click, `Esc`) but with **no × close button** — the app stays fully usable as a read-only guest behind it.
 - **Logging out returns to phase 1 with the modal open** — signed-out *is* the modal's state.
 - **Re-entry without reloading is contextual**, not chrome: a clickable read-only status hint, or the explanatory affordance of a gated control, re-opens the modal. The top-right area belongs to the session chip alone and stays empty while signed out.
 
@@ -240,7 +241,7 @@ Minimal CSS contracts — copy and restyle only via tokens.
 
 **Toast (never `alert()`):** fixed bottom-center pill, `--bg-elevated` + `--border-strong`, slides up on `.show`, `--danger` border for errors, auto-dismiss ~3s. All operation feedback (saved, deleted, permission denied) goes through it: security errors from `executeWithPermission` read cleanly in a toast.
 
-**Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`, close ×, backdrop-click to dismiss.
+**Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 
 **Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent` (no outlines, no glows). Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
 
@@ -274,7 +275,7 @@ Before shipping a GenosDB app or example, verify:
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Dark theme only; no toggle unless the product truly requires it.
-3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible) — no standing Sign-in button, re-entry via contextual CTAs.
+3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible via backdrop/`Esc` — no × button) — no standing Sign-in button, re-entry via contextual CTAs.
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
 5. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
 6. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
