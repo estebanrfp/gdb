@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172 32" fill="none">
+  <g stroke="#4c8dff" stroke-width="2.2" stroke-linecap="round">
+    <line x1="12" y1="7" x2="6" y2="24"/>
+    <line x1="12" y1="7" x2="18" y2="24"/>
+    <line x1="6" y1="24" x2="18" y2="24"/>
+  </g>
+  <circle cx="12" cy="7" r="3.6" fill="#6ba1ff"/>
+  <circle cx="6" cy="24" r="3.6" fill="#4c8dff"/>
+  <circle cx="18" cy="24" r="3.6" fill="#4c8dff"/>
+  <text x="32" y="22" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#e8eaed">Genos<tspan fill="#6ba1ff">DB</tspan></text>
+</svg>

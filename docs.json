@@ -1,0 +1,185 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "GenosDB",
+  "description": "GenosDB — a lightweight, decentralized P2P graph database that runs entirely in the browser.",
+  "colors": {
+    "primary": "#4c8dff",
+    "light": "#6ba1ff",
+    "dark": "#3a7ae0"
+  },
+  "favicon": "/assets/favicon.svg",
+  "logo": {
+    "light": "/assets/logo-light.svg",
+    "dark": "/assets/logo-dark.svg"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "docs/index",
+              "docs/genosdb-features",
+              "docs/bundler-configuration"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "docs/genosdb-worker-architecture",
+              "docs/genosdb-hybrid-logical-clock",
+              "docs/genosdb-hybrid-delta-protocol",
+              "docs/genosdb-distributed-trust-model",
+              "docs/zero-trust-security-model"
+            ]
+          },
+          {
+            "group": "Working with Data",
+            "pages": [
+              "docs/crud-operations-guide",
+              "docs/put-guide",
+              "docs/get-guide",
+              "docs/map-guide",
+              "docs/remove-guide",
+              "docs/link-guide",
+              "docs/cursor-based-pagination"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "docs/genosdb-api-reference"
+            ]
+          },
+          {
+            "group": "Modules",
+            "pages": [
+              "docs/geo-module",
+              "docs/nlq-module"
+            ]
+          },
+          {
+            "group": "Design System",
+            "pages": [
+              "docs/genosdb-design-guide"
+            ]
+          },
+          {
+            "group": "Examples & Showcases",
+            "pages": [
+              "docs/genosdb-examples"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "docs/genosdb-resources",
+              "docs/genosdb-links"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Security",
+        "groups": [
+          {
+            "group": "Security Manager (SM)",
+            "pages": [
+              "docs/sm-architecture",
+              "docs/sm-api-reference",
+              "docs/sm-acls-module"
+            ]
+          },
+          {
+            "group": "Governance & Audit",
+            "pages": [
+              "docs/governance",
+              "docs/audit"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "GenosRTC",
+        "groups": [
+          {
+            "group": "Guide",
+            "pages": [
+              "docs/genosrtc-guide"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "docs/genosrtc-architecture",
+              "docs/genosrtc-cells"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "docs/genosrtc-api-reference"
+            ]
+          },
+          {
+            "group": "Transport & Relays",
+            "pages": [
+              "docs/nostr-guide",
+              "docs/genosdb-fallback-server"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Project",
+        "groups": [
+          {
+            "group": "About",
+            "pages": [
+              "README",
+              "WHITEPAPER",
+              "PHILOSOPHY",
+              "ROADMAP"
+            ]
+          },
+          {
+            "group": "Contributing & Legal",
+            "pages": [
+              "CONTRIBUTING",
+              "SECURITY",
+              "MIGRATION",
+              "CHANGELOG",
+              "THIRD_PARTY_LICENSES"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "npm",
+        "href": "https://www.npmjs.com/package/genosdb"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/estebanrfp/gdb"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "/docs/index"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/estebanrfp/gdb",
+      "x": "https://x.com/estebanrfp"
+    }
+  }
+}
