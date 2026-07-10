@@ -4,15 +4,15 @@ GenosDB is designed to run without servers. The **Fallback Server** is an option
 
 It ships as a **single file with zero dependencies** — `genossrv.min.js`, published with the GenosDB dist — and runs anywhere [Bun](https://bun.sh) runs.
 
-## What it is — and what it is not
+## What it does
 
 | | |
 |---|---|
 | ✅ **Durable memory** | Persists the room's graph in SQLite (WAL, crash-safe). Data survives even when every browser closes. |
 | ✅ **Availability anchor** | Peers that were offline catch up from it (delta or full-state sync) the moment they return. |
 | ✅ **Governance authority** *(optional)* | With a signing identity, it acts as an always-on superadmin: role assignments and governance rules run 24/7. |
-| ❌ **Not a signaling server** | Peer discovery and WebRTC handshakes travel through the Nostr relays — the fallback server uses them like any other peer. Turning it off does not affect how browsers find each other. |
-| ❌ **Not centralization** | On the wire it is just another peer: every operation it emits is verified by every browser exactly like anyone else's. It has no privileged protocol path. |
+
+The server behaves as just another peer in the network: it discovers and connects through the same Nostr relays as everyone else, and every operation it emits is verified by every browser like anyone else's. It does not centralize anything — it only adds the one guarantee no browser can offer, being always on.
 
 ## Quick start
 
@@ -138,19 +138,11 @@ docker build -t genossrv . && docker run -d -v genossrv-data:/srv/data genossrv 
 
 Any container platform (Fly.io, Railway, Render, …) can deploy that Dockerfile directly.
 
-**One-click deploy buttons.** Every option — room, transport, identity, governance rules — is an environment variable, so platform deploy buttons work out of the box: a template repository needs nothing but the Dockerfile above and a manifest declaring the variables. For a Heroku-style button:
+### 🚀 Deploy to Heroku in one click
 
-```json
-{
-  "name": "GenosSRV",
-  "env": {
-    "GDB_ROOM":     { "description": "Database name (must match your app's gdb(name))" },
-    "GDB_CELLS":    { "description": "1 if your app uses rtc: { cells }", "required": false },
-    "GDB_SM_KEY":   { "description": "Signing identity: BIP39 mnemonic or 0x private key", "required": false },
-    "GDB_SM_RULES": { "description": "Governance rules as inline JSON", "required": false }
-  }
-}
-```
+Every option — room, transport, identity, governance rules — is an environment variable, so the deploy form configures the whole server:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/estebanrfp/genossrv-deploy)
 
 A fully governed superpeer, from nothing, in one command:
 
@@ -161,8 +153,3 @@ GDB_SM_RULES='[{"if":{"role":"guest","posts":{"$gte":3}},"then":{"assignRole":"u
 bun genossrv.min.js
 ```
 
-## Key Notes
-
-- **Two rooms per database name.** Browsers join `graph-sync-room-<name>` (data) and expose `app-sync-<name>` as `db.room` (presence, app channels). The server always joins the data room; it enters `db.room` only with `--room` — by default it stays invisible to presence UIs so applications never see a ghost peer.
-- **Catch-up trust.** Full-state and delta catch-up messages are accepted without per-operation signature verification by default (the documented compatibility default) — which is precisely what lets a fallback server serve history. Live operations are always verified individually by every peer.
-- **Storage layout.** One SQLite file holds graph, oplog and sync watermark per database name; `db.clear()` semantics and LWW conflict resolution are identical to the browser core.
