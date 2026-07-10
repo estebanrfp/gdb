@@ -40,7 +40,7 @@ bun genossrv.min.js <name> [--cells] [--room]
 | `GDB_DB_PATH` | SQLite file path (default `./data.sqlite`) |
 | `GDB_SM_KEY` | Signing identity: a BIP39 mnemonic or a `0x` private key (see Governance) |
 | `GDB_SUPERADMINS` | Comma-separated superadmin addresses (the same list your clients ship) |
-| `GDB_SM_RULES` | Path to a file whose default export is your `governanceRules` array |
+| `GDB_SM_RULES` | Governance rules: **inline JSON** (an array — or a single rule object — of the same shape the clients publish) or a path to a module whose default export is that array |
 
 **Match the transport to your app.** A room where browsers use `rtc: { cells: … }` speaks over per-cell channels; start the server with `--cells` or it cannot receive browser writes (it will print a one-line warning telling you exactly this).
 
@@ -137,6 +137,29 @@ docker build -t genossrv . && docker run -d -v genossrv-data:/srv/data genossrv 
 ```
 
 Any container platform (Fly.io, Railway, Render, …) can deploy that Dockerfile directly.
+
+**One-click deploy buttons.** Every option — room, transport, identity, governance rules — is an environment variable, so platform deploy buttons work out of the box: a template repository needs nothing but the Dockerfile above and a manifest declaring the variables. For a Heroku-style button:
+
+```json
+{
+  "name": "GenosSRV",
+  "env": {
+    "GDB_ROOM":     { "description": "Database name (must match your app's gdb(name))" },
+    "GDB_CELLS":    { "description": "1 if your app uses rtc: { cells }", "required": false },
+    "GDB_SM_KEY":   { "description": "Signing identity: BIP39 mnemonic or 0x private key", "required": false },
+    "GDB_SM_RULES": { "description": "Governance rules as inline JSON", "required": false }
+  }
+}
+```
+
+A fully governed superpeer, from nothing, in one command:
+
+```bash
+GDB_ROOM=myAppDB GDB_CELLS=1 \
+GDB_SM_KEY="twelve word mnemonic …" \
+GDB_SM_RULES='[{"if":{"role":"guest","posts":{"$gte":3}},"then":{"assignRole":"user"}}]' \
+bun genossrv.min.js
+```
 
 ## Key Notes
 
