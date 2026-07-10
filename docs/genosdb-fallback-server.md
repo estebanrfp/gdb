@@ -72,29 +72,18 @@ In the browser, the governance engine runs only while a superadmin keeps a tab o
 
 ### How authority works
 
-The server's authority does **not** come from its own configuration. It comes from your **clients**: the address derived from `GDB_SM_KEY` must be listed in the `sm.superAdmins` array your application ships. That list is the room's constitution — every peer verifies role assignments against it, and revoking the server is as simple as removing its address and redeploying your app.
-
-```js
-// In your application (the constitution every client downloads):
-const db = await gdb('myAppDB', {
-  rtc: true,
-  sm: { superAdmins: ['0xYourAddress', '0xServerAddress'] }
-})
-```
-
 ```bash
-# On the server:
 GDB_SM_KEY="twelve word mnemonic …" GDB_SM_RULES=./rules.js bun genossrv.min.js myAppDB
 ```
 
-At boot the server logs `🛡️ SM: signing as 0x…` — that is the address to add to your clients' list. Every operation it emits is signed exactly like a browser superadmin's (same canonicalization, same EIP-191 signatures), so browsers verify it with the machinery they already have.
+At boot the server logs `🛡️ SM: signing as 0x…` — add that address to your application's `sm.superAdmins` list (see the [Security Manager](./sm-api-reference.md) documentation), and every peer verifies the server's operations like any superadmin's: same signatures, same machinery. Revoking it is as simple as removing the address from that list.
 
 ### How rules work
 
-`governanceRules` is the **same rules module your clients publish** — single source of truth, full transparency. Each rule's `if` is a plain GenosDB query, evaluated every few seconds against the synced graph with **last-match-wins** resolution: order rules easy→hard, and the last matching rule decides the role. Losing a condition auto-demotes; superadmins are immune by construction.
+Each rule's `if` is a plain GenosDB query, evaluated every few seconds against the synced graph with **last-match-wins** resolution: order rules easy→hard, and the last matching rule decides the role. Losing a condition auto-demotes; superadmins are immune by construction. See the [Governance](./governance.md) documentation for the rule model.
 
 ```js
-// rules.js — default export, shared verbatim between clients and server
+// rules.js — default export
 export default [
   { if: { role: 'guest', posts: { $gte: 3 } },  then: { assignRole: 'user' } },
   { if: { role: 'user',  karma: { $gte: 100 } }, then: { assignRole: 'manager' } }
