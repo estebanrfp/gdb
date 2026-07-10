@@ -137,7 +137,7 @@ Any container platform (Fly.io, Railway, Render, …) can deploy that Dockerfile
 
 Every option — room, transport, identity, governance rules — is an environment variable, so the deploy form configures the whole server:
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/estebanrfp/genossrv-deploy)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/estebanrfp/gdb)
 
 A fully governed superpeer, from nothing, in one command:
 

@@ -1,0 +1,31 @@
+{
+  "name": "GenosSRV — GenosDB Fallback Server",
+  "description": "Always-on superpeer for a GenosDB room: durable memory, availability anchor and optional 24/7 governance authority. One file, zero dependencies.",
+  "repository": "https://github.com/estebanrfp/gdb",
+  "keywords": ["genosdb", "gdb", "p2p", "graph", "database", "superpeer", "webrtc"],
+  "stack": "container",
+  "formation": {
+    "worker": { "quantity": 1, "size": "basic" }
+  },
+  "env": {
+    "GDB_ROOM": {
+      "description": "Database name — must match your app's gdb(name)."
+    },
+    "GDB_CELLS": {
+      "description": "Set to 1 if your app uses rtc: { cells } (Cellular Mesh transport).",
+      "required": false
+    },
+    "GDB_SM_KEY": {
+      "description": "Signing identity: a BIP39 mnemonic or a 0x private key. Enables the superadmin role — its derived address must be in your clients' sm.superAdmins list.",
+      "required": false
+    },
+    "GDB_SUPERADMINS": {
+      "description": "Comma-separated superadmin addresses (the same constitution list your clients ship).",
+      "required": false
+    },
+    "GDB_SM_RULES": {
+      "description": "Governance rules as inline JSON — the same rules your application declares. E.g. [{\"if\":{\"role\":\"guest\"},\"then\":{\"assignRole\":\"user\"}}]",
+      "required": false
+    }
+  }
+}
