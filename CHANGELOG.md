@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **One transport bundle: `dist/genosrtc-cells.min.js` is gone.** GenosRTC unified its entry points — `dist/genosrtc.min.js` (62 KB) now carries both transports and routes by the room config, so the core always lazy-loads the single module and passes the `cells` flag through. **The public API is unchanged**: `rtc: true` and `rtc: { cells: … }` behave exactly as before; full-mesh apps download ~10 KB more than the old mesh-only bundle. Apps served from immutable dists (npm) are unaffected; only a stale-cached `gdb.min.js` from a mutable CDN path could briefly request the removed file until its cache refreshes.
+
 ## [0.20.0] - 2026-07-03
 
 ### Removed
