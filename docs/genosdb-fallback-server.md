@@ -73,6 +73,12 @@ In the browser, the governance engine runs only while a superadmin keeps a tab o
 ### How authority works
 
 ```bash
+# Rules inline (what one-click deploy forms use)…
+GDB_SM_KEY="twelve word mnemonic …" \
+GDB_SM_RULES='[{"if":{"role":"guest","posts":{"$gte":3}},"then":{"assignRole":"user"}}]' \
+bun genossrv.min.js myAppDB
+
+# …or from a module file (default export)
 GDB_SM_KEY="twelve word mnemonic …" GDB_SM_RULES=./rules.js bun genossrv.min.js myAppDB
 ```
 
@@ -80,7 +86,7 @@ At boot the server logs `🛡️ SM: signing as 0x…` — add that address to y
 
 ### How rules work
 
-Each rule's `if` is a plain GenosDB query, evaluated every few seconds against the synced graph with **last-match-wins** resolution: order rules easy→hard, and the last matching rule decides the role. Losing a condition auto-demotes; superadmins are immune by construction. See the [Governance](./governance.md) documentation for the rule model.
+**The server must carry the same rules your application declares** — one room, one policy: the server is simply its always-on executor. Each rule's `if` is a plain GenosDB query, evaluated every few seconds against the synced graph with **last-match-wins** resolution: order rules easy→hard, and the last matching rule decides the role. Losing a condition auto-demotes; superadmins are immune by construction. See the [Governance](./governance.md) documentation for the rule model.
 
 ```js
 // rules.js — default export
