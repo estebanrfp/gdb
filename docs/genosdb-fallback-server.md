@@ -122,6 +122,8 @@ const db = await gdb('myAppDB', { rtc: { relayUrls: ['wss://your-server.example.
 
 Private by construction: with your relay as the only entry on both sides, not even discovery metadata leaves your infrastructure. List public relays too (`GDB_RELAY_URLS="wss://…,wss://…"`) if you want resilience through them as well.
 
+**`ws://` vs `wss://`**: use `ws://host:port` for local/LAN testing (browsers exempt `localhost` from mixed-content rules); production pages require `wss://`, whose TLS is terminated by your platform or proxy — on Heroku, `wss://your-app.herokuapp.com` works out of the box — while the relay itself always speaks plain WebSocket behind it.
+
 ## Deployment
 
 Anywhere Bun runs. The artifact is self-contained, so deployment is: fetch one file, run one command.
