@@ -16,6 +16,7 @@
       --cyan: #00ffff;
       --white: #cccccc;
       --red: #ff3333;
+      --magenta: #ff66ff;
     }
 
     * {
@@ -295,6 +296,7 @@
     .c-amber { color: var(--amber); }
     .c-cyan { color: var(--cyan); }
     .c-red { color: var(--red); }
+    .c-magenta { color: var(--magenta); }
     .c-dim { color: var(--green-dim); }
     .c-white { color: var(--white); }
 
@@ -462,6 +464,7 @@
       peer: '○',
       bridge: '◈',
       self: '★',
+      server: '◆',
       hLine: '─',
       vLine: '│',
       cross: '┼',
@@ -497,6 +500,8 @@
     };
 
     const remotePeerStates = new Map();
+    // peer:join's 2nd arg — 'superpeer' marks a Fallback Server (GenosSRV)
+    const peerTypes = new Map();
 
     // Animation state
     const animations = [];
@@ -649,6 +654,9 @@
             if (isSelf) {
               icon = CHARS.self;
               colorClass = 'c-amber glow-amber';
+            } else if (peerTypes.get(peer.id) === 'superpeer') {
+              icon = CHARS.server;
+              colorClass = 'c-magenta';
             } else if (isBridge) {
               icon = CHARS.bridge;
               colorClass = 'c-red';
@@ -689,6 +697,7 @@
       output += `<span class="c-amber">${CHARS.self} YOU</span>  `;
       output += `<span class="c-green">${CHARS.peer} PEER</span>  `;
       output += `<span class="c-red">${CHARS.bridge} BRIDGE</span>  `;
+      output += `<span class="c-magenta">${CHARS.server} SRV</span>  `;
       output += `<span class="c-cyan">${CHARS.cell} CELL</span>`;
 
       // Animation overlay
@@ -905,7 +914,7 @@
       let fp = `${selfState.cellSize}|${selfState.dynamicTTL ?? ''}`;
       for (const pid of [...all.keys()].sort()) {
         const st = all.get(pid);
-        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}`;
+        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}|${peerTypes.get(pid) || ''}`;
       }
       if (fp === doUpdate._lastFp) return;
       doUpdate._lastFp = fp;
@@ -944,12 +953,14 @@
         $("connStatus").className = "metric-value c-green";
         connectedAt = Date.now();
 
-        room.on("peer:join", id => {
-          log(`<span class="c-green">+ NODE JOINED: ${shortId(id)}</span>`);          scheduleUpdate();
+        room.on("peer:join", (id, type) => {
+          if (type) peerTypes.set(id, type);
+          log(`<span class="c-green">+ NODE JOINED: ${shortId(id)}</span>${type ? ` <span class="c-magenta">[${type.toUpperCase()}]</span>` : ""}`);          scheduleUpdate();
         });
 
         room.on("peer:leave", id => {
           remotePeerStates.delete(id);
+          peerTypes.delete(id);
           log(`<span class="c-dim">- NODE LEFT: ${shortId(id)}</span>`);          scheduleUpdate();
         });
 

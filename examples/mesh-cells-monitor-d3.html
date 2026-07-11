@@ -18,6 +18,7 @@
       --cyan: #39c5cf;
       --orange: #ff6b35;
       --red: #f85149;
+      --purple: #bc8cff;
     }
 
     * {
@@ -219,6 +220,11 @@
 
     .badge-bridge {
       background: var(--yellow);
+      color: var(--bg);
+    }
+
+    .badge-server {
+      background: var(--purple);
       color: var(--bg);
     }
 
@@ -470,6 +476,9 @@
           <div class="legend-dot" style="background:var(--yellow)"></div> Bridge
         </div>
         <div class="legend-item">
+          <div class="legend-dot" style="background:var(--purple)"></div> Server
+        </div>
+        <div class="legend-item">
           <div class="legend-dot" style="background:var(--green)"></div> Cell
         </div>
         <div class="legend-item">
@@ -532,6 +541,7 @@
       selfRadius: 5,               // "You" peer size
       bridgeRadius: 5,             // Bridge peer size
       peerRadius: 5,               // Regular peer size
+      serverRadius: 7,             // Fallback Server (superpeer) size
 
       // Force simulation
       chargeStrength: -120,         // Repulsion between nodes (negative = repel)
@@ -549,6 +559,7 @@
       bridge: "#f0c000",
       peer: "#ff6b35",
       self: "#58a6ff",
+      server: "#bc8cff",
       message: "#39c5cf",
       green: "#3fb950"
     };
@@ -576,6 +587,8 @@
     };
 
     const remotePeerStates = new Map();
+    // peer:join's 2nd arg — 'superpeer' marks a Fallback Server (GenosSRV)
+    const peerTypes = new Map();
 
     // ════════════════════════════════════════════════════════════════
     // THROTTLED UPDATE SYSTEM
@@ -616,7 +629,7 @@
       let fp = `${selfState.cellSize}|${selfState.dynamicTTL}`;
       for (const pid of [...all.keys()].sort()) {
         const st = all.get(pid);
-        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}`;
+        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}|${peerTypes.get(pid) || ''}`;
       }
       if (!needsRestart && fp === doUpdate._lastFp) return;
       doUpdate._lastFp = fp;
@@ -713,6 +726,7 @@
     function radiusFor(d) {
       if (d.kind === "cell") return LAYOUT.cellRadius;
       if (d.isSelf) return LAYOUT.selfRadius;
+      if (d.isServer) return LAYOUT.serverRadius;
       if (d.isBridge) return LAYOUT.bridgeRadius;
       return LAYOUT.peerRadius;
     }
@@ -720,6 +734,7 @@
     function colorFor(d) {
       if (d.kind === "cell") return COLORS.cell;
       if (d.isSelf) return COLORS.self;
+      if (d.isServer) return COLORS.server;
       if (d.isBridge) return COLORS.bridge;
       return COLORS.peer;
     }
@@ -788,6 +803,7 @@
       for (const [pid, st] of allPeers) {
         const isSelf = pid === selfId;
         const isBridge = isBridgePeer(st);
+        const isServer = peerTypes.get(pid) === "superpeer";
         const bridgesArray = Array.isArray(st.bridges) ? st.bridges : [];
 
         nodes.push({
@@ -797,6 +813,7 @@
           cellId: st.cellId,
           isBridge: isBridge,
           isSelf: isSelf,
+          isServer: isServer,
           bridges: bridgesArray,
           label: shortId(pid)
         });
@@ -1373,6 +1390,7 @@
           let badges = "";
           if (isSelf) badges += `<span class="badge badge-you">YOU</span>`;
           if (isBridge) badges += `<span class="badge badge-bridge">B</span>`;
+          if (peerTypes.get(pid) === "superpeer") badges += `<span class="badge badge-server">SRV</span>`;
 
           html += `<div class="peer-item ${isSelf ? 'self' : ''}">${shortId(pid)} ${badges}</div>`;
         }
@@ -1545,12 +1563,14 @@
         mesh = room.mesh;
         selfId = db.selfId;
 
-        room.on("peer:join", id => {
-          log(`<span style="color:var(--green)">+ ${shortId(id)}</span>`);          scheduleUpdate(true);
+        room.on("peer:join", (id, type) => {
+          if (type) peerTypes.set(id, type);
+          log(`<span style="color:var(--green)">+ ${shortId(id)}</span>${type ? ` <span style="color:var(--purple)">[${type}]</span>` : ""}`);          scheduleUpdate(true);
         });
 
         room.on("peer:leave", id => {
           remotePeerStates.delete(id);
+          peerTypes.delete(id);
           log(`<span style="color:var(--muted)">- ${shortId(id)}</span>`);          scheduleUpdate(true);
         });
 

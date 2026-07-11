@@ -270,6 +270,10 @@
       background: #f59e0b;
     }
 
+    .legend-dot.server {
+      background: #ec4899;
+    }
+
     .legend-dot.cell {
       background: #6366f1;
     }
@@ -559,6 +563,7 @@
             <span class="legend-item"><span class="legend-dot you"></span> You</span>
             <span class="legend-item"><span class="legend-dot peer"></span> Peer</span>
             <span class="legend-item"><span class="legend-dot bridge"></span> Bridge</span>
+            <span class="legend-item"><span class="legend-dot server"></span> Server</span>
             <span class="legend-item"><span class="legend-dot cell"></span> Cell</span>
           </div>
           <div class="controls-hint">🖱️ Drag to rotate</div>
@@ -690,6 +695,7 @@
       bridge: 0xf59e0b,
       peer: 0x10b981,
       self: 0xa855f7,
+      server: 0xec4899,
       link: 0x1f1f2e,
       bridgeLink: 0xf59e0b,
       pulse: 0x6366f1,
@@ -991,8 +997,9 @@
 
           const isSelf = peer.id === selfId;
           const isBridge = isBridgePeer(peer);
-          const color = isSelf ? COLORS.self : isBridge ? COLORS.bridge : COLORS.peer;
-          const size = isSelf ? 8 : isBridge ? 6 : 5;
+          const isServer = peerTypes.get(peer.id) === "superpeer";
+          const color = isSelf ? COLORS.self : isServer ? COLORS.server : isBridge ? COLORS.bridge : COLORS.peer;
+          const size = isSelf ? 8 : isServer ? 7 : isBridge ? 6 : 5;
 
           const nodeMesh = createNodeMesh(px, py, pz, color, size, isSelf);
           nodeObjects.set(peer.id, nodeMesh);
@@ -1284,6 +1291,8 @@
     };
 
     const remotePeerStates = new Map();
+    // peer:join's 2nd arg — 'superpeer' marks a Fallback Server (GenosSRV)
+    const peerTypes = new Map();
 
     let connectedAt = null;
     let stats = { msgSent: 0, msgRecv: 0, bytesOut: 0, bytesIn: 0 };
@@ -1467,7 +1476,7 @@
       let fp = `${selfState.cellSize}|${selfState.dynamicTTL ?? ''}`;
       for (const pid of [...all.keys()].sort()) {
         const st = all.get(pid);
-        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}`;
+        fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(',')}|${peerTypes.get(pid) || ''}`;
       }
       if (fp === doUpdate._lastFp) return;
       doUpdate._lastFp = fp;
@@ -1501,12 +1510,14 @@
         $("connStatus").className = "metric-value success";
         connectedAt = Date.now();
 
-        room.on("peer:join", id => {
-          log(`<span class="success">+ ${shortId(id)} joined</span>`);          scheduleUpdate();
+        room.on("peer:join", (id, type) => {
+          if (type) peerTypes.set(id, type);
+          log(`<span class="success">+ ${shortId(id)} joined</span>${type ? ` <span style="color:#ec4899">[${type}]</span>` : ""}`);          scheduleUpdate();
         });
 
         room.on("peer:leave", id => {
           remotePeerStates.delete(id);
+          peerTypes.delete(id);
           log(`<span class="c-dim">- ${shortId(id)} left</span>`);          scheduleUpdate();
         });
 
