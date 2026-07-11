@@ -10,6 +10,7 @@
       --me: #FFFF00;
       --peer: #00FF00;
       --bridge: #FFA500;
+      --server: #E040FB;
       --link: rgba(255, 255, 255, 0.7);
     }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f0f0f0; }
@@ -21,12 +22,14 @@
     circle.me.bridge { stroke: var(--bridge); stroke-width: 3px; }
     circle.peer { fill: var(--peer); }
     circle.peer.bridge { fill: var(--bridge); }
+    circle.peer.server { fill: var(--server); }
     text { font-size: 10px; fill: #000; pointer-events: none; }
     .legend { display: flex; gap: 14px; margin: 0 20px 20px; font-size: 12px; color: #333; align-items: center; }
     .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
     .legend .dot.me { background: var(--me); }
     .legend .dot.peer { background: var(--peer); }
     .legend .dot.bridge { background: var(--bridge); }
+    .legend .dot.server { background: var(--server); }
     .legend .dash { display: inline-block; width: 18px; border-top: 2px dashed var(--bridge); margin-right: 4px; vertical-align: 3px; }
   </style>
 </head>
@@ -36,6 +39,7 @@
     <span><i class="dot me"></i>You</span>
     <span><i class="dot peer"></i>Peer</span>
     <span><i class="dot bridge"></i>Bridge</span>
+    <span><i class="dot server"></i>Server</span>
     <span><i class="dash"></i>Cross-cell link</span>
   </div>
 
@@ -47,6 +51,8 @@
      * - Bridge peers and cross-cell links are styled from the engine's
      *   gossiped state (mesh:state / mesh:peer-state) — never recomputed.
      * - Updates on 'peer:join' / 'peer:leave' / 'mesh:*' events.
+     * - A Fallback Server announces type 'superpeer' on peer:join and is
+     *   drawn as a bigger violet node.
      * Compact ES2020+ style per your rules.
      */
 
@@ -59,7 +65,7 @@
     }); // room id = db name
 
     // 2) D3 setup
-    const size = 400, rMe = 10, rPeer = 6;
+    const size = 400, rMe = 10, rPeer = 6, rServer = 8;
     const svg = d3.select('#graph').append('svg').attr('viewBox', `0 0 ${size} ${size}`);
     const linkG = svg.append('g'), nodeG = svg.append('g'), labelG = svg.append('g');
 
@@ -70,6 +76,8 @@
     // Cellular state, straight from the engine (never recomputed here)
     let selfState = { cellId: null, isBridge: false, bridges: [] };
     const peerStates = new Map(); // peerId -> { cellId, bridges }
+    const peerTypes = new Map();  // peerId -> 'superpeer' (Fallback Server)
+    const isServer = d => peerTypes.get(d.id) === 'superpeer';
     const isBridgePeer = st => !!(st?.isBridge || st?.bridges?.length);
     const stateOf = d => d.me ? selfState : peerStates.get(d.id);
     const isCrossCell = pid => {
@@ -127,10 +135,10 @@
       nodeSel = nodeG.selectAll('circle').data(N, d => d.id);
       nodeSel.exit().remove();
       nodeSel = nodeSel.enter().append('circle')
-        .attr('r', d => d.me ? rMe : rPeer)
         .call(drag)
         .merge(nodeSel)
-        .attr('class', d => (d.me ? 'me' : 'peer') + (isBridgePeer(stateOf(d)) ? ' bridge' : ''));
+        .attr('r', d => d.me ? rMe : isServer(d) ? rServer : rPeer)
+        .attr('class', d => (d.me ? 'me' : 'peer') + (isBridgePeer(stateOf(d)) ? ' bridge' : '') + (isServer(d) ? ' server' : ''));
 
       labelSel = labelG.selectAll('text').data(N, d => d.id);
       labelSel.exit().remove();
@@ -148,8 +156,8 @@
     Object.keys(db.room.getPeers?.() ?? {}).forEach(upsertPeer);
 
     // 8) Real-time: peers join/leave + cellular state gossip
-    db.room.on?.('peer:join', id => upsertPeer(id));
-    db.room.on?.('peer:leave', id => { peerStates.delete(id); removePeer(id); });
+    db.room.on?.('peer:join', (id, type) => { if (type) peerTypes.set(id, type); upsertPeer(id); });
+    db.room.on?.('peer:leave', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id); });
     db.room.on?.('mesh:state', st => { selfState = st; render(); });
     db.room.on?.('mesh:peer-state', st => {
       if (st.id === db.selfId) return;
