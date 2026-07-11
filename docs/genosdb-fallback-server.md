@@ -11,8 +11,9 @@ It ships as a **single file with zero dependencies** — `genossrv.min.js`, publ
 | ✅ **Durable memory** | Persists the room's graph in SQLite (WAL, crash-safe). Data survives even when every browser closes. |
 | ✅ **Availability anchor** | Peers that were offline catch up from it (delta or full-state sync) the moment they return. |
 | ✅ **Governance authority** *(optional)* | With a signing identity, it acts as an always-on superadmin: role assignments and governance rules run 24/7. |
+| ✅ **Signaling host** *(optional)* | Embeds the room's signaling relay, so peer discovery itself runs on your infrastructure. |
 
-The server behaves as just another peer in the network: it discovers and connects through the same Nostr relays as everyone else, and every operation it emits is verified by every browser like anyone else's. It does not centralize anything — it only adds the one guarantee no browser can offer, being always on.
+The server behaves as just another peer in the network: it discovers and connects through the same Nostr relays as everyone else (or through its own — see *Your own signaling*), and every operation it emits is verified by every browser like anyone else's. It does not centralize anything — it only adds the one guarantee no browser can offer, being always on.
 
 ## Quick start
 

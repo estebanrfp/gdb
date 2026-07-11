@@ -33,7 +33,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 
 1.  **Serialization**: Data is serialized using MessagePack for compact representation.
 2.  **Compression**: Gzip (`pako`) compresses serialized data for efficient P2P transfer.
-3.  **Networking**: WebRTC handles P2P communication, with Nostr relays for peer discovery and optional TURN servers for NAT traversal.
+3.  **Networking**: WebRTC handles P2P communication, with Nostr relays for peer discovery and optional TURN servers for NAT traversal. An optional **Fallback Server** can anchor a room with always-on availability and even host its signaling.
 4.  **Persistence**: OPFS stores graph data and indexes, with `BroadcastChannel` ensuring cross-tab consistency.
 5.  **Conflict Resolution**: LWW-CRDTs with HLCs (capped at a 2-hour drift limit) ensure consistent state across peers.
 
@@ -50,7 +50,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 +-------------------+       +-------------------+       +-------------------+
 |     Oplog         |       |  BroadcastChannel |       |      OPFS         |
 | Delta Sync,       |       | Cross-Tab Sync    |       | Persistent Storage|
-| Conflict Resolver |       |                   |       | Indexes (Radix)   |
+| Conflict Resolver |       |                   |       |                   |
 +-------------------+       +-------------------+       +-------------------+
           |
           v
@@ -102,7 +102,7 @@ const groupMembers = await db.map({ query: { type: "Group", name: "group1", $edg
 -   **Pagination**: Use `$limit`, `$after`, `$before` to control result sets.
 -   **Sorting**: Specify `field` and `order` (asc/desc) for sorted results.
 -   **Nested Properties**: Access nested fields using dot notation (e.g., `profile.name`).
--   **Prefix Search**: With the Radix Indexer module, `searchByPrefix` enables efficient prefix-based queries.
+-   **Prefix & Text Matching**: `$startsWith`, `$endsWith`, `$contains` and `$text` are served natively by the query engine.
 
 **Example (Paginated and Sorted Query)**:
 ```javascript
@@ -122,8 +122,6 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 ### 4.1 Available Modules
 
 -   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
--   **Radix Indexer**: Enabled with `rx: true`. Uses a Radix Tree for efficient prefix-based indexing and enhances queries with `$startsWith`.
--   **Inverted Index**: Enabled with `ii: true`. Supports full-text search.
 -   **Geo Module**: Enabled with `geo: true`. Adds geospatial indexing and queries.
 -   **Audit Module**: Enabled with `audit: true`. Analyzes oplog data for problematic content.
 -   **NLQ Module**: Enabled with `nlq: true`. Adds a thin prompt-to-query layer that translates controlled-English natural-language prompts into standard operator queries.
@@ -133,7 +131,6 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 const db = await gdb("my-db", {
   rtc: true,
   sm: { superAdmins: ["0x1234..."], customRoles: { editor: { can: ["write"], inherits: ["guest"] } } },
-  rx: true,
   audit: { prompt: "detect offensive content or spam" }
 });
 ```
@@ -202,7 +199,7 @@ As an optional extension to RBAC, ACLs provide fine-grained, node-level permissi
 
 ### 6.4 Governance (Role Promotion & Demotion)
 
-As an optional extension, the Governance engine lets a superadmin declare the rules of advancement up front. Each rule is a declarative `{ if, then: { assignRole } }`, where `if` is a **native GenosDB query** (the same operators as `db.map`). While a superadmin is online, the engine evaluates the rules and signs every role change, which each peer then verifies — zero-trust, with no central server.
+As an optional extension, the Governance engine lets a superadmin declare the rules of advancement up front. Each rule is a declarative `{ if, then: { assignRole } }`, where `if` is a **native GenosDB query** (the same operators as `db.map`). The engine — run from a superadmin's browser session, or 24/7 by the always-on Fallback Server — evaluates the rules and signs every role change, which each peer then verifies — zero-trust, with no central authority.
 
 Roles resolve by **last-match-wins**: ordered easy→hard, the rules form a merit ladder where reaching a higher tier overrides the lower ones and losing the condition **auto-demotes**, so no explicit demotion rules are needed. This turns reputation thresholds, e-mail whitelists or activity objectives into a few declarative rules.
 
@@ -248,7 +245,7 @@ GenosDB prioritizes trust by providing comprehensive public unit tests and docum
 
 ### 12.1 Public Unit Tests and Validation
 
--   **Comprehensive Test Suite**: A publicly available test suite covers all core functionalities, with results published via GitHub Actions at [estebanrfp.github.io/gdb/tests/html/test-results.html](https://estebanrfp.github.io/gdb/tests/html/test-results.html).
+-   **Comprehensive Test Suite**: A publicly available test suite covers all core functionalities, with results published via GitHub Actions at [estebanrfp.github.io/gdb/tests/report.html](https://estebanrfp.github.io/gdb/tests/report.html).
 -   **Transparency in Functionality**: Detailed API references, architecture docs, and examples allow developers to validate GenosDB's capabilities independently.
 
 ### 12.2 Intellectual Property Protection and Free Distribution
@@ -268,12 +265,11 @@ GenosDB is a powerful, developer-friendly platform for decentralized application
 
 ## 14. References
 
-*(Note: Please adjust publication years to their actual values.)*
 
 1.  estebanrfp, “GenosDB: Distributed Graph-Based Database,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-distributed-graph-based-database-7f03b878507b)
 2.  estebanrfp, “Designing a Next-Generation P2P Protocol Architecture,” Medium, 2024. [Link](https://medium.com/genosdb/designing-a-next-generation-p2p-protocol-architecture-for-genosdb-4833c1f6e069)
 3.  estebanrfp, “How GenosDB Solved the Distributed Trust Paradox,” Medium, 2024. [Link](https://medium.com/genosdb/how-genosdb-solved-the-distributed-trust-paradox-a-guide-to-p2p-security-a552aa3e3318)
 4.  estebanrfp, “GenosDB and the Nostr Network,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-and-the-nostr-network-powering-the-future-of-decentralized-data-93db03b7c2d7)
 5.  estebanrfp, “GenosDB v0.4.0: Oplog-Driven Delta Sync,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-v0-4-0-introducing-oplog-driven-intelligent-delta-sync-and-full-state-fallback-741fe8ff132c)
-6.  GenosDB Public Test Results, GitHub, 2024. [Link](https://estebanrfp.github.io/gdb/tests/html/test-results.html)
+6.  GenosDB Public Test Results, GitHub. [Link](https://estebanrfp.github.io/gdb/tests/report.html)
 7.  GenosDB Documentation, GitHub, 2024. [Link](https://github.com/estebanrfp/gdb/tree/main/docs)

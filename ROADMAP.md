@@ -18,6 +18,7 @@ As of today, GenosDB is in a stable beta phase, offering a robust set of feature
     -   GenosRTC: P2P streaming for real-time audio, video, and file transfers.
     -   Cellular Mesh architecture for horizontal scaling to large-scale networks.
     -   Advanced Security Module: A **zero-trust** model featuring Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), and rule-based **Governance** (last-match-wins role promotion & demotion) — all cryptographically signed and enforced against malicious peers — plus WebAuthn biometric authentication and a solution to the Distributed Trust Paradox ([See RBAC](https://medium.com/genosdb/role-based-access-control-rbac-in-genosdb-bde218a1a0df), [See Trust Paradox](https://medium.com/genosdb/how-genosdb-solved-the-distributed-trust-paradox-a-guide-to-p2p-security-a552aa3e3318)).
+    -   Fallback Server (GenosSRV): an optional always-on superpeer — durable memory, 24/7 governance and self-hosted signaling — shipped with the builds as a single zero-dependency file.
     -   Intelligent Delta Synchronization via an oplog, compressed payloads, full-state fallback, and signaling over the Nostr network for maximum efficiency ([See article](https://medium.com/genosdb/genosdb-v0-4-0-introducing-oplog-driven-intelligent-delta-sync-and-full-state-fallback-741fe8ff132c)).
     -   High-performance asynchronous engine capable of handling tens of thousands of writes per second ([See article](https://medium.com/genosdb/genosdbs-new-async-engine-unlocking-unparalleled-performance-and-simplicity-in-a-real-time-c666f1a9a5d2)).
     -   Flagship Use Case: A 3D metaverse built with Babylon.js, using GenosDB for avatar sync, chat, and object management ([OVGrid](https://ovgrid.com)).
@@ -27,7 +28,7 @@ As of today, GenosDB is in a stable beta phase, offering a robust set of feature
 
 ## Achievements (Historical Milestones)
 
-Based on our [CHANGELOG.md](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md), here are key features and enhancements that have shaped GenosDB's evolution. *(Note: Please adjust dates to reflect reality.)*
+Based on our [CHANGELOG.md](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md), here are key features and enhancements that have shaped GenosDB's evolution.
 
 -   **v0.15.0 (June 2026)**: Governance simplified to a pure **last-match-wins** engine — role promotion and automatic demotion expressed as declarative rules, with no temporary-role timers.
 -   **v0.14.0 (June 2026)**: Security-Manager hardening — node-level ACLs and role expiry are now enforced **against malicious peers**, not just by the honest client.
@@ -68,7 +69,6 @@ This roadmap outlines our planned features and goals. It is a living document an
 
 -   `[ ]` Explore monetization models, such as premium support or dedicated consulting for enterprise metaverse and P2P applications.
 -   `[ ]` Conduct external, third-party security audits to further harden the system for enterprise adoption.
--   `[ ]` Research and develop dedicated fallback/cache nodes to enhance network stability and performance in very large P2P clusters.
 
 ## How to Contribute
 
