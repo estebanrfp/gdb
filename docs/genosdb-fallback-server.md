@@ -119,9 +119,10 @@ Run it under your process manager of choice (`systemd`, `pm2`, …) for restarts
 
 ```dockerfile
 FROM oven/bun:alpine
+# Pin the version (genosdb@X.Y.Z) for reproducible deploys
 ADD https://cdn.jsdelivr.net/npm/genosdb@latest/dist/genossrv.min.js /srv/genossrv.min.js
 WORKDIR /srv
-VOLUME /srv/data
+RUN mkdir -p /srv/data
 ENV GDB_DB_PATH=/srv/data/data.sqlite
 ENTRYPOINT ["bun", "genossrv.min.js"]
 CMD ["myAppDB"]
@@ -147,4 +148,33 @@ GDB_SM_KEY="twelve word mnemonic …" \
 GDB_SM_RULES='[{"if":{"role":"guest","posts":{"$gte":3}},"then":{"assignRole":"user"}}]' \
 bun genossrv.min.js
 ```
+
+**Ephemeral filesystems** (Heroku and similar): the SQLite file lives only as long as the dyno — on restart the superpeer starts empty and re-syncs from whatever peers are online. For durable-at-rest storage, deploy on a platform with persistent volumes (a VPS, Fly.io volumes, …).
+
+## Verification
+
+The logs are the server's interface — every state it goes through has a line. A healthy boot:
+
+```
+⚡ GDBServer [myAppDB] initializing (bun:sqlite)
+🛡️ SM: signing as 0x…                         ← only with GDB_SM_KEY
+⚡ Transport: full mesh | cellular mesh        ← must match your app's rtc mode
+✅ GenosRTC sync enabled
+✅ GDBServer [myAppDB] ready (bun:sqlite)
+📜 GOVERNANCE ENGINE: active — N rule(s) …     ← only with rules; ~15 s after boot
+```
+
+And in operation, the signals that prove it is doing its job:
+
+| Log line | Meaning |
+|---|---|
+| `⚡ Peer connected: <id>` | A browser (or another server) reached it over WebRTC |
+| `💥 Sending FULL state sync: N nodes` / `🚀 Sending DELTA sync: N ops` | **It is serving the room's data** — the fallback role in action |
+| `📥 deltaSync: N ops` / `✅ fullStateSync applied: N nodes` | It is absorbing state from peers |
+| `📜 GOVERNANCE: 0x… 'guest' -> 'user'` | The engine promoted (or demoted) someone, signed by the server |
+| `⚠️ This room speaks Cellular Mesh — restart with …` | Wrong transport: relaunch with `--cells` |
+| `⚠️ Transient network error(s) (ignored): …` | Harmless ICE noise on some networks — rate-limited, safe to ignore |
+| `❌ Fatal: …` + exit | A real failure: the message states the cause |
+
+End-to-end check: open your application, write something, close every client, reopen — the data coming back can only have been served by the fallback server.
 
