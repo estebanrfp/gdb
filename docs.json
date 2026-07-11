@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "GenosDB",
-  "description": "GenosDB — a lightweight, decentralized P2P graph database that runs entirely in the browser.",
+  "description": "GenosDB \u2014 a lightweight, decentralized P2P graph database that runs entirely in the browser.",
   "colors": {
     "primary": "#4c8dff",
     "light": "#6ba1ff",
@@ -127,7 +127,6 @@
           {
             "group": "Transport & Relays",
             "pages": [
-              "docs/nostr-guide",
               "docs/genosdb-fallback-server"
             ]
           }

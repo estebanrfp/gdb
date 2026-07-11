@@ -26,6 +26,14 @@
     "GDB_SM_RULES": {
       "description": "Governance rules as inline JSON — the same rules your application declares. E.g. [{\"if\":{\"role\":\"guest\"},\"then\":{\"assignRole\":\"user\"}}]",
       "required": false
+    },
+    "GDB_RELAY": {
+      "description": "Set to 1 to embed a signaling relay on $PORT (sovereign discovery — point your app's rtc.relayUrls at this server). Requires running as a web dyno: scale web=1 worker=0.",
+      "required": false
+    },
+    "GDB_RELAY_URLS": {
+      "description": "Comma-separated relay list (mirrors rtc.relayUrls) — replaces the default public set.",
+      "required": false
     }
   }
 }

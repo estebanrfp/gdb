@@ -41,6 +41,8 @@ bun genossrv.min.js <name> [--cells] [--room]
 | `GDB_SM_KEY` | Signing identity: a BIP39 mnemonic or a `0x` private key (see Governance) |
 | `GDB_SUPERADMINS` | Comma-separated superadmin addresses (the same list your clients ship) |
 | `GDB_SM_RULES` | Governance rules: **inline JSON** (an array — or a single rule object — of the same shape the clients publish) or a path to a module whose default export is that array |
+| `--relay` (or `GDB_RELAY=1`) | Embedded signaling relay on `$PORT` (default 8080) — see *Your own signaling* |
+| `GDB_RELAY_URLS` | Comma-separated relay list (mirrors `rtc.relayUrls`) — replaces the default public set |
 
 **Match the transport to your app.** A room where browsers use `rtc: { cells: … }` speaks over per-cell channels; start the server with `--cells` or it cannot receive browser writes (it will print a one-line warning telling you exactly this).
 
@@ -102,6 +104,24 @@ The engine boots prudently (it waits for the first sync exchanges to converge be
 
 The signing key lives on your server — treat it accordingly: use a **dedicated governance identity** (not your personal superadmin key), inject it through the environment or a secret manager, and never commit it. If the server is ever compromised, removing its address from your clients' `superAdmins` revokes it entirely.
 
+## Your own signaling
+
+By default peers discover each other through public Nostr relays — those carry only encrypted handshakes, never your data. To own that layer too, the server embeds a signaling relay:
+
+```bash
+GDB_RELAY=1 PORT=8080 bun genossrv.min.js myAppDB
+```
+
+One flag, zero extra infrastructure: an ephemeral Nostr relay (the exact subset GenosDB signaling uses) served on `$PORT` — nothing is ever stored, every event is **schnorr-verified** before retransmission, and `GET /` on the same port answers a JSON health status.
+
+With the relay on, the server signals through **its own relay** (plus anything you list in `GDB_RELAY_URLS`). Point your application at it and the whole stack — signaling, persistence, governance — runs on your infrastructure:
+
+```js
+const db = await gdb('myAppDB', { rtc: { relayUrls: ['wss://your-server.example.com'] } })
+```
+
+Private by construction: with your relay as the only entry on both sides, not even discovery metadata leaves your infrastructure. List public relays too (`GDB_RELAY_URLS="wss://…,wss://…"`) if you want resilience through them as well.
+
 ## Deployment
 
 Anywhere Bun runs. The artifact is self-contained, so deployment is: fetch one file, run one command.
@@ -151,18 +171,23 @@ bun genossrv.min.js
 
 **Ephemeral filesystems** (Heroku and similar): the SQLite file lives only as long as the dyno — on restart the superpeer starts empty and re-syncs from whatever peers are online. For durable-at-rest storage, deploy on a platform with persistent volumes (a VPS, Fly.io volumes, …).
 
+**Relay mode on Heroku**: the embedded relay binds `$PORT`, so run it as the `web` process (`heroku ps:scale web=1 worker=0`) — the app's URL then becomes your signaling endpoint (`wss://your-app.herokuapp.com`) and its root serves the relay's health status.
+
 ## Verification
 
 The logs are the server's interface — every state it goes through has a line. A healthy boot:
 
 ```
 ⚡ GDBServer [myAppDB] initializing (bun:sqlite)
+📡 Relay listening on :8080 (ephemeral, schnorr-verified)   ← only with --relay
 🛡️ SM: signing as 0x…                         ← only with GDB_SM_KEY
 ⚡ Transport: full mesh | cellular mesh        ← must match your app's rtc mode
 ✅ GenosRTC sync enabled
 ✅ GDBServer [myAppDB] ready (bun:sqlite)
 📜 GOVERNANCE ENGINE: active — N rule(s) …     ← only with rules; ~15 s after boot
 ```
+
+With the relay enabled, `GET http://host:$PORT/` returns `{"relay":…,"connections":N,"events":N,"dropped":N}` — `dropped` counts events rejected by signature verification.
 
 And in operation, the signals that prove it is doing its job:
 
