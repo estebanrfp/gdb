@@ -37,7 +37,7 @@ bun genossrv.min.js <name> [--cells] [--room]
 |---|---|
 | `<name>` (or `GDB_ROOM`) | Database name — must match the browsers' `gdb(name, …)` |
 | `--cells` (or `GDB_CELLS=1`) | Cellular Mesh transport — required when browsers use `rtc: { cells: … }` |
-| `--room` | Also join `db.room` (presence): mesh monitors and presence UIs will show the server |
+| `--room` | Also join `db.room` (presence): mesh monitors and presence UIs will show the server — identified as `type: 'superpeer'` in `peer:join` events, so apps can badge it or keep it out of user rosters |
 | `GDB_DB_PATH` | SQLite file path (default `./data.sqlite`) |
 | `GDB_SM_KEY` | Signing identity: a BIP39 mnemonic or a `0x` private key (see Governance) |
 | `GDB_SUPERADMINS` | Comma-separated superadmin addresses (the same list your clients ship) |

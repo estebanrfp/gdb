@@ -48,11 +48,12 @@ Registers a callback function for a specific event.
 
 - **`peer:join`**: Fires when a new peer joins the room.
 
-  - **Callback:** `(peerId: string) => void`
+  - **Callback:** `(peerId: string, type?: string) => void` — `type` identifies the peer's declared kind (e.g. `'superpeer'` for a [Fallback Server](./genosdb-fallback-server.md)); `undefined` for regular peers. Informational — do not use it for trust decisions.
 
   ```javascript
-  db.room.on("peer:join", (peerId) => {
-    console.log(`Peer ${peerId} has joined.`)
+  db.room.on("peer:join", (peerId, type) => {
+    if (type === 'superpeer') console.log(`Server ${peerId} joined.`)
+    else console.log(`Peer ${peerId} has joined.`)
   })
   ```
 
