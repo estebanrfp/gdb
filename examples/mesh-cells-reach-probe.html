@@ -250,7 +250,7 @@
     <div class="stats">
       <div class="stat">
         <div class="stat__value" id="peers">1</div>
-        <div class="stat__label">peers</div>
+        <div class="stat__label" id="peersLabel">peers</div>
       </div>
       <div class="stat">
         <div class="stat__value" id="cells">1</div>
@@ -293,6 +293,10 @@
     window.db = db; // console probes
 
     const states = new Map(); // peerId -> last gossiped state (+ arrival time)
+    // Fallback Servers announce type 'superpeer' on peer:join. They are pure
+    // infrastructure — they run no app logic, so they never answer the probe.
+    const peerTypes = new Map();
+    const serverCount = () => [...states.keys()].filter(id => peerTypes.get(id) === "superpeer").length;
     let self = { cellId: null, isBridge: false };
     const $ = id => document.getElementById(id);
 
@@ -309,6 +313,8 @@
       for (const [id, st] of states) bump(st.cell ?? "cell-?", id);
 
       $("peers").textContent = states.size + 1;
+      const srv = serverCount();
+      $("peersLabel").textContent = srv ? `peers · ${srv} srv` : "peers";
       $("cells").textContent = byCell.size;
       $("mycell").textContent = self.cellId?.replace("cell-", "C") ?? "–";
       $("bridge").textContent = self.isBridge ? "yes" : "no";
@@ -347,7 +353,8 @@
       states.set(st.id, { ...st, at: Date.now() });
       render();
     });
-    db.room.on("peer:leave", id => { states.delete(id); render(); });
+    db.room.on("peer:join", (id, type) => { if (type) peerTypes.set(id, type); });
+    db.room.on("peer:leave", id => { states.delete(id); peerTypes.delete(id); render(); });
 
     // Reach probe: broadcast "hello", every peer auto-answers "world".
     const mesh = db.room.mesh;
@@ -373,9 +380,10 @@
     });
 
     $("pingbtn").onclick = () => {
-      // Denominator = total peers incl. me (same universe as the "peers"
-      // count), snapshotted now so it stays stable mid-measure.
-      ping = { id: `${db.selfId}:${Date.now()}`, t0: performance.now(), seen: new Set(), total: states.size + 1 };
+      // Denominator = peers that can answer: everyone incl. me, minus servers
+      // (infrastructure runs no app logic). Snapshotted so it stays stable
+      // mid-measure.
+      ping = { id: `${db.selfId}:${Date.now()}`, t0: performance.now(), seen: new Set(), total: states.size + 1 - serverCount() };
       mesh.send({ _p: "hello", id: ping.id, from: db.selfId });
       renderPing();
     };
