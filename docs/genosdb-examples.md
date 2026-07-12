@@ -114,20 +114,10 @@ A live viewer of GenosDB's governance engine, which resolves each user's role by
 
 ## Tools & Testbeds
 
-### [GenosDB - Mesh Cells Monitor (D3)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-d3.html)
-A real-time visualization tool that displays the Cellular Mesh topology, bridge nodes, routing paths, and network metrics using D3.js.
+### [GenosDB - Mesh Network Monitor](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-d3.html)
+**The reference monitor** for GenosDB networks: an interactive force-directed graph (D3.js) of the Cellular Mesh topology — cells, bridges, peers you can drag — with live network metrics, dynamic TTL, a per-cell peer roster, and Fallback Servers identified as violet `SRV` nodes. Uniquely, it also taps the sync protocol itself (`db.use`): every real database operation (PUT / DEL / LINK) is animated traveling across cells and bridges, so you watch GenosDB work — not just its chat channel.
 
-### [GenosDB - Mesh Cells Monitor (Lite)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-lite.html)
-A lightweight Canvas-based real-time visualization of the Cellular Mesh topology. Optimized for performance with minimal resource usage, featuring animated message particles and network metrics.
-
-### [GenosDB - Mesh Cells Monitor (Retro)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-retro.html)
-A retro-styled ASCII terminal monitor displaying the Cellular Mesh network in 80s CRT aesthetic. Features green phosphor text, scanline effects, and real-time system metrics with minimal CPU overhead.
-
-### [GenosDB - Mesh Cells Monitor (Modern)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-modern.html)
-A clean, minimalist Canvas-based visualization with modern UI design. Features smooth particle animations, real-time metrics, and an elegant dark interface.
-
-### [GenosDB - Mesh Cells Monitor (3D Particles)](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-particles.html)
-An immersive 3D visualization of the Cellular Mesh network using Three.js. Features rotating cell geometries, glowing peer nodes, animated message particles with trails, and interactive camera controls.
+**Visual variants** — same protocol, different aesthetics: [Lite](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-lite.html) (lightweight Canvas) · [Retro](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-retro.html) (ASCII CRT terminal) · [Modern](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-modern.html) (minimalist Canvas) · [3D Particles](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-particles.html) (Three.js).
 
 ### [GenosDB - Mesh Cells Reach Probe](https://estebanrfp.github.io/gdb/examples/mesh-cells-reach-probe.html)
 A minimal instrument for observing how peers partition into cells. Open it in several tabs — each is a peer; past 10 peers the mesh organizes into cells linked by elected bridges, and the panel reports how many peers land in each cell and who bridges them. Press **PING** to broadcast a `hello` that every peer answers with `world`, so **reach N/N** confirms the message still reaches every peer across the cells, with the coverage latency.
