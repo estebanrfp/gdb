@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`db.room.leave()` works again on Cellular Mesh rooms.** The transport unification shipped in 0.21.0 left the cells wrapper without the documented `leave()` method — calls became silent no-ops (optional chaining hid the missing function), so with `rtc: { cells }` a peer could not cleanly exit the room while the page stayed open: remote peers kept seeing it as connected (ghost presence). Restored with full-mesh parity: `leave()` tears down the cellular overlay and closes the underlying connections, and remote peers receive `peer:leave` immediately. Verified live A/B. Classic full-mesh rooms were never affected; neither was the universal cleanup path (closing the tab). Ships in the rebuilt `dist/genosrtc.min.js`.
+
 ## [0.22.0] - 2026-07-11
 
 ### Added
