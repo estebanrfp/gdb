@@ -15,7 +15,7 @@ The design of GenosRTC is guided by several key principles:
 1.  **Decentralization First**: The architecture prioritizes decentralized patterns. While helper services (signaling relays) are used for peer discovery, the actual data and media exchange occurs directly between peers, ensuring no central point of failure or data bottleneck.
 2.  **Simplicity through Abstraction**: GenosRTC exposes a clean, event-driven API (`db.room`) that hides the intricate low-level details of WebRTC, such as ICE negotiation, session description protocols (SDP), and connection state management. This allows developers to focus on application logic rather than P2P plumbing.
 3.  **Room-Based Scoping**: All P2P interactions are scoped within a logical "room." This concept provides a natural container for managing a group of connected peers, simplifying session management, broadcasting, and peer lifecycle events. Architecturally, the room ID (which corresponds to the GDB database name) acts as a shared topic for discovery.
-4.  **Secure by Design**: Communication is designed to be private and secure, with built-in support for end-to-end encryption for both signaling messages and data channel communications.
+4.  **Secure by Design**: Communication is designed to be private and secure, with mandatory transport encryption for all data channel communications and optional end-to-end encryption for signaling messages.
 5.  **Community-Driven Infrastructure**: The module's health and decentralization are enhanced by relying on a publicly maintained list of signaling relays. This allows the global developer community to contribute to the network's resilience by suggesting and vetting relays, ensuring the network remains robust and distributed over time.
 
 ---
@@ -26,7 +26,7 @@ GenosRTC is composed of several distinct logical layers that work together to es
 
 ### 1. Signaling Layer (Peer Discovery)
 
-Unlike traditional WebRTC implementations that rely on a custom, centralized WebSocket server for signaling, **GenosRTC utilizes the decentralized Nostr (Notes and Other Stuff from Transmitted Relays) network**. This layer is architected with a simple, resilient strategy for selecting relays, ensuring instant startup and maximum flexibility.
+Unlike traditional WebRTC implementations that rely on a custom, centralized WebSocket server for signaling, **GenosRTC utilizes the decentralized Nostr (Notes and Other Stuff Transmitted by Relays) network**. This layer is architected with a simple, resilient strategy for selecting relays, ensuring instant startup and maximum flexibility.
 
 -   **Function**: The signaling layer is responsible for the "handshake" process where peers discover each other and exchange the necessary metadata (like network addresses and media capabilities) to establish a direct connection.
 -   **Relay Selection Mechanism**: GenosRTC employs a non-blocking strategy: it connects to every configured relay in parallel and treats each one independently.
