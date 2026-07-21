@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Real TypeScript typings — the npm "TS" badge now tells the truth.** The published `index.d.ts` was a one-line stub (`declare module 'genosdb'`): it silenced the compiler and typed the entire API as `any`, while npm's automatic badge suggested full type support ([#32](https://github.com/estebanrfp/gdb/issues/32)). The package now ships complete typings for the public API — `gdb()` and every option (`rtc`/cells, `sm`, modules, tuning), CRUD signatures, `map` with typed events and both argument orders, the query operators (all 19, kept permissive so dynamic queries never fight the compiler), `db.room` events (including `peer:join`'s `type`), channels and media, and the Security Manager with ACLs. GenosDB itself remains pure JavaScript — the runtime and every bundle are byte-identical; the typings are authored in `types/index.d.ts` and copied into the dist by the build. Verified by compiling the documented usage examples with `tsc --strict`.
+
 ## [0.22.1] - 2026-07-12
 
 ### Fixed
