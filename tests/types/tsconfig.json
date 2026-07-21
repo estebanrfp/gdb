@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM"],
+    "paths": { "genosdb": ["../../dist/index.d.ts"] }
+  },
+  "include": ["valid.ts", "invalid.ts"]
+}

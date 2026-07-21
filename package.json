@@ -14,6 +14,7 @@
     "build": "bun esbun.js",
     "dev": "bun run --watch",
     "test": "bash tests/run.sh",
+    "test:types": "bunx --package typescript tsc -p tests/types",
     "server": "bun dist/genossrv.min.js"
   },
   "files": [
