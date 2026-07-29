@@ -86,7 +86,7 @@ Data channels are perfect for sending messages, coordinates, game states, or any
 
 Creates or connects to a named data channel. This is the recommended way to send structured data.
 
-- **`type`** `{string}`: Channel identifier in UTF‑8 (max 12 bytes).
+- **`type`** `{string}`: Channel identifier in UTF‑8 (max 12 bytes — longer names throw).
 - **Returns**: A `channel` object.
 
 #### `channel.send(data, targets?)`
