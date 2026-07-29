@@ -148,8 +148,6 @@ A tool to verify and validate the functionality of hyperlinks within the applica
 
 A curated list of more complex or notable projects, applications, or tools built with or for GenosDB. Contributions are welcome!
 
-*(Please replace the placeholder examples below with your actual projects and projects from third parties. Ensure you have permission or it's an open-source project if listing third-party work prominently.)*
-
 ---
 
 ### [To-Do-List](https://github.com/estebanrfp/To-Do-List)
@@ -206,6 +204,11 @@ _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 ### [OVGrid - Open Virtual Grid](https://ovgrid.com/)
 WebXR Educational Virtual World - Real-time shared experiences. ~ By [estebanrfp](https://github.com/estebanrfp)
 Project progress videos - [@ovgrid](https://odysee.com/@ovgrid:d)
+
+### [Hōkō — Community BMTC Bus Tracking](https://github.com/soulsam480/hoko)
+A community-driven, serverless bus tracking app for Bangalore (BMTC): riders inside a bus become live GPS "feeders" over **GenosRTC data channels** (one channel per route), while everyone else watches buses move on a Leaflet map — with a city-wide presence channel for feeder discovery across routes, 50 m haversine clustering of nearby buses, and smart session revive. Built with Preact + Signals and local SQLite (sqlocal/OPFS) for GTFS data; **GenosDB replaced the project's entire custom WebSocket backend (~1,000 lines) in a single evening**.
+
+_By: [Sambit Sahoo (soulsam480)](https://github.com/soulsam480)_
 
 ---
 
