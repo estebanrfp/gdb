@@ -1,3 +1,8 @@
+---
+title: "Method: put(value, id)"
+description: "The put method inserts or updates a node in the graph with the specified value and id. If no id is provided, it generates a unique hash based on the value…"
+---
+
 ### **Method: `put(value, id)`**
 
 #### **Description**

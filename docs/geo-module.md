@@ -1,3 +1,8 @@
+---
+title: "🌍 Geo-spatial Module for GenosDB"
+description: "This document explains the purpose of the Geo-spatial module in GenosDB, which provides the $near and $bbox operators. These operators are designed to…"
+---
+
 # 🌍 Geo-spatial Module for GenosDB
 
 ![Geolocation Query Visualization](https://github.com/user-attachments/assets/1bdc3856-c780-47e2-8b15-7dcb66946ad9)

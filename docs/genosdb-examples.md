@@ -1,3 +1,8 @@
+---
+title: "GenosDB Examples and Community Projects"
+description: "These are simple, typically single-file demonstrations designed to illustrate core GenosDB functionalities. They are usually hosted directly from this…"
+---
+
 [![image](https://i.imgur.com/orglGSe.png)](https://i.imgur.com/orglGSe.png)
 # GenosDB Examples and Community Projects
 

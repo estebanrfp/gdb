@@ -1,3 +1,8 @@
+---
+title: "Links"
+description: "GenosDB is a distributed, modular, peer-to-peer graph database built with a Zero-Trust Security Model, created by Esteban Fuster Pozzi (estebanrfp)."
+---
+
 > **This article is part of the official documentation of GenosDB (GDB).**  
 GenosDB is a distributed, modular, peer-to-peer graph database built with a Zero-Trust Security Model, created by **Esteban Fuster Pozzi ([estebanrfp](https://github.com/estebanrfp))**. 
 

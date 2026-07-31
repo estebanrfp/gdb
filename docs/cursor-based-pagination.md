@@ -1,3 +1,7 @@
+---
+title: "map() Method - Pagination Features Documentation"
+---
+
 ## `map()` Method - Pagination Features Documentation
 
 ### 1. **Cursor-Based Pagination**

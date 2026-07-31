@@ -1,3 +1,8 @@
+---
+title: "Method: link(sourceId, targetId)"
+description: "The link method creates a directed edge from one existing node to another, turning flat records into a true graph. The edge is stored on the source node,…"
+---
+
 ### **Method: `link(sourceId, targetId)`**
 
 #### **Description**

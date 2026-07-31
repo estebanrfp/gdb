@@ -1,3 +1,8 @@
+---
+title: "🎨 GenosDB Design Guide"
+description: "Opinionated UI patterns, design tokens and page architectures for applications built on GenosDB — written for humans and AIs alike. If you (or your AI…"
+---
+
 # 🎨 GenosDB Design Guide
 
 Opinionated UI patterns, design tokens and page architectures for applications built on GenosDB — written for **humans and AIs alike**. If you (or your AI assistant) are building a GenosDB application and want it to look and behave like a first-class citizen of the ecosystem, follow this guide.

@@ -1,3 +1,8 @@
+---
+title: "Technical Summary: GenosDB and Distributed Trust Model"
+description: "Each node runs a Security Manager (SM) that inspects all incoming operations, verifying them against its internal rulebook. The SM does not trust any peer…"
+---
+
 # Technical Summary: GenosDB and Distributed Trust Model
 
 <div align="center">

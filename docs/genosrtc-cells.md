@@ -1,3 +1,8 @@
+---
+title: "Cells — Technical Documentation"
+description: "Cells is a P2P cellular mesh protocol that organizes peers into interconnected cells to achieve efficient and scalable broadcast communication."
+---
+
 # Cells — Technical Documentation
 
 ## Introduction

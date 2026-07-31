@@ -1,3 +1,8 @@
+---
+title: "Bundler Configuration"
+description: "GenosDB uses dynamic imports with import.meta.url for loading optional modules. Some bundlers may require additional configuration to handle this…"
+---
+
 # Bundler Configuration
 
 GenosDB uses dynamic imports with `import.meta.url` for loading optional modules. Some bundlers may require additional configuration to handle this correctly.

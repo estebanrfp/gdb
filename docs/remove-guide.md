@@ -1,3 +1,8 @@
+---
+title: "Method: remove(id)"
+description: "The remove method deletes a node from the graph by its unique identifier (id). It also ensures that any references to the removed node (e.g., edges) are…"
+---
+
 ### **Method: `remove(id)`**
 
 #### **Description**

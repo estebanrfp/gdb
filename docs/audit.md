@@ -1,3 +1,8 @@
+---
+title: "Audit Option Documentation"
+description: "The audit option is a lightweight, audit parameter for GenosDB."
+---
+
 # **Audit Option Documentation**
 
 ## **Overview**
