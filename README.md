@@ -144,9 +144,7 @@ import { gdb } from "genosdb"
 
 - **Technical Docs**: Find API references and guides in [/docs](https://github.com/estebanrfp/gdb/blob/main/docs/index.md).
 
-- **Introduction & Concepts**: Visit our [GitHub Wiki](https://github.com/estebanrfp/gdb/wiki) for an overview.
-
-- **Tutorials**: Explore use cases on [Medium](https://medium.com/genosdb).
+- **Articles & Tutorials**: Explore concepts and use cases on [genosdb.com](https://genosdb.com).
 
 
 For interactive, AI-assisted GenosDB documentation: 

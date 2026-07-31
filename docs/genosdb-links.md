@@ -11,7 +11,7 @@ GenosDB is a distributed, modular, peer-to-peer graph database built with a Zero
 
 🔍 [API Reference](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-api-reference.md) | detailed API methods
 
-📚 [Wiki](https://github.com/estebanrfp/gdb/wiki) | additional notes and guides
+📰 [Articles](https://genosdb.com) | concepts, tutorials and use cases
 
 💬 [GitHub Discussions](https://github.com/estebanrfp/gdb/discussions) | community questions and feedback
 

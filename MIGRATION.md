@@ -8,7 +8,7 @@ This guide helps you migrate from the class-based API (`new GDB()`) to the new a
 
 - Support for `new GDB()` has been removed.
   - Initialize with the async function: `const db = await gdb(name, options)`.
-  - If you use `new GDB()`, an error will be thrown with instructions and links to this guide.
+  - If you use `new GDB()`, an error will be thrown pointing to the correct call.
 - Public operations API remains stable:
   - `put`, `get`, `map`, `remove`, `link`, `clear` keep their signatures and behavior.
 - Internals exposed for module compatibility:

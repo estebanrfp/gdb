@@ -48,4 +48,4 @@ GenosDB achieves trust through distributed verification: rules reside in code, a
 | 2    | Shared Constitution       | Embedded RBAC in SM: defines uniform permissions and authority  |
 | 3    | Distributed Security      | Local SM without default trust: verifies each operation against its own rules |
 
-Full document: [Distributed Trust Model](https://github.com/estebanrfp/gdb/wiki/GenosDB-Distributed-Trust-Model)
+Full details: [Zero-Trust Security Model](https://github.com/estebanrfp/gdb/blob/main/docs/zero-trust-security-model.md) · [Security Manager Architecture](https://github.com/estebanrfp/gdb/blob/main/docs/sm-architecture.md)

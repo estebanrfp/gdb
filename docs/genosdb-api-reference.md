@@ -466,7 +466,7 @@ db.room.on("stream:add", (stream, peerId) => {
 })
 ```
 
-> For more details and advanced options, please refer to the complete **[GenosRTC API Reference](https://github.com/estebanrfp/gdb/wiki/GenosRTC-API-Reference)** documentation.
+> For more details and advanced options, please refer to the complete **[GenosRTC API Reference](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-api-reference.md)** documentation.
 
 ---
 

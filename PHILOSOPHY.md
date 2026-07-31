@@ -45,7 +45,7 @@ In short, my decision is a **resounding 'yes'** to a development model that prio
 I immensely value the time and talent of the community. Therefore, my proposal for collaboration centers on the knowledge and the ecosystem surrounding GenosDB.
 
 *   **Collaboration on the Ecosystem:** The core code remains focused to ensure its agility, but the ecosystem is where collaboration is welcome and vital. Have you built something incredible with GenosDB and want to share it? Pull requests to the documentation and examples are welcome, and we will create a space to highlight and celebrate community projects.
-*   **Medium Articles:** Where I explain the philosophy, architecture, and technical decisions behind GenosDB.
+*   **Articles on [genosdb.com](https://genosdb.com):** Where I explain the philosophy, architecture, and technical decisions behind GenosDB.
 *   **Exhaustive Public Documentation:** Every module, every function, documented so you can understand not just the "what," but the "why."
 *   **Tutorials and Examples:** I have created numerous [examples](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-examples.md) to demonstrate the reliability and use of the applied technologies.
 *   **Public Unit Tests:** So you can verify the reliability and behavior of every part of the system.

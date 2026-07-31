@@ -260,16 +260,16 @@ GenosDB is a powerful, developer-friendly platform for decentralized application
 **Get Started**:
 -   Repository: [github.com/estebanrfp/gdb](https://github.com/estebanrfp/gdb)
 -   Documentation: [/docs](https://github.com/estebanrfp/gdb/blob/main/docs/index.md)
--   Tutorials: [Medium](https://medium.com/genosdb)
+-   Tutorials: [genosdb.com](https://genosdb.com)
 -   Community: [GitHub Discussions](https://github.com/estebanrfp/gdb/discussions)
 
 ## 14. References
 
 
-1.  estebanrfp, “GenosDB: Distributed Graph-Based Database,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-distributed-graph-based-database-7f03b878507b)
-2.  estebanrfp, “Designing a Next-Generation P2P Protocol Architecture,” Medium, 2024. [Link](https://medium.com/genosdb/designing-a-next-generation-p2p-protocol-architecture-for-genosdb-4833c1f6e069)
-3.  estebanrfp, “How GenosDB Solved the Distributed Trust Paradox,” Medium, 2024. [Link](https://medium.com/genosdb/how-genosdb-solved-the-distributed-trust-paradox-a-guide-to-p2p-security-a552aa3e3318)
-4.  estebanrfp, “GenosDB and the Nostr Network,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-and-the-nostr-network-powering-the-future-of-decentralized-data-93db03b7c2d7)
-5.  estebanrfp, “GenosDB v0.4.0: Oplog-Driven Delta Sync,” Medium, 2024. [Link](https://medium.com/genosdb/genosdb-v0-4-0-introducing-oplog-driven-intelligent-delta-sync-and-full-state-fallback-741fe8ff132c)
+1.  estebanrfp, “GenosDB: Distributed Graph-Based Database,” genosdb.com, 2024. [Link](https://genosdb.com/genosdb-distributed-graph-database)
+2.  estebanrfp, “Designing a Next-Generation P2P Protocol Architecture,” genosdb.com, 2024. [Link](https://genosdb.com/genosdb-p2p-protocol-architecture)
+3.  estebanrfp, “How GenosDB Solved the Distributed Trust Paradox,” genosdb.com, 2024. [Link](https://genosdb.com/genosdb-distributed-trust-paradox)
+4.  estebanrfp, “GenosDB and the Nostr Network,” genosdb.com, 2024. [Link](https://genosdb.com/genosdb-nostr-decentralized-data)
+5.  estebanrfp, “GenosDB v0.4.0: Oplog-Driven Delta Sync,” genosdb.com, 2024. [Link](https://genosdb.com/genosdb-oplog-delta-sync)
 6.  GenosDB Public Test Results, GitHub. [Link](https://estebanrfp.github.io/gdb/tests/report.html)
 7.  GenosDB Documentation, GitHub, 2024. [Link](https://github.com/estebanrfp/gdb/tree/main/docs)

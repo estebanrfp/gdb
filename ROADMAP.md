@@ -13,17 +13,17 @@ To empower developers to build secure, real-time decentralized applications—fr
 As of today, GenosDB is in a stable beta phase, offering a robust set of features for building decentralized applications.
 
 -   **Key Features**:
-    -   Graph database with `put`, `get`, `link`, `map`, `remove` operations ([See details](https://medium.com/genosdb/genosdb-distributed-graph-based-database-7f03b878507b)).
-    -   Recursive graph traversal with the `$edge` operator for complex queries ([See article](https://medium.com/genosdb/introducing-recursive-graph-traversal-queries-in-genosdb-7a2eff62c5bf)).
+    -   Graph database with `put`, `get`, `link`, `map`, `remove` operations ([See details](https://genosdb.com/genosdb-distributed-graph-database)).
+    -   Recursive graph traversal with the `$edge` operator for complex queries ([See article](https://genosdb.com/genosdb-recursive-graph-traversal)).
     -   GenosRTC: P2P streaming for real-time audio, video, and file transfers.
     -   Cellular Mesh architecture for horizontal scaling to large-scale networks.
-    -   Advanced Security Module: A **zero-trust** model featuring Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), and rule-based **Governance** (last-match-wins role promotion & demotion) — all cryptographically signed and enforced against malicious peers — plus WebAuthn biometric authentication and a solution to the Distributed Trust Paradox ([See RBAC](https://medium.com/genosdb/role-based-access-control-rbac-in-genosdb-bde218a1a0df), [See Trust Paradox](https://medium.com/genosdb/how-genosdb-solved-the-distributed-trust-paradox-a-guide-to-p2p-security-a552aa3e3318)).
+    -   Advanced Security Module: A **zero-trust** model featuring Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), and rule-based **Governance** (last-match-wins role promotion & demotion) — all cryptographically signed and enforced against malicious peers — plus WebAuthn biometric authentication and a solution to the Distributed Trust Paradox ([See RBAC](https://genosdb.com/genosdb-rbac-access-control), [See Trust Paradox](https://genosdb.com/genosdb-distributed-trust-paradox)).
     -   Fallback Server (GenosSRV): an optional always-on superpeer — durable memory, 24/7 governance and self-hosted signaling — shipped with the builds as a single zero-dependency file.
-    -   Intelligent Delta Synchronization via an oplog, compressed payloads, full-state fallback, and signaling over the Nostr network for maximum efficiency ([See article](https://medium.com/genosdb/genosdb-v0-4-0-introducing-oplog-driven-intelligent-delta-sync-and-full-state-fallback-741fe8ff132c)).
-    -   High-performance asynchronous engine capable of handling tens of thousands of writes per second ([See article](https://medium.com/genosdb/genosdbs-new-async-engine-unlocking-unparalleled-performance-and-simplicity-in-a-real-time-c666f1a9a5d2)).
+    -   Intelligent Delta Synchronization via an oplog, compressed payloads, full-state fallback, and signaling over the Nostr network for maximum efficiency ([See article](https://genosdb.com/genosdb-oplog-delta-sync)).
+    -   High-performance asynchronous engine capable of handling tens of thousands of writes per second ([See article](https://genosdb.com/genosdb-async-engine-realtime-performance)).
     -   Flagship Use Case: A 3D metaverse built with Babylon.js, using GenosDB for avatar sync, chat, and object management ([OVGrid](https://ovgrid.com)).
 -   **Availability**: Free, minified builds are available via NPM and CDN for immediate use ([Repo](https://github.com/estebanrfp/gdb)).
--   **Demos & Tutorials**: A rich collection of practical examples, including real-time chats, to-do lists, and Kanban boards ([See all tutorials](https://medium.com/genosdb)).
+-   **Demos & Tutorials**: A rich collection of practical examples, including real-time chats, to-do lists, and Kanban boards ([See all tutorials](https://genosdb.com)).
 -   **Limitations**: The API is stable but may undergo minor changes before v1.0. The source code is private to protect IP, while the builds remain free to use.
 
 ## Achievements (Historical Milestones)
@@ -77,12 +77,12 @@ Although the core source code is proprietary, your contributions are vital to th
 -   **Test and Report**: Use the minified builds in your projects and report any bugs or issues in [GitHub Issues](https://github.com/estebanrfp/gdb/issues).
 -   **Create Demos and Examples**: Build applications, demos, or tutorials on platforms like JSFiddle, CodePen, or your own blog. Share them with the community! ([See Contribution Guidelines](https://github.com/estebanrfp/gdb/blob/main/CONTRIBUTING.md)).
 -   **Share Feedback**: Your ideas and feedback are crucial. Join the conversation in [GitHub Discussions](https://github.com/estebanrfp/gdb/discussions).
--   **Write About GenosDB**: If you've built something cool or have insights to share, write an article on Medium or Dev.to.
+-   **Write About GenosDB**: If you've built something cool or have insights to share, write an article on Dev.to or Hashnode.
 
 ## Contact
 
 -   Got ideas or want to collaborate? Reach out via [estebanrfp@gmail.com](mailto:estebanrfp@gmail.com) or start a conversation in [Discussions](https://github.com/estebanrfp/gdb/discussions).
--   Follow project updates on [Medium](https://medium.com/genosdb) and [GenosDB.com](https://genosdb.com).
+-   Follow project updates on [genosdb.com](https://genosdb.com) and [GenosDB.com](https://genosdb.com).
 
 ## Notes
 
