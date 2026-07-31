@@ -151,7 +151,7 @@ For interactive, AI-assisted GenosDB documentation:
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/estebanrfp/gdb)
 
-[Mintlify GenosDB Documentation](https://mintlify.wiki/estebanrfp/gdb)
+[Mintlify GenosDB Documentation](https://estebanrfp-gdb.mintlify.app/docs)
 
 ## Examples
 
