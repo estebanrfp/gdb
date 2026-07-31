@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.3] - 2026-08-01
+
+### Changed
+
+- **Minimal, actionable error for the legacy `new GDB()` constructor.** The guard still narrated a migration that ended long ago and linked twice to the retired GitHub Wiki. It now throws a single line — ``GenosDB is not constructed with `new`. Use: const db = await gdb(name, options)`` — matching MIGRATION.md and the published typings. The `GDB` export stays so the mistake fails with guidance instead of `GDB is not defined`. No public API changes.
+
+### Fixed
+
+- **Documentation dead links, repo-wide.** The Medium publication was deleted and the GitHub Wiki disabled, so every link pointing at them was dead: 19 Medium links (README, ROADMAP, WHITEPAPER, PHILOSOPHY) now resolve to their live twins on [genosdb.com](https://genosdb.com), whitepaper citations credit the actual venue, and wiki references moved to their in-repo equivalents under `/docs`. The docs site now builds directly from this repository at [estebanrfp-gdb.mintlify.app/docs](https://estebanrfp-gdb.mintlify.app/docs) — replacing a stale AI-generated snapshot that was 156 commits behind.
+
 ## [0.22.2] - 2026-07-21
 
 ### Fixed
