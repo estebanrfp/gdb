@@ -230,7 +230,7 @@ We value community contributions — get involved through:
 
 - [Issues](https://github.com/estebanrfp/gdb/issues) — report bugs or request features  
 - [Discussions](https://github.com/estebanrfp/gdb/discussions) — ask questions or share ideas
-- ⭐ **Star the repo** — if GenosDB saves you a backend, it helps other developers find it
+- ⭐ [Star the repo](https://github.com/estebanrfp/gdb) — if GenosDB saves you a backend, it helps other developers find it
 
 See the discussion on Product Hunt:
 
