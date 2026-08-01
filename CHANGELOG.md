@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.4] - 2026-08-01
+
+### Fixed
+
+- **`room.replaceTrack()` typings and docs now match the shipped behavior.** The documented signature `(oldTrack, newTrack, stream, targets?)` never existed in any released build — the real one is `(oldTrack, newTrack, targets?, meta?)`: the third argument selects the target peers and the sender is located from `oldTrack`, so no stream is involved at any layer. Following the old signature made the `MediaStream` be read as a target list. The rest of the per-track API is surfaced for the first time: `room.addTrack(track, stream, targets?, meta?)`, `room.removeTrack(track, targets?)`, and the `track:add` event — which emits four arguments (`track, stream, peerId, metadata`); the typings previously dropped the metadata. Runtime untouched: this release corrects `index.d.ts` and the API reference, verified against the source and both shipped bundles.
+
+### Added
+
+- **`llms.txt` ships with the package.** A curated, verified map of GenosDB for AI agents inspecting the package: what it is, what it is — and isn't — good for, the frozen public contract with the details models most often get wrong, and where each guide lives. Also available at the repo root.
+
 ## [0.22.3] - 2026-08-01
 
 ### Changed
