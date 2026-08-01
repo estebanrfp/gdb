@@ -46,7 +46,7 @@ Listen to room events to know when peers join or leave, and when they send media
 
 Registers a callback function for a specific event.
 
-- **`eventName`** `{string}`: The name of the event (`'peer:join'`, `'peer:leave'`, `'stream:add'`).
+- **`eventName`** `{string}`: The name of the event (`'peer:join'`, `'peer:leave'`, `'stream:add'`, `'track:add'` — plus, with Cellular Mesh, `'mesh:state'` and `'mesh:peer-state'`, covered in [Cells](./genosrtc-cells.md)).
 - **`callback`** `{Function}`: The function to execute.
 
 **Available Events:**
@@ -78,6 +78,14 @@ Registers a callback function for a specific event.
   db.room.on("stream:add", (stream, peerId) => {
     console.log(`Receiving stream from ${peerId}.`)
     // Logic to display the video/audio in the UI
+  })
+  ```
+
+- **`track:add`**: Fires for each individual `MediaStreamTrack` a peer sends — useful when audio and video need separate handling (e.g. reacting when a camera turns on in a call that started as voice-only).
+  - **Callback:** `(track: MediaStreamTrack, stream: MediaStream, peerId: string, metadata?: any) => void`
+  ```javascript
+  db.room.on("track:add", (track, stream, peerId) => {
+    console.log(`Receiving ${track.kind} track from ${peerId}.`)
   })
   ```
 
@@ -129,7 +137,9 @@ Methods for managing the sending of `MediaStream` objects.
 
 - **`db.room.addStream(stream, targets?, meta?)`**: Sends your `MediaStream` (e.g., from a webcam) to peers.
 - **`db.room.removeStream(stream, targets?)`**: Stops sending a stream.
-- **`db.room.replaceTrack(oldTrack, newTrack, stream, targets?)`**: Replaces a track in a stream (e.g., to switch cameras or mute/unmute).
+- **`db.room.addTrack(track, stream, targets?, meta?)`**: Adds a single track to a stream you are already sharing (e.g., enabling the camera in a voice-only call).
+- **`db.room.removeTrack(track, targets?)`**: Stops sending a single track.
+- **`db.room.replaceTrack(oldTrack, newTrack, targets?, meta?)`**: Replaces a track in place (e.g., to switch cameras or mute/unmute). The peer is located from `oldTrack` — no stream argument is needed.
 
 **Video Streaming Example:**
 

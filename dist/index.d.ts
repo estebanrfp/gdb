@@ -115,7 +115,7 @@ declare module "genosdb" {
     "peer:join": (peerId: string, type?: string) => void
     "peer:leave": (peerId: string) => void
     "stream:add": (stream: MediaStream, peerId: string, meta?: any) => void
-    "track:add": (track: MediaStreamTrack, stream: MediaStream, peerId: string) => void
+    "track:add": (track: MediaStreamTrack, stream: MediaStream, peerId: string, meta?: any) => void
     /** Cellular Mesh: local overlay state (cellId, isBridge, bridges…). */
     "mesh:state": (state: any) => void
     /** Cellular Mesh: gossiped remote peer state. */
@@ -134,11 +134,21 @@ declare module "genosdb" {
     leave(): void
     addStream(stream: MediaStream, targets?: string | string[], meta?: any): void
     removeStream(stream: MediaStream, targets?: string | string[]): void
+    /** Add a single track to a stream already shared with peers. */
+    addTrack(
+      track: MediaStreamTrack,
+      stream: MediaStream,
+      targets?: string | string[],
+      meta?: any
+    ): void
+    /** Stop sending a single track. */
+    removeTrack(track: MediaStreamTrack, targets?: string | string[]): void
+    /** Replace a track in place; the peer is located from `oldTrack`. */
     replaceTrack(
       oldTrack: MediaStreamTrack,
       newTrack: MediaStreamTrack,
-      stream: MediaStream,
-      targets?: string | string[]
+      targets?: string | string[],
+      meta?: any
     ): void
     /** Cellular Mesh overlay handle (present with `rtc: { cells }`). */
     mesh?: any
