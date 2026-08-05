@@ -84,15 +84,15 @@ const results = await db.map({ query: { name: { $eq: "Alice" } }, $limit: 10 });
 
 GenosDB supports a rich set of operators for filtering and traversing data:
 -   **Comparison**: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$between`, `$exists`.
--   **Text Search**: `$text` (global or field-specific, case-insensitive, diacritic-normalized).
+-   **Text Search**: `$text` (field-specific, case-insensitive, diacritic-normalized).
 -   **Pattern Matching**: `$like`, `$regex`.
 -   **Logical**: `$and`, `$or`, `$not`.
 -   **Graph Traversal**: `$edge` for recursive multi-hop queries.
 
 **Example (Text Search and Graph Traversal)**:
 ```javascript
-// Search for nodes with "ali" in any field
-const results = await db.map({ query: { $text: "ali" } });
+// Search for "ali" across several text fields
+const results = await db.map({ query: { $or: [{ name: { $text: "ali" } }, { bio: { $text: "ali" } }] } });
 // Traverse edges to find nodes connected to a group
 const groupMembers = await db.map({ query: { type: "Group", name: "group1", $edge: { type: "User" } } });
 ```

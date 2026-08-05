@@ -804,6 +804,12 @@
 
         async function setupNoteSubscriptions(searchTerm = '') {
             cleanupNoteSubscriptions();
+            // The cache holds the previous result set; without clearing it the
+            // list would keep showing notes that no longer match the search.
+            notesCache.clear();
+            activeNoteId = null;
+            showEditor(false);
+            renderNotesList();
 
             // --- MI NOTAS ---
             const myNotesConditions = [
@@ -811,7 +817,7 @@
                 { owner: currentUserAddress }
             ];
             if (searchTerm) {
-                myNotesConditions.push({ $text: searchTerm });
+                myNotesConditions.push({ $or: [{ title: { $text: searchTerm } }, { content: { $text: searchTerm } }] });
             }
             const myNotesQuery = { $and: myNotesConditions };
             const myNotesSub = await db.map({ query: myNotesQuery }, updateNoteCache);
@@ -820,7 +826,7 @@
             // --- NOTAS COMPARTIDAS ---
             const sharedNotesConditions = [{ type: 'note' }];
             if (searchTerm) {
-                sharedNotesConditions.push({ $text: searchTerm });
+                sharedNotesConditions.push({ $or: [{ title: { $text: searchTerm } }, { content: { $text: searchTerm } }] });
             }
             const sharedNotesQuery = { $and: sharedNotesConditions };
             const sharedNotesSub = await db.map({ query: sharedNotesQuery }, (event) => {

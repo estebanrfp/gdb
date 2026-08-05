@@ -185,13 +185,21 @@ The `query` field supports an advanced query language with special operators:
 | `$in`      | Value within an array                                                                        | `{ status: { $in: ['active', 'pending'] } }`             |
 | `$between` | Value between two numbers or dates                                                           | `{ age: { $between: [18, 30] } }`                        |
 | `$exists`  | Checks if a field exists                                                                     | `{ name: { $exists: true } }`                            |
-| `$text`    | Text search within fields                                                                    | `{ $text: 'search term' }`                               |
+| `$text`    | Text search within a field (accent-insensitive)                                              | `{ title: { $text: 'search term' } }`                    |
 | `$like`    | SQL-like pattern matching                                                                    | `{ name: { $like: 'J%' } }`                              |
 | `$regex`   | Regular expression matching                                                                  | `{ name: { $regex: '^John' } }`                          |
 | `$and`     | All conditions must be true                                                                  | `{ $and: [{ age: { $gt: 18 } }, { status: 'active' }] }` |
 | `$or`      | At least one condition must be true                                                          | `{ $or: [{ age: { $gt: 18 } }, { status: 'active' }] }`  |
 | `$not`     | Negates a condition                                                                          | `{ $not: { age: { $gt: 18 } } }`                         |
 | `$edge`    | Performs a recursive graph traversal, returning all descendant nodes that match a sub-query. | { $edge: { type: 'Person', age: { $gt: 18 } } }          |
+
+> **Key Note on `$text`:** it always applies to a **specific field** — `{ title: { $text: q } }` — never to the node as a whole. Before matching, both the field and the search term are normalized: accents are folded (`café` matches `cafe`), case is ignored and punctuation is stripped, so no escaping is needed. Arrays are supported: the field matches if any of its entries does. To search several fields at once, combine it with `$or`:
+>
+> ```javascript
+> const { results } = await db.map({
+>   query: { type: 'post', $or: [{ title: { $text: q } }, { content: { $text: q } }] }
+> })
+> ```
 
 ---
 
