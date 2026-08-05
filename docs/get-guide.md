@@ -1,8 +1,3 @@
----
-title: "db.get() Method Documentation"
-description: "The db.get() method is a powerful utility for retrieving nodes from a graph-like data structure by their unique ID. It also supports real-time updates…"
----
-
 # **`db.get()` Method Documentation**
 
 The `db.get()` method is a powerful utility for retrieving nodes from a graph-like data structure by their unique ID. It also supports real-time updates through an optional callback mechanism, allowing your application to react dynamically to changes in the data.

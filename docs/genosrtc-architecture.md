@@ -1,8 +1,3 @@
----
-title: "GenosDB's GenosRTC Module Architecture Overview"
-description: "GenosRTC is the integrated peer-to-peer (P2P) communication module within the GenosDB (GDB) ecosystem. It is designed to provide developers with a…"
----
-
 # GenosDB's GenosRTC Module Architecture Overview
 
 ## Introduction

@@ -1,8 +1,3 @@
----
-title: "🏛️ Governance (Role Promotion)"
-description: "Governance is the layer of the Security Manager that decides how a guest earns a higher role in a GenosDB network — turning the zero-trust idea of…"
----
-
 # 🏛️ Governance (Role Promotion)
 
 > **Status: Beta.** The mechanism described here is implemented and validated end-to-end. Details may still be refined before the stable release — check the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md).

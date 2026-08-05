@@ -1,8 +1,3 @@
----
-title: "GenosRTC API Reference"
-description: "Every GDB instance includes a powerful internal P2P module called GenosRTC. This module is exposed via the db.room object and provides a high-level API…"
----
-
 # GenosRTC API Reference
 
 Every `GDB` instance includes a powerful internal P2P module called **GenosRTC**. This module is exposed via the `db.room` object and provides a high-level API for real-time peer-to-peer (P2P) communication using WebRTC. It is designed for sending data streams, audio, and video directly between users' browsers in a decentralized manner.

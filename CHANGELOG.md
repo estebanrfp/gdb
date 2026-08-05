@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Documentation dead links, repo-wide.** The Medium publication was deleted and the GitHub Wiki disabled, so every link pointing at them was dead: 19 Medium links (README, ROADMAP, WHITEPAPER, PHILOSOPHY) now resolve to their live twins on [genosdb.com](https://genosdb.com), whitepaper citations credit the actual venue, and wiki references moved to their in-repo equivalents under `/docs`. The docs site now builds directly from this repository at [estebanrfp-gdb.mintlify.app/docs](https://estebanrfp-gdb.mintlify.app/docs) — replacing a stale AI-generated snapshot that was 156 commits behind.
+- **Documentation dead links, repo-wide.** The Medium publication was deleted and the GitHub Wiki disabled, so every link pointing at them was dead: 19 Medium links (README, ROADMAP, WHITEPAPER, PHILOSOPHY) now resolve to their live twins on [genosdb.com](https://genosdb.com), whitepaper citations credit the actual venue, and wiki references moved to their in-repo equivalents under `/docs`, which is the single source of the documentation.
 
 ## [0.22.2] - 2026-07-21
 

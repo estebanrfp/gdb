@@ -1,8 +1,3 @@
----
-title: "Overview of the GDB Security Manager (SM)"
-description: "The SM relies on a combination of Ethereum-based cryptographic identities, the WebAuthn standard for secure authentication, and a Role-Based Access…"
----
-
 [![image](https://i.imgur.com/QPxGQEF.png)](https://i.imgur.com/QPxGQEF.png)
 
 ### **Overview of the GDB Security Manager (SM)**

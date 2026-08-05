@@ -1,8 +1,3 @@
----
-title: "GenosDB SM ACLs Module"
-description: "The Access Control Lists (ACLs) module provides fine-grained, node-level permissions for GenosDB. Unlike role-based access control (RBAC) which applies…"
----
-
 # GenosDB SM ACLs Module
 
 ## Overview

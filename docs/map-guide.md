@@ -1,8 +1,3 @@
----
-title: "GenosDB 📌 .map() Method Documentation"
-description: "The db.map function is a powerful and flexible tool for querying data from your database. It supports both static queries and real-time updates, ensuring…"
----
-
 # GenosDB 📌 `.map()` Method Documentation
 
 ---

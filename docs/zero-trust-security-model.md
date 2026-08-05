@@ -1,8 +1,3 @@
----
-title: "Understanding GenosDB Zero-Trust Security Model: From Guest to SuperAdmin"
-description: "In a decentralized system, robust security isn't a feature—it's the foundation. Our GenosDB (GDB) Security Manager (SM) is built on a \"zero-trust with a…"
----
-
 ## Understanding GenosDB Zero-Trust Security Model: From Guest to SuperAdmin
 
 <div align="center">

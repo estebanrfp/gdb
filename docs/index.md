@@ -1,8 +1,3 @@
----
-title: "GenosDB Documentation"
-description: "Welcome to the official technical documentation for GenosDB."
----
-
 # GenosDB Documentation
 
 Welcome to the official technical documentation for GenosDB.

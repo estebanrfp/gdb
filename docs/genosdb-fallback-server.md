@@ -1,8 +1,3 @@
----
-title: "GenosDB Fallback Server (GenosSRV)"
-description: "GenosDB is designed to run without servers. The Fallback Server is an optional superpeer you can add to a room when you want guarantees no browser can…"
----
-
 # GenosDB Fallback Server (GenosSRV)
 
 GenosDB is designed to run without servers. The **Fallback Server** is an optional superpeer you can add to a room when you want guarantees no browser can give: being always on.

@@ -151,8 +151,6 @@ For interactive, AI-assisted GenosDB documentation:
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/estebanrfp/gdb)
 
-[Mintlify GenosDB Documentation](https://estebanrfp-gdb.mintlify.app/docs)
-
 ## Examples
 
 We’ve created a collection of interactive examples to help you understand how GDB works in real-world scenarios. These examples cover everything from basic setup to advanced features like RBAC and P2P synchronization.

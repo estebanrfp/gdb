@@ -1,8 +1,3 @@
----
-title: "CRUD Operations Guide"
-description: "When the Security Manager (SM) is enabled, encrypted variants of the CRUD operations are available under db.sm. These methods automatically handle…"
----
-
 # CRUD Operations Guide
 
 ## GenosDB provides several CRUD operations. Each has its own dedicated guide:

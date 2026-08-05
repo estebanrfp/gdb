@@ -1,8 +1,3 @@
----
-title: "GenosDB: Comprehensive Feature List"
-description: "Modular Design: The database is initialized with a lean core, allowing features to be enabled on-demand through modules to optimize performance and bundle…"
----
-
 ## **GenosDB: Comprehensive Feature List**
 
 ### **1. Core System & Architecture**

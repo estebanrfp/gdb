@@ -1,8 +1,3 @@
----
-title: "Streaming with GenosRTC"
-description: "The Streaming feature in GDB, powered by GenosRTC, enables real-time communication and data synchronization between connected peers. This functionality is…"
----
-
 # Streaming with GenosRTC
 
 The **Streaming** feature in `GDB`, powered by **GenosRTC**, enables real-time communication and data synchronization between connected peers. This functionality is particularly useful for applications that require live updates, such as collaborative tools, multiplayer games, or real-time tracking systems.

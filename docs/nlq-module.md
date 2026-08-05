@@ -1,8 +1,3 @@
----
-title: "NLQ Module Documentation"
-description: "The NLQ (Natural Language Query) module adds a thin prompt-to-query layer to GenosDB. Its only responsibility is to convert simple natural-language…"
----
-
 ![image](https://github.com/user-attachments/assets/2c6e7853-07c0-4e63-851f-7f21f8be1f3a)
 
 ---

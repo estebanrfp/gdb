@@ -1,8 +1,3 @@
----
-title: "📥 How to Use"
-description: "The Security Manager (SM) is not imported separately but is activated and attached to your GDB instance during its creation."
----
-
 > SM (Security Manager) Provides Role-Based Access Control (RBAC), Access Control Lists (ACLs), identity management (WebAuthn, Mnemonic), and security features for GDB instances. This system enables fine-grained permission control over data operations in a distributed P2P environment.
 
 ## 📥 How to Use

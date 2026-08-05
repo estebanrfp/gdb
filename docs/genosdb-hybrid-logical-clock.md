@@ -1,8 +1,3 @@
----
-title: "Conflict Resolution System Documentation: Hybrid Logical Clock (HLC)"
-description: "This document outlines the architecture of the conflict resolution system, which is engineered to maintain data consistency and integrity across a…"
----
-
 ### **Conflict Resolution System Documentation: Hybrid Logical Clock (HLC)**
 
 ![image](https://github.com/user-attachments/assets/0586162e-1800-4056-896b-865d89ae4df5)

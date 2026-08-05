@@ -1,8 +1,3 @@
----
-title: "GDB's Advanced Synchronization and Security Architecture"
-description: "GenosDB (GDB) is engineered to provide a seamless, secure, and highly efficient environment for real-time, distributed applications. This document…"
----
-
 ## **GDB's Advanced Synchronization and Security Architecture**
 
 <div align="center">

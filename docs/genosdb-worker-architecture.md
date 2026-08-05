@@ -1,8 +1,3 @@
----
-title: "Architectural Overview: The GenosDB Persistence Layer Worker"
-description: "The GenosDB persistence layer is managed by a dedicated Web Worker designed for high-performance, reliable, and non-blocking file I/O. This component is…"
----
-
 ![image](https://github.com/user-attachments/assets/51cefef9-8d00-4416-bf42-3042ddfdd659)
 
 ---

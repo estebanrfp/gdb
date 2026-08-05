@@ -1,7 +1,3 @@
----
-title: "📘 API Reference"
----
-
 # 📘 API Reference
 
 > Minimalist Graph Database with P2P support and real-time querying.
