@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.6] - 2026-08-06
+
+### Fixed
+
+- **Removed the `engines` pin — installs are clean on every toolchain.** The package declared `node: "23.x"` and `npm: "11.x"`: exact pins, not floors, so every install from a current Node LTS raised `EBADENGINE` (and failed outright wherever `engine-strict` is on), while pointing at a Node release that reached end of life in 2025 ([#33](https://github.com/estebanrfp/gdb/issues/33)). It was stale development metadata, never a requirement: GenosDB publishes prebuilt browser bundles with zero runtime dependencies, and the optional Fallback Server runs on Bun. With no runtime to constrain, the field is gone rather than replaced by a number that would go stale again.
+
 ## [0.22.4] - 2026-08-01
 
 ### Fixed

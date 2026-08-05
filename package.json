@@ -1,6 +1,6 @@
 {
   "name": "genosdb",
-  "version": "0.22.5",
+  "version": "0.22.6",
   "description": "GenosDB (GDB): distributed graph database in real-time, peer-to-peer, scalable storage - efficient querying of complex relationships.",
   "main": "dist/index.js",
   "type": "module",
@@ -50,10 +50,6 @@
     "url": "https://github.com/estebanrfp/gdb/issues"
   },
   "homepage": "https://github.com/estebanrfp/gdb#readme",
-  "engines": {
-    "node": "23.x",
-    "npm": "11.x"
-  },
   "devDependencies": {
     "@msgpack/msgpack": "3.1.2",
     "ethers": "6.15.0",
