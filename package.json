@@ -61,11 +61,11 @@
     "eslint-plugin-promise": "7.2.1"
   },
   "overrides": {
-    "ws": ">=8.20.1 <9"
+    "ws": ">=8.21.0 <9"
   },
   "pnpm": {
     "overrides": {
-      "ws": ">=8.20.1 <9"
+      "ws": ">=8.21.0 <9"
     }
   }
 }
