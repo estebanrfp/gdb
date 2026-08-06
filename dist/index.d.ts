@@ -184,18 +184,30 @@ declare module "genosdb" {
     loginOrRecoverUserWithMnemonic(mnemonic: string): Promise<any>
     protectCurrentIdentityWithWebAuthn(ethPrivateKeyForProtection?: string): Promise<any>
     hasExistingWebAuthnRegistration(): boolean | Promise<boolean>
+    isCurrentSessionProtectedByWebAuthn(): boolean
     isSecurityActive(): boolean
     getActiveEthAddress(): string | null
+    /** Mnemonic held in memory right after registration or recovery, for one-time display. */
+    getMnemonicForDisplayAfterRegistrationOrRecovery(): string | null
     clearSecurity(): Promise<void>
     setSecurityStateChangeCallback(
       callback: (state: { isActive: boolean; activeAddress: string | null }) => void
     ): void
+    setGovernanceStateChangeCallback(callback: (state: any) => void): void
     assignRole(targetUserEthAddress: string, role: string, expiresAt?: number | string): Promise<any>
     executeWithPermission(operationName: string): Promise<any>
     /** Signed write (same shape as `db.put`). */
     put(value: any, id?: string): Promise<string>
     /** Read with security context (same shape as `db.get`). */
     get(id: string, callback?: (node: NodeObject | null) => void): Promise<GetResult>
+    /**
+     * Query encrypted nodes: decrypts them all, then applies the same query
+     * engine as `db.map()`. Realtime mode is not supported — there is no
+     * callback and each call performs a fresh decrypt-and-query cycle.
+     */
+    map(options?: QueryOptions): Promise<MapResult>
+    /** Delete an encrypted node by id; the internal SM prefix is handled for you. */
+    remove(id: string): Promise<void>
     encryptDataForCurrentUser(data: any): Promise<any>
     decryptDataForCurrentUser(encrypted: any): Promise<any>
     /** Node-level access control lists. */

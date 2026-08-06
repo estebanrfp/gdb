@@ -84,6 +84,18 @@ await sm.acls.set(sid, { owner: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA" })
 await sm.acls.grant(sid, "0x1111111111111111111111111111111111111111")
 await sm.acls.revoke(sid, "0x1111111111111111111111111111111111111111")
 await sm.acls.delete(sid)
+// --- SM: encrypted CRUD surface (map/remove) and session helpers ---
+interface SecureNote { type: "note"; name: string; content: string }
+const smNoteId: string = await sm.put({ type: "note", name: "n", content: "" } satisfies SecureNote)
+const smNotes = await sm.map({ query: { type: "note" } })
+const smNames: string[] = smNotes.results.map((n) => (n.value as SecureNote).name)
+const smLimited = await sm.map({ query: { type: "note" }, field: "name", order: "desc", $limit: 5 })
+await sm.remove(smNoteId)
+const smMnemonic: string | null = sm.getMnemonicForDisplayAfterRegistrationOrRecovery()
+const smWebAuthnSession: boolean = sm.isCurrentSessionProtectedByWebAuthn()
+sm.setGovernanceStateChangeCallback((state) => console.log(state))
+console.log(smNames, smLimited.results.length, smMnemonic, smWebAuthnSession)
+
 await sm.clearSecurity()
 
 console.log(db2.selfId)
