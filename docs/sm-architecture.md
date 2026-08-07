@@ -68,13 +68,16 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
     d.  If both checks pass, the operation is applied to Peer B's local graph. Otherwise, it is rejected.
 6.  Unsigned or invalid operations are discarded, preserving the integrity of the database.
 
-**Security in Full State Synchronization (`syncReceive`):**
+**Security in Full State Synchronization:**
 
-To mitigate the risk of invalid state propagation during a full graph synchronization between peers, additional strategies are employed:
+A full state is a catch-up message rather than a stream of individual operations, and it is handled differently from live writes:
 
-*   **Origin Pre-validation:** Local permission checks are performed before an operation modifies the sender's local database, reducing the chance of invalid data being persisted and synchronized.
-*   **Node Verification on Sync:** When a full graph is received, an attempt is made to verify the permissions of the `lastModifiedBy` user for nodes that are newer than the local version. Nodes failing this check may be skipped.
-*   **(Optional) Trust in Sync Sender:** Acceptance of full graphs can be restricted to only peers that hold high-trust roles (e.g., `admin`).
+*   **Signed envelope:** the message is verified when it carries a signature; malformed or invalidly signed payloads are discarded.
+*   **Room admission:** peers only exchange state after completing the signaling handshake, which requires the room's `password` when one is configured.
+*   **Unforgeable root of trust:** `superAdmins` is local configuration on each peer, never data — an incoming graph cannot change who that peer recognises as a superadmin.
+*   **Non-destructive reconciliation:** incoming state is merged node by node through the Hybrid Logical Clock. The newer version of each node wins and nodes held only by the receiver are preserved, so a peer cannot erase data it does not have.
+
+Live operations remain individually verified — signature, sender role and permission — as described above.
 
 **Conclusion:**
 

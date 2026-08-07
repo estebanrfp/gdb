@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.8] - 2026-08-06
+
+### Fixed
+
+- **The Fallback Server now reconciles full state like the browser core.** The superpeer shipped as `dist/genossrv.min.js` still replaced its whole graph when it received a full state, so the one peer meant to be the room's durable memory could drop the nodes only it held — the same behavior corrected in the browser in 0.22.7, left in place on the server. It now merges node by node through the Hybrid Logical Clock, answers with its own state when it holds nodes the sender lacks, and propagates deletions instead of forgetting them. Verified against a live server: with a node of its own already stored, a browser joining an empty room ends with both nodes on each side, where before the server was left with only the newcomer's. If you run a Fallback Server, redeploy it alongside your clients.
+
 ## [0.22.7] - 2026-08-06
 
 ### Fixed
