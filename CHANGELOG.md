@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.9] - 2026-08-07
+
+### Fixed
+
+- **A peer that received a full state can now relay it forward — offline role propagation works through any peer.** State absorbed through a full-state sync was applied to the graph but left no trace in the operation log, so the receiving peer could not serve those nodes as a delta later: anyone returning and asking "what happened since I left?" got silence about them. The canonical three-browser governance walkthrough failed exactly there — the relay window held the newcomer's node but never forwarded it, so a returning superadmin could not see him, let alone promote him; and because a node could arrive either as a live operation (logged) or inside a full state (not logged), the failure was timing-dependent and looked intermittent. Merged nodes and applied deletions are now recorded in the oplog with their original timestamps, in the browser core and in the Fallback Server alike. Verified end to end twice: three isolated origins with a browser as the relay, and the same sequence with the Fallback Server as the always-on relay — in both, a guest who never coincided online with the superadmin comes back already promoted. If you run a Fallback Server, redeploy it alongside your clients.
+
 ## [0.22.8] - 2026-08-07
 
 ### Fixed
