@@ -342,6 +342,7 @@
       try {
         if (!db) {
           db = await gdb(DB_NAME, {
+            debug: true,
             rtc: true,
             sm: {
               // Only the demo superadmin holds the root of trust; Alice and Bob join as
