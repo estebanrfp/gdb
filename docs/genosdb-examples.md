@@ -210,6 +210,11 @@ A community-driven, serverless bus tracking app for Bangalore (BMTC): riders ins
 
 _By: [Sambit Sahoo (soulsam480)](https://github.com/soulsam480)_
 
+### [NNOOTTEESS — P2P Synced Notes in Your New Tab](https://github.com/soulsam480/nnootteess)
+A Chrome extension that turns every new tab into a notes workspace: write Markdown, keep code snippets, organise them into tabs and a sidebar, and find the same notes waiting in every browser you use. **There is no account and no server — a passphrase is the whole login**, and notes travel directly between your own devices.
+
+_By: [Sambit Sahoo (soulsam480)](https://github.com/soulsam480)_
+
 ---
 
 ## Integrations
