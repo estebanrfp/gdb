@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.11] - 2026-08-09
+
+### Fixed
+
+- **Coming back after a long outage is now prompt, not merely eventual.** 0.22.10 made a reconnected peer restore its subscriptions; this release makes sure the socket reopens soon enough for that to matter. Three things worked against it. The retry delay doubled with no ceiling, so a few minutes offline could push the next attempt minutes away. When the network came back, a socket left half-open by an attempt started while still offline was spared instead of replaced — so the `online` event, the fast path that normally recovers instantly, was ignored in exactly the case it exists for, and recovery fell through to that stretched timer. And a redial left the previous socket's close handler attached, letting a second retry loop start on the same relay and inflate the same delay. The retry delay is now capped at 30 seconds, an explicit reconnection replaces a stalled attempt rather than sparing it, and a redial releases the socket it supersedes. Recovery is immediate when the browser reports the network returning, and 30 seconds is the worst case if it never does. The cap is paid for with steady low-rate retries: a relay that stays down is now redialed every 30 seconds instead of drifting to hours. Verified across two browsers after a five-minute disconnection — the write made offline arrives as soon as the network is back — and short interruptions behave exactly as before, since the paths that changed are the ones only a long outage reaches.
+
 ## [0.22.10] - 2026-08-09
 
 ### Fixed
