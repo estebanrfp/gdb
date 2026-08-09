@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.12] - 2026-08-09
+
+### Changed
+
+- **Delta synchronization is now bidirectional: peers reconcile with each other instead of one catching up to the other.** The delta exchange was built as one-way catch-up — a peer returning to a room asks what it missed, and the peer that stayed answers. That is exactly what a returning peer needs, and it remains the common case. It does not describe what happens when *both* sides have moved: two devices that each wrote while unable to see one another are not one behind and one ahead, they have diverged, and each holds something the other is missing. Every encounter now reconciles in both directions. Each peer answers with its full operation-log window rather than a selection computed from the other's clock — a scalar clock proves what a peer has **seen**, never what it **holds**, so it cannot decide what to send — and the receiving side's per-operation clock merge keeps what is new and discards what it already has. The practical gain: two devices that both worked offline now converge carrying everything from both, in either direction, regardless of which one wrote first. The wire format is unchanged and mixed versions interoperate, though a peer still on an older build keeps answering the old way — update every peer in a room to get reconciliation in both directions. The exchange costs at most `oplogSize` compressed operations per encounter: bounded, and paid once when peers meet. The Fallback Server gains the same reconciliation; redeploy it alongside your clients.
+
 ## [0.22.11] - 2026-08-09
 
 ### Fixed
