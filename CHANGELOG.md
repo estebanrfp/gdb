@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-08-09
+
+### Changed
+
+- **Synchronization now travels an order of magnitude lighter: compression moved into the transport, where every channel inherits it.** Compression used to live inside the sync payloads themselves — each delta or full state compressed its own operations, and the compressed bytes then crossed the channel's JSON serialization, so the format paid for its own envelope, and only the sync path was covered at all. The transport now compresses each message once, whole, right before the wire and inflates it on arrival: after the Security Manager signs and before the receiver verifies, so signatures are untouched — and every channel benefits, synchronization, presence and application data alike. Nothing new ships to pay for it: the codec is the browser's own, zero dependencies added, the bundle unchanged. Measured on a 210-item room: a newcomer receives its full state for 7.9 KB where it cost 83.3 KB, and two peers reconciling after working apart exchange 13.9 KB where they exchanged 145.8 KB — ten times lighter, with convergence times unchanged — while the per-message capacity ceiling rises in the same stroke, since the chunk limit now bounds compressed size. Local storage is untouched; there is nothing to migrate. The wire format changes: peers on 0.22.x cannot read the new frames, so update every peer in a room together, and redeploy the Fallback Server alongside your clients.
+
 ## [0.22.12] - 2026-08-09
 
 ### Changed
