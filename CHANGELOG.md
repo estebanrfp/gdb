@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.10] - 2026-08-09
+
+### Fixed
+
+- **A peer that loses its connection now comes back able to listen, not just to speak.** Turning wifi off, writing something, and turning it back on left that write stranded: it never reached the other device, and every write after it stayed stranded too ([#36](https://github.com/estebanrfp/gdb/issues/36)). The offline window itself was never the problem — peers find each other through relays, so with no network there is nothing to discover. What failed was the return. On reconnecting, the peer's subscriptions were not restored: they had been sent once at start-up, and a relay keeps no memory of a socket that dropped. The peer's outgoing announcements resumed and everything looked healthy, but nothing was listening on its behalf, so no one dialled it back — it could announce itself and could not hear the answer. Subscriptions are now re-sent every time a socket opens, reconnects included. Verified across two browsers on a real wifi drop: the item written offline arrives when the network returns, and the room keeps syncing afterwards.
+
+### Changed
+
+- **The default relay list was re-measured and rebuilt.** Two of the relays shipped until now, `nos.lol` and `nostr.mom`, began demanding 28-bit proof of work on every event — a cost GenosDB does not pay — so they rejected all peer discovery outright, and `ftp.halifax.rwth-aachen.de` had stopped answering altogether. Of twenty public relays tested, only eleven accept the ephemeral events peer discovery is built on; the rest gate on payment, NIP-05 verification, proof of work, or refuse the event kind. The list now carries ten that were measured end to end — connect, subscribe and deliver — with `relay.snort.social`, `relay.nostr.net`, `relay.damus.io`, `relay.mostr.pub` and `nostr.bitcoiner.social` joining. Relay policies change without notice, so this is a snapshot rather than a settled list; applications that need certainty can still pass their own through `rtc: { relayUrls }`.
+
 ## [0.22.9] - 2026-08-07
 
 ### Fixed
