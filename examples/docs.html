@@ -273,6 +273,8 @@
         dialog h2 { margin: 0 0 var(--space-2); font-size: 17px; }
 
         .modal-hint { margin: 0 0 var(--space-4); font-size: 13px; color: var(--text-secondary); }
+        .modal-hint a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+        .modal-hint a:hover { color: var(--accent-hover); }
 
         #mnemonic-input { min-height: 84px; font-family: var(--mono); font-size: 13px; }
 
@@ -323,6 +325,10 @@
         <p class="modal-hint">
             Every document is signed with your key. Without an identity you can read what peers share, but
             nothing you write would be verifiable — so creating and editing stay locked.
+        </p>
+        <p class="modal-hint">
+            In this demo any identity can write from the start, so two windows sync straight away. A real app
+            makes that permission <em>earned</em> — see <a href="governance.html">Governance</a>.
         </p>
         <label for="mnemonic-input">Mnemonic phrase</label>
         <textarea id="mnemonic-input" placeholder="Paste your mnemonic phrase, or generate a new identity…"></textarea>
