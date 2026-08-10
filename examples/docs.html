@@ -333,6 +333,12 @@
         .toast.success { border-left-color: var(--ok); }
         .toast.error { border-left-color: var(--danger); }
         .toast.warning { border-left-color: var(--warn); }
+
+        /* The newest message sits at the bottom and reads at full strength;
+           the ones behind it step back just enough to send the eye there. */
+        .toast:nth-last-child(2) { opacity: .85; }
+        .toast:nth-last-child(3) { opacity: .7; }
+
         .toast.out { opacity: 0; transform: translateX(20px); }
 
         @keyframes toast-in {
