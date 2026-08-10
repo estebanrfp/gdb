@@ -224,11 +224,26 @@ modal.onclick = (e) => { if (e.target === modal) modal.close() }
 **No standing "Sign in" button — the modal IS the door.** A distributed app has no server-side login page, so don't emulate one with a persistent button. Open the identity modal automatically on **every load without an active session**: the newcomer immediately learns what an identity is and how roles are earned, and returning passkey users never see it — their session resumes silently and the security callback closes it.
 
 ```javascript
-// Boot: signed-out state = the identity dialog (dismissible)
+// Boot: signed-out state = the identity dialog
 if (!db.sm.isSecurityActive()) identityModal.showModal()
 ```
 
-- **Dismissible** (backdrop click, `Esc`) but with **no × close button** — the app stays fully usable as a read-only guest behind it.
+**Never a × close button** — a corner × reads as window chrome and, in the backup phase, invites closing before the phrase is saved. Beyond that, the door has two modes, and the app picks by what a visitor without an identity can actually *do*:
+
+| | **Dismissible** | **Mandatory** |
+| --- | --- | --- |
+| When | A guest has real content to consume — a feed, a public board, a document shared with everyone | Nothing is usable without signing, or entering unsigned would mislead |
+| Closing | Backdrop click and `Esc` | Neither; only a successful sign-in |
+| Behind it | The app, fully usable read-only | The app, visible through the blur — it shows what you are about to join |
+
+The mandatory door needs one line, because `Esc` is native to `<dialog>` and must be refused explicitly:
+
+```javascript
+identityModal.addEventListener("cancel", (e) => { if (!signedIn) e.preventDefault() })
+```
+
+Keeping the app visible behind the blur matters in both modes: a full-bleed login page hides the thing the newcomer came to see, and there is nothing to hide — the graph is already on their machine.
+
 - **Logging out returns to phase 1 with the modal open** — signed-out *is* the modal's state.
 - **Re-entry without reloading is contextual**, not chrome: a clickable read-only status hint, or the explanatory affordance of a gated control, re-opens the modal. The top-right area belongs to the session chip alone and stays empty while signed out.
 

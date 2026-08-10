@@ -143,10 +143,19 @@
             font-size: 13px;
         }
 
+        /* Your address is what a peer needs to share a document with you, so it
+           is a button: abbreviated on screen, complete on the clipboard. */
         .session-addr {
             font-family: var(--mono);
+            font-size: 13px;
             color: var(--text-secondary);
+            background: none;
+            border: none;
+            padding: 0;
         }
+
+        .session-addr:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .session-addr:empty { display: none; }
 
         .presence { color: var(--text-tertiary); font-size: 12px; }
 
@@ -403,13 +412,6 @@
         /* Full width and tall enough to read without aiming. */
         .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
 
-        .modal-addr {
-            margin-top: var(--space-3);
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--text-tertiary);
-            word-break: break-all;
-        }
 
         .modal-warn {
             margin: var(--space-4) 0 0;
@@ -514,7 +516,6 @@
 
         <textarea id="mnemonic-input"
             placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
-        <p id="generated-address" class="modal-addr hidden"></p>
 
         <div class="modal-actions">
             <button id="generate-btn" class="primary">Generate new identity</button>
@@ -569,7 +570,7 @@
                 <input type="text" id="search-input" class="search" placeholder="Search documents…"
                     aria-label="Search documents">
                 <span id="presence" class="presence">0 peers</span>
-                <span id="session-addr" class="session-addr"></span>
+                <button id="session-addr" class="session-addr" title="Copy your full address"></button>
                 <button id="logout-btn" class="ghost hidden">Logout</button>
             </div>
         </header>
@@ -650,7 +651,6 @@
         const el = {
             modal: $("identity-modal"),
             mnemonic: $("mnemonic-input"),
-            generatedAddress: $("generated-address"),
             phraseWarning: $("phrase-warning"),
             generate: $("generate-btn"),
             copy: $("copy-btn"),
@@ -754,7 +754,6 @@
             show(el.passkeyProtect, generated)
             show(el.passkeyLogin, !generated && db.sm.hasExistingWebAuthnRegistration())
             show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
-            show(el.generatedAddress, generated)
             show(el.phraseWarning, generated) // only a fresh phrase can still be lost
             el.mnemonic.readOnly = generated
         }
@@ -762,7 +761,6 @@
         const resetModal = () => {
             el.mnemonic.value = ""
             el.mnemonic.readOnly = false
-            el.generatedAddress.textContent = ""
             setModalPhase("signed-out")
         }
 
@@ -770,14 +768,18 @@
             const identity = await db.sm.startNewUserRegistration()
             if (!identity) return toast("Could not generate an identity", "error")
             el.mnemonic.value = identity.mnemonic
-            el.generatedAddress.textContent = `New address: ${identity.address}`
             setModalPhase("generated")
             toast("Identity generated — save the phrase before you leave", "success")
         }
 
         const copyPhrase = async () => {
-            await navigator.clipboard.writeText(el.mnemonic.value)
-            toast("Phrase copied to clipboard", "success")
+            try {
+                await navigator.clipboard.writeText(el.mnemonic.value)
+                toast("Phrase copied to clipboard", "success")
+            } catch {
+                // The phrase is already on screen; say so rather than failing silently.
+                toast("Clipboard unavailable — copy the phrase from the box above", "warning")
+            }
         }
 
         const loginWithMnemonic = async () => {
@@ -830,9 +832,7 @@
             show(el.logout, isActive)
             el.newDoc.disabled = !isActive
             el.newDoc.title = isActive ? "" : "Sign in to create documents"
-            el.emptyHint.textContent = isActive
-                ? "Create one to become its owner, or open a document a peer shared with you."
-                : "Sign in to create documents. You can still read what peers have shared."
+            el.emptyHint.textContent = "Create one to become its owner, or open a document a peer shared with you."
 
             // The document list is NOT touched here. It is subscribed once at boot
             // and lives for the whole page: the query is the same signed in or out,
@@ -1207,7 +1207,13 @@
             }
         })
 
-        el.modal.addEventListener("click", (e) => { if (e.target === el.modal) el.modal.close() })
+        // The identity modal is a mandatory door: no signature, no app. Esc is
+        // native to <dialog>, so it has to be refused explicitly, and there is no
+        // backdrop-click handler at all — the app stays visible behind the blur
+        // to show what you are about to join, not to be used past the door.
+        el.modal.addEventListener("cancel", (e) => { if (!currentUser) e.preventDefault() })
+
+        // The share dialog is the opposite: ordinary content, freely dismissed.
         el.shareModal.addEventListener("click", (e) => { if (e.target === el.shareModal) el.shareModal.close() })
         el.shareOpen.addEventListener("click", () => el.shareModal.showModal())
         el.previewBtn.addEventListener("click", togglePreview)
@@ -1218,6 +1224,16 @@
         el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
         el.passkeyProtect.addEventListener("click", protectWithPasskey)
         el.passkeyLogin.addEventListener("click", loginWithPasskey)
+        el.sessionAddr.addEventListener("click", async () => {
+            if (!currentUser) return
+            try {
+                await navigator.clipboard.writeText(currentUser)
+                toast("Address copied — hand it to a peer to get access", "success")
+            } catch {
+                // Clipboard access can be refused; show it so it can be copied by hand.
+                toast(currentUser, "info")
+            }
+        })
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
         el.newDoc.addEventListener("click", createDocument)
         el.title.addEventListener("input", scheduleSave)
