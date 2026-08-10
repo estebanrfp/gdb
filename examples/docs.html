@@ -400,7 +400,34 @@
 
         .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
 
-        #mnemonic-input { min-height: 88px; font-family: var(--mono); font-size: 13px; text-align: left; }
+        /* The field sits on the modal's own surface: it holds the phrase, it is
+           not asking for attention. Only its border says "editable". */
+        .mnemonic-field { position: relative; }
+
+        #mnemonic-input {
+            min-height: 88px;
+            padding-bottom: 30px; /* room for the clipboard button */
+            background: none;
+            font-family: var(--mono);
+            font-size: 13px;
+            text-align: left;
+        }
+
+        /* One contextual control instead of another button in the stack:
+           it pastes while the field is empty, copies once it holds a phrase. */
+        .field-action {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            padding: 2px 6px;
+            font-size: 15px;
+            line-height: 1;
+            background: none;
+            border: none;
+            opacity: .55;
+        }
+
+        .field-action:hover:not(:disabled) { opacity: 1; border-color: transparent; }
 
         .modal-actions {
             display: flex;
@@ -514,13 +541,15 @@
         <h2 class="modal-title">Collaborative Docs</h2>
         <p class="modal-hint">Node-level ACLs on a serverless P2P graph.</p>
 
-        <textarea id="mnemonic-input"
-            placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+        <div class="mnemonic-field">
+            <textarea id="mnemonic-input"
+                placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+            <button id="mnemonic-clip" class="field-action" title="Paste phrase" aria-label="Paste phrase">📋</button>
+        </div>
 
         <div class="modal-actions">
             <button id="generate-btn" class="primary">Generate new identity</button>
             <button id="login-btn" class="primary">Login with mnemonic</button>
-            <button id="copy-btn" class="hidden">Copy phrase</button>
             <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
             <button id="passkey-login-btn" class="hidden">Login with passkey</button>
             <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
@@ -653,7 +682,7 @@
             mnemonic: $("mnemonic-input"),
             phraseWarning: $("phrase-warning"),
             generate: $("generate-btn"),
-            copy: $("copy-btn"),
+            clip: $("mnemonic-clip"),
             passkeyProtect: $("passkey-protect-btn"),
             passkeyLogin: $("passkey-login-btn"),
             login: $("login-btn"),
@@ -767,7 +796,6 @@
         const setModalPhase = (phase) => {
             const generated = phase === "generated"
             show(el.generate, !generated)
-            show(el.copy, generated)
             show(el.passkeyProtect, generated && PASSKEYS_AVAILABLE)
             show(el.passkeyLogin, !generated && PASSKEYS_AVAILABLE && db.sm.hasExistingWebAuthnRegistration())
             show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
@@ -778,6 +806,7 @@
         const resetModal = () => {
             el.mnemonic.value = ""
             el.mnemonic.readOnly = false
+            syncClipAffordance()
             setModalPhase("signed-out")
         }
 
@@ -785,17 +814,36 @@
             const identity = await db.sm.startNewUserRegistration()
             if (!identity) return toast("Could not generate an identity", "error")
             el.mnemonic.value = identity.mnemonic
+            syncClipAffordance()
             setModalPhase("generated")
             toast("Identity generated — save the phrase before you leave", "success")
         }
 
-        const copyPhrase = async () => {
+        /** Empty field → paste; filled field → copy. One control, no extra button. */
+        const syncClipAffordance = () => {
+            const filled = !!el.mnemonic.value.trim()
+            el.clip.title = filled ? "Copy phrase" : "Paste phrase"
+            el.clip.setAttribute("aria-label", el.clip.title)
+        }
+
+        const useClipboard = async () => {
+            if (el.mnemonic.value.trim()) {
+                try {
+                    await navigator.clipboard.writeText(el.mnemonic.value)
+                    toast("Phrase copied to clipboard", "success")
+                } catch {
+                    // The phrase is already on screen; say so rather than failing silently.
+                    toast("Clipboard unavailable — select the phrase and copy it", "warning")
+                }
+                return
+            }
             try {
-                await navigator.clipboard.writeText(el.mnemonic.value)
-                toast("Phrase copied to clipboard", "success")
+                const text = (await navigator.clipboard.readText()).trim()
+                if (!text) return toast("Clipboard is empty", "warning")
+                el.mnemonic.value = text
+                syncClipAffordance()
             } catch {
-                // The phrase is already on screen; say so rather than failing silently.
-                toast("Clipboard unavailable — copy the phrase from the box above", "warning")
+                toast("Clipboard unavailable — paste with your keyboard", "warning")
             }
         }
 
@@ -1236,7 +1284,8 @@
         el.previewBtn.addEventListener("click", togglePreview)
         el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
-        el.copy.addEventListener("click", copyPhrase)
+        el.clip.addEventListener("click", useClipboard)
+        el.mnemonic.addEventListener("input", syncClipAffordance)
         el.login.addEventListener("click", loginWithMnemonic)
         el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
         el.passkeyProtect.addEventListener("click", protectWithPasskey)
