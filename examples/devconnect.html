@@ -680,6 +680,74 @@
         display: none;
       }
     }
+
+    /* ── Toasts (canonical component — see docs/genosdb-design-guide.md §6) ── */
+    /* Canonical names mapped onto this example's palette. */
+    :root {
+      --ok: var(--success);
+      --danger: var(--error);
+      --warn: var(--warning);
+      --shadow: var(--shadow-md);
+    }
+
+    /* The stack itself is the popover, so it joins the top layer and paints
+       above any modal backdrop — which no z-index can beat. */
+    .toast-stack {
+      position: fixed;
+      inset: auto;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      overflow: visible;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 280px;
+      max-width: 360px;
+      padding: 14px 18px;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--text-tertiary);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      animation: toast-in .3s ease;
+      transition: opacity .4s, transform .4s;
+    }
+
+    .toast-icon { font-size: 18px; line-height: 1; }
+    .toast-text { flex: 1; min-width: 0; }
+
+    .toast.success { border-left-color: var(--ok); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warn); }
+
+    /* The newest reads at full strength; every older one steps back equally. */
+    .toast:not(:last-child) { opacity: .6; }
+
+    .toast.out { opacity: 0; transform: translateX(20px); }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .toast { animation: none; }
+      .toast.out { transform: none; }
+    }
   </style>
 </head>
 
@@ -826,8 +894,50 @@
     </section>
   </main>
 
+  <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
+
   <script type="module">
     import { gdb } from "../dist/index.js"
+
+    /* ============================ Toasts ============================ */
+    /* Canonical component — docs/genosdb-design-guide.md §6. Never alert():
+       it blocks the thread, freezing the very sync this app demonstrates. */
+    const toastsEl = document.getElementById("toasts")
+    const MAX_TOASTS = 3
+    const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" }
+
+    const dropToast = (node) => {
+      node.classList.add("out")
+      setTimeout(() => {
+        node.remove()
+        if (!toastsEl.children.length && toastsEl.matches(":popover-open")) toastsEl.hidePopover()
+      }, 400)
+    }
+
+    /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+    const toast = (message, kind = "info") => {
+      const node = document.createElement("div")
+      node.className = `toast ${kind}`
+
+      const icon = document.createElement("span")
+      icon.className = "toast-icon"
+      icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+      icon.setAttribute("aria-hidden", "true")
+
+      const text = document.createElement("span")
+      text.className = "toast-text"
+      text.textContent = message
+
+      node.append(icon, text)
+      node.addEventListener("click", () => dropToast(node))
+      // Show the stack first: a node appended while the container is still
+      // display:none starts its animation frozen at translateX(100%).
+      if (!toastsEl.matches(":popover-open")) toastsEl.showPopover()
+      toastsEl.append(node)
+      while (toastsEl.children.length > MAX_TOASTS) toastsEl.firstElementChild.remove()
+
+      setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
+    }
 
     /* ============================ DOM refs ============================ */
     const $ = (sel, root = document) => root.querySelector(sel)
@@ -911,19 +1021,19 @@
 
     db.sm.setSecurityStateChangeCallback(renderAuth)
 
-    el.btnGenerate.onclick = () => db.sm.startNewUserRegistration().catch(err => alert(err.message))
+    el.btnGenerate.onclick = () => db.sm.startNewUserRegistration().catch(err => toast(err.message, "error"))
     el.btnLoginMnemonic.onclick = () => {
       const phrase = el.mnemonic.value.trim()
-      if (!phrase) return alert("Please enter a mnemonic phrase.")
-      db.sm.loginOrRecoverUserWithMnemonic(phrase).catch(err => alert(err.message))
+      if (!phrase) return toast("Please enter a mnemonic phrase.", "error")
+      db.sm.loginOrRecoverUserWithMnemonic(phrase).catch(err => toast(err.message, "error"))
     }
-    el.btnLoginPasskey.onclick = () => db.sm.loginCurrentUserWithWebAuthn().catch(err => alert(err.message))
-    el.btnProtect.onclick = () => db.sm.protectCurrentIdentityWithWebAuthn().catch(err => alert(err.message))
-    el.btnLogout.onclick = () => db.sm.clearSecurity().catch(err => alert(err.message))
+    el.btnLoginPasskey.onclick = () => db.sm.loginCurrentUserWithWebAuthn().catch(err => toast(err.message, "error"))
+    el.btnProtect.onclick = () => db.sm.protectCurrentIdentityWithWebAuthn().catch(err => toast(err.message, "error"))
+    el.btnLogout.onclick = () => db.sm.clearSecurity().catch(err => toast(err.message, "error"))
     el.btnCopy.onclick = () =>
       navigator.clipboard.writeText(el.mnemonic.value)
-        .then(() => alert("Phrase copied to clipboard."))
-        .catch(() => alert("Failed to copy."))
+        .then(() => toast("Phrase copied to clipboard.", "success"))
+        .catch(() => toast("Failed to copy.", "error"))
 
     /* ============================ Profile management (persistent state) ============================ */
     /** Load the current user's stored profile via db.get. */
@@ -986,7 +1096,7 @@
         }
         renderOwnProfile()
       } catch (err) {
-        alert(`Error fetching GitHub profile: ${err.message}`)
+        toast(`Error fetching GitHub profile: ${err.message}`, "error")
       } finally {
         el.btnFetchGithub.textContent = "Fetch profile"; el.btnFetchGithub.disabled = false
       }
@@ -1005,9 +1115,9 @@
         state.ownProfile.id = state.ownProfileId = id
         localStorage.setItem("dc.ownProfileId", id)
         renderOwnProfile()
-        alert("Profile saved.")
+        toast("Profile saved.", "success")
       } catch (err) {
-        alert(`Error saving profile: ${err.message}`)
+        toast(`Error saving profile: ${err.message}`, "error")
       } finally {
         el.btnSaveProfile.textContent = "Save profile"; el.btnSaveProfile.disabled = false
       }
@@ -1114,7 +1224,7 @@
       }
       el.privateForm.onsubmit = (e) => {
         e.preventDefault()
-        if (!privateChannel) return alert("Select a peer first.")
+        if (!privateChannel) return toast("Select a peer first.", "warning")
         const text = el.privateInput.value.trim()
         if (!text) return
         privateChannel.send({ text, sender: state.ownProfile?.github ?? "Anonymous" })
@@ -1138,7 +1248,7 @@
       const peerId = el.peerSelect.value
       if (!peerId) { privateChannel = null; return }
       const peer = state.peers.get(peerId)
-      if (!peer || !state.ownProfile) return alert("Peer or own profile data missing.")
+      if (!peer || !state.ownProfile) return toast("Peer or own profile data missing.", "error")
       // Deterministic channel name shared by both ends
       const name = `private-${[state.ownProfile.ethAddress, peer.ethAddress].sort().join("-")}`
       privateChannel = db.room.channel(name)

@@ -151,6 +151,82 @@
             background-color: var(--success-bg);
             color: var(--success-text);
         }
+
+        /* ── Toasts (canonical component — see docs/genosdb-design-guide.md §6) ── */
+        /* Canonical token names, light values. */
+        :root {
+            --bg-elevated: #ffffff;
+            --text-primary: #1a1d24;
+            --text-tertiary: #9aa1ad;
+            --border-subtle: #e4e7ee;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+            --radius-md: 10px;
+            --space-3: 12px;
+            --space-5: 24px;
+        }
+
+        /* The stack itself is the popover, so it joins the top layer and paints
+           above any modal backdrop — which no z-index can beat. */
+        .toast-stack {
+            position: fixed;
+            inset: auto;
+            right: var(--space-5);
+            bottom: var(--space-5);
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            overflow: visible;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--text-tertiary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            animation: toast-in .3s ease;
+            transition: opacity .4s, transform .4s;
+        }
+
+        .toast-icon { font-size: 18px; line-height: 1; }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warn); }
+
+        /* The newest reads at full strength; every older one steps back equally. */
+        .toast:not(:last-child) { opacity: .6; }
+
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { animation: none; }
+            .toast.out { transform: none; }
+        }
     </style>
 </head>
 
@@ -201,8 +277,50 @@
         </div>
     </main>
 
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
+
     <script type="module">
         import { gdb } from "../dist/index.js";
+
+        /* ── Toasts — canonical component, docs/genosdb-design-guide.md §6 ──
+           Never alert(): it blocks the thread, freezing the very sync a P2P
+           app is demonstrating, and a screen reader never hears it. */
+        const toastsEl = document.getElementById("toasts");
+        const MAX_TOASTS = 3;
+        const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" };
+
+        const dropToast = (node) => {
+            node.classList.add("out");
+            setTimeout(() => {
+                node.remove();
+                if (!toastsEl.children.length && toastsEl.matches(":popover-open")) toastsEl.hidePopover();
+            }, 400);
+        };
+
+        /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+        const toast = (message, kind = "info") => {
+            const node = document.createElement("div");
+            node.className = `toast ${kind}`;
+
+            const icon = document.createElement("span");
+            icon.className = "toast-icon";
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info;
+            icon.setAttribute("aria-hidden", "true");
+
+            const text = document.createElement("span");
+            text.className = "toast-text";
+            text.textContent = message;
+
+            node.append(icon, text);
+            node.addEventListener("click", () => dropToast(node));
+            // Show the stack first: a node appended while the container is
+            // still display:none starts its animation frozen at translateX(100%).
+            if (!toastsEl.matches(":popover-open")) toastsEl.showPopover();
+            toastsEl.append(node);
+            while (toastsEl.children.length > MAX_TOASTS) toastsEl.firstElementChild.remove();
+
+            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000);
+        };
 
         // --- DOM Elements ---
         const loginView = document.getElementById('login-view');
@@ -274,7 +392,7 @@
                     if (newIdentity) {
                         mnemonicArea.value = newIdentity.mnemonic;
                     }
-                } catch (e) { alert(`Error generating identity: ${e.message}`); }
+                } catch (e) { toast(`Error generating identity: ${e.message}`, "error"); }
             });
 
             // NEW: One-click copy listener
@@ -284,30 +402,30 @@
                     setTimeout(() => { copyPhraseBtn.textContent = 'Copy Phrase'; }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy text: ', err);
-                    alert('Could not copy phrase. Please copy it manually.');
+                    toast('Could not copy phrase. Please copy it manually.', 'error');
                 });
             });
 
             mnemonicLoginBtn.addEventListener('click', async () => {
                 const mnemonic = mnemonicArea.value.trim();
                 if (mnemonic.split(' ').length !== 12) {
-                    alert('Please enter a valid 12-word mnemonic phrase.');
+                    toast('Please enter a valid 12-word mnemonic phrase.', 'error');
                     return;
                 }
                 try { await db.sm.loginOrRecoverUserWithMnemonic(mnemonic); }
-                catch (e) { alert(`Login failed: ${e.message}`); }
+                catch (e) { toast(`Login failed: ${e.message}`, "error"); }
             });
 
             webauthnLoginBtn.addEventListener('click', async () => {
                 try { await db.sm.loginCurrentUserWithWebAuthn(); }
-                catch (e) { if (e.name !== 'NotAllowedError') { alert(`Passkey login failed: ${e.message}`); } }
+                catch (e) { if (e.name !== 'NotAllowedError') { toast(`Passkey login failed: ${e.message}`, "error"); } }
             });
 
             protectPasskeyBtn.addEventListener('click', async () => {
                 try {
                     const address = await db.sm.protectCurrentIdentityWithWebAuthn();
-                    if (address) { alert(`Account protected with Passkey for address: ${address}`); }
-                } catch (e) { if (e.name !== 'NotAllowedError') { alert(`Could not protect with Passkey: ${e.message}`); } }
+                    if (address) { toast(`Account protected with Passkey for address: ${address}`, "success"); }
+                } catch (e) { if (e.name !== 'NotAllowedError') { toast(`Could not protect with Passkey: ${e.message}`, "error"); } }
             });
 
             logoutBtn.addEventListener('click', async () => {
@@ -317,18 +435,18 @@
             saveNoteBtn.addEventListener('click', async () => {
                 const id = noteIdInput.value.trim();
                 const noteContent = noteInput.value.trim();
-                if (!id) { alert('Please enter a note title (ID).'); return; }
-                if (!noteContent) { alert('Please enter note content.'); return; }
+                if (!id) { toast('Please enter a note title (ID).', 'warning'); return; }
+                if (!noteContent) { toast('Please enter note content.', 'warning'); return; }
                 try {
                     await db.sm.put({ content: noteContent }, id);
                     noteDisplay.textContent = 'Note saved and encrypted successfully!';
                     noteDisplay.classList.add('success');
-                } catch (e) { alert(`Error saving note: ${e.message}`); }
+                } catch (e) { toast(`Error saving note: ${e.message}`, "error"); }
             });
 
             loadNoteBtn.addEventListener('click', async () => {
                 const id = noteIdInput.value.trim();
-                if (!id) { alert('Please enter a note title (ID) to load.'); return; }
+                if (!id) { toast('Please enter a note title (ID) to load.', 'warning'); return; }
                 try {
                     const { result: node } = await db.sm.get(id);
                     if (node && node.decrypted) {
@@ -341,7 +459,7 @@
                         noteDisplay.textContent = 'No note found. Save one first!';
                         noteDisplay.classList.remove('success');
                     }
-                } catch (e) { alert(`Error loading note: ${e.message}`); }
+                } catch (e) { toast(`Error loading note: ${e.message}`, "error"); }
             });
 
             db.sm.setSecurityStateChangeCallback(updateUI);

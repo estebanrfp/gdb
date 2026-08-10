@@ -198,6 +198,82 @@
             border-top: 1px solid #eee;
             font-weight: 500;
         }
+
+        /* ── Toasts (canonical component — see docs/genosdb-design-guide.md §6) ── */
+        /* Canonical token names, light values. */
+        :root {
+            --bg-elevated: #ffffff;
+            --text-primary: #1a1d24;
+            --text-tertiary: #9aa1ad;
+            --border-subtle: #e4e7ee;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+            --radius-md: 10px;
+            --space-3: 12px;
+            --space-5: 24px;
+        }
+
+        /* The stack itself is the popover, so it joins the top layer and paints
+           above any modal backdrop — which no z-index can beat. */
+        .toast-stack {
+            position: fixed;
+            inset: auto;
+            right: var(--space-5);
+            bottom: var(--space-5);
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            overflow: visible;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--text-tertiary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            animation: toast-in .3s ease;
+            transition: opacity .4s, transform .4s;
+        }
+
+        .toast-icon { font-size: 18px; line-height: 1; }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warn); }
+
+        /* The newest reads at full strength; every older one steps back equally. */
+        .toast:not(:last-child) { opacity: .6; }
+
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { animation: none; }
+            .toast.out { transform: none; }
+        }
     </style>
 </head>
 
@@ -247,8 +323,51 @@
         <div id="statusBar" class="status">Initializing...</div>
     </div>
 
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
+
     <script type="module">
         import { gdb } from "../dist/index.js";
+
+        /* ── Toasts — canonical component, docs/genosdb-design-guide.md §6 ──
+           Never alert(): it blocks the thread, freezing the very sync a P2P
+           app is demonstrating, and a screen reader never hears it. */
+        const toastsEl = document.getElementById("toasts");
+        const MAX_TOASTS = 3;
+        const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" };
+
+        const dropToast = (node) => {
+            node.classList.add("out");
+            setTimeout(() => {
+                node.remove();
+                if (!toastsEl.children.length && toastsEl.matches(":popover-open")) toastsEl.hidePopover();
+            }, 400);
+        };
+
+        /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+        const toast = (message, kind = "info") => {
+            const node = document.createElement("div");
+            node.className = `toast ${kind}`;
+
+            const icon = document.createElement("span");
+            icon.className = "toast-icon";
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info;
+            icon.setAttribute("aria-hidden", "true");
+
+            const text = document.createElement("span");
+            text.className = "toast-text";
+            text.textContent = message;
+
+            node.append(icon, text);
+            node.addEventListener("click", () => dropToast(node));
+
+            // Show the stack first: a node appended while the container is
+            // still display:none starts its animation frozen at translateX(100%).
+            if (!toastsEl.matches(":popover-open")) toastsEl.showPopover();
+            toastsEl.append(node);
+            while (toastsEl.children.length > MAX_TOASTS) toastsEl.firstElementChild.remove();
+
+            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000);
+        };
 
         // Simplified DOM references
         const elements = {
@@ -342,7 +461,7 @@
                     elements.generatedAddress.textContent = newIdentity.address;
                 }
             } catch (error) {
-                alert(`Error: ${error.message}`);
+                toast(`Error: ${error.message}`, "error");
             }
         };
 
@@ -356,20 +475,20 @@
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 elements.btnCopyPhrase.textContent = originalText;
             } catch (error) {
-                alert('Error copying to clipboard');
+                toast('Error copying to clipboard', 'error');
             }
         };
 
         elements.btnMnemonicLogin.onclick = async () => {
             const mnemonic = elements.mnemonicArea.value.trim();
             if (!mnemonic) {
-                alert('Please enter a recovery phrase');
+                toast('Please enter a recovery phrase', 'warning');
                 return;
             }
             try {
                 await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
             } catch (error) {
-                alert(`Login error: ${error.message}`);
+                toast(`Login error: ${error.message}`, "error");
             }
         };
 
@@ -378,7 +497,7 @@
                 await db.sm.loginCurrentUserWithWebAuthn();
             } catch (error) {
                 if (error.name !== 'NotAllowedError') {
-                    alert(`Passkey error: ${error.message}`);
+                    toast(`Passkey error: ${error.message}`, "error");
                 }
             }
         };
@@ -388,7 +507,7 @@
                 await db.sm.protectCurrentIdentityWithWebAuthn();
             } catch (error) {
                 if (error.name !== 'NotAllowedError') {
-                    alert(`Passkey error: ${error.message}`);
+                    toast(`Passkey error: ${error.message}`, "error");
                 }
             }
         };
@@ -397,7 +516,7 @@
             try {
                 await db.sm.clearSecurity();
             } catch (error) {
-                alert(`Logout error: ${error.message}`);
+                toast(`Logout error: ${error.message}`, "error");
             }
         };
 
@@ -406,7 +525,7 @@
                 // Verify permissions using the SM RBAC system
                 await db.sm.executeWithPermission('deleteAny');
             } catch (error) {
-                alert('You need superadmin permissions to clear all messages');
+                toast('You need superadmin permissions to clear all messages', 'warning');
                 return;
             }
 
@@ -436,10 +555,10 @@
                 elements.messagesContainer.innerHTML = '';
                 loadMessages();
 
-                alert('All messages have been deleted');
+                toast('All messages have been deleted', 'success');
             } catch (error) {
                 console.error('Error clearing messages:', error);
-                alert(`Error clearing messages: ${error.message}`);
+                toast(`Error clearing messages: ${error.message}`, "error");
             }
         };
 
@@ -502,7 +621,7 @@
                         await db.sm.executeWithPermission('delete');
                         await db.remove(messageId);
                     } catch (removeError) {
-                        alert('You need permissions to clear message');
+                        toast('You need permissions to clear message', 'warning');
                         // Silence deletion errors if the message no longer exists
                     }
                     return;
@@ -510,7 +629,7 @@
 
                 // Verify that the current user is the owner of the message
                 if (message.value.sender !== currentUserAddress) {
-                    alert('You can only delete your own messages');
+                    toast('You can only delete your own messages', 'warning');
                     return;
                 }
 
@@ -533,7 +652,7 @@
             try {
                 const senderAddress = db.sm.getActiveEthAddress();
                 if (!db.sm.isSecurityActive() || !senderAddress) {
-                    alert('Please login first');
+                    toast('Please login first', 'warning');
                     return;
                 }
 
@@ -546,7 +665,7 @@
 
                 elements.inputMessage.value = '';
             } catch (error) {
-                alert(`Error sending message: ${error.message}`);
+                toast(`Error sending message: ${error.message}`, "error");
             }
         };
 

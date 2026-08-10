@@ -568,10 +568,11 @@
 
             node.append(icon, text)
             node.addEventListener("click", () => dropToast(node))
-            el.toasts.append(node)
-
-            while (el.toasts.children.length > MAX_TOASTS) el.toasts.firstElementChild.remove()
+            // Show the stack first: a node appended while the container is
+            // still display:none starts its animation frozen at translateX(100%).
             if (!el.toasts.matches(":popover-open")) el.toasts.showPopover()
+            el.toasts.append(node)
+            while (el.toasts.children.length > MAX_TOASTS) el.toasts.firstElementChild.remove()
 
             // Errors stay longer: the message you most need to read is the longest one.
             setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
