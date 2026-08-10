@@ -106,9 +106,10 @@ Copy this `:root` block as-is. Every color, radius and spacing in your app must 
     --border-subtle: #262b33;
     --border-strong: #333a44;
 
-    /* Contrast pairs (text over accent, modal backdrop) */
+    /* Contrast pairs & elevation (text over accent, backdrop, floating panels) */
     --text-on-accent: #ffffff;
     --backdrop: rgba(0, 0, 0, .6);
+    --shadow: 0 8px 24px rgba(0, 0, 0, .35);
 
     /* Shape & rhythm (8px grid) */
     --radius-sm: 6px;           /* buttons, inputs */
@@ -150,6 +151,7 @@ Pick once, at the top of the file, and never mix. The light set redefines values
     --danger: #dc2626;          --violet: #7c3aed;
     --border-subtle: #e4e7ee;   --border-strong: #d4d9e3;
     --text-on-accent: #ffffff;  --backdrop: rgba(26, 29, 36, .45);
+    --shadow: 0 6px 24px rgba(26, 29, 36, .07);
 }
 ```
 
@@ -354,59 +356,123 @@ Minimal CSS contracts — copy and restyle only via tokens.
 
 ### Toast — the canonical implementation
 
-**Never `alert()`.** It blocks the thread, so in a P2P app it freezes the very sync you are demonstrating, and it cannot be styled or read politely by a screen reader. Every operation result — saved, deleted, permission denied, the errors thrown by `acls.*` and `executeWithPermission` — goes through the toast.
+**Never `alert()`.** It blocks the thread, so in a P2P app it freezes the very sync you are demonstrating, and it can be neither styled nor read politely by a screen reader. Every operation result — saved, deleted, permission denied, the errors thrown by `acls.*` and `executeWithPermission` — goes through the toast.
+
+**Messages stack; they never replace each other.** This is the one place where a P2P app differs from an ordinary one: a peer connects, a document arrives, a role is signed — all asynchronously, none of it asking your permission. With a single slot, the event you did not trigger overwrites the confirmation you did, and the information is gone.
+
+**Three at a time, rotating.** With a 3s life, three slots absorb one message per second sustained — far above the rate a person generates by saving, granting and deleting. Three is also as many as anyone reads at a glance before they start merely scanning, and on a phone it already occupies a third of the screen. The cap doubles as a design smell detector: **if an app routinely overflows it, the fix is not a bigger number** — those events belong in the presence counter or an activity panel, not in a transient notification. A genuine burst of twenty is no better served by five slots than by three; group them ("3 documents synced") or route them elsewhere.
 
 Copy these three blocks verbatim. They are the whole component; there is nothing else to build.
 
 ```html
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 ```
 
 ```css
-.toast {
+/* The stack itself is the popover, so it joins the top layer once and paints
+   above a modal <dialog>'s ::backdrop — which no z-index can beat. The
+   inset/margin/padding/border resets undo the browser's popover defaults. */
+.toast-stack {
     position: fixed;
-    left: 50%;
+    inset: auto;
+    right: var(--space-5);
     bottom: var(--space-5);
-    transform: translate(-50%, 16px);
-    padding: var(--space-2) var(--space-4);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    font-size: 13px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .2s, transform .2s;
-    z-index: 10;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    overflow: visible;
 }
-.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
-.toast.error { border-color: var(--danger); color: var(--danger); }
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 280px;
+    max-width: 360px;
+    padding: 14px 18px;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--text-tertiary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    animation: toast-in .3s ease;
+    transition: opacity .4s, transform .4s;
+}
+
+.toast-icon { font-size: 18px; line-height: 1; }
+.toast-text { flex: 1; min-width: 0; }
+
+.toast.success { border-left-color: var(--ok); }
+.toast.error   { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warn); }
+.toast.out     { opacity: 0; transform: translateX(20px); }
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(100%); }
+    to   { opacity: 1; transform: translateX(0); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-    .toast { transition: opacity .2s; transform: translate(-50%, 0); }
+    .toast { animation: none; }
+    .toast.out { transform: none; }
 }
 ```
 
 ```javascript
-let toastTimer
-const toast = (message, isError = false) => {
-    toastEl.textContent = message
-    toastEl.classList.toggle("error", isError)
-    toastEl.classList.add("show")
-    clearTimeout(toastTimer)
-    // Errors stay longer: the message you most need to read is the longest one.
-    toastTimer = setTimeout(() => toastEl.classList.remove("show"), isError ? 5000 : 3000)
+const MAX_TOASTS = 3
+const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" }
+
+const dropToast = (node) => {
+    node.classList.add("out")
+    setTimeout(() => {
+        node.remove()
+        if (!toastsEl.children.length && toastsEl.matches(":popover-open")) toastsEl.hidePopover()
+    }, 400)
 }
-toastEl.addEventListener("click", () => toastEl.classList.remove("show"))
+
+/** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+const toast = (message, kind = "info") => {
+    const node = document.createElement("div")
+    node.className = `toast ${kind}`
+
+    const icon = document.createElement("span")
+    icon.className = "toast-icon"
+    icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+    icon.setAttribute("aria-hidden", "true") // the text alone is the message
+
+    const text = document.createElement("span")
+    text.className = "toast-text"
+    text.textContent = message
+
+    node.append(icon, text)
+    node.addEventListener("click", () => dropToast(node))
+    toastsEl.append(node)
+
+    while (toastsEl.children.length > MAX_TOASTS) toastsEl.firstElementChild.remove()
+    if (!toastsEl.matches(":popover-open")) toastsEl.showPopover()
+
+    // Errors stay longer: the message you most need to read is the longest one.
+    setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
+}
 ```
 
 Why each decision, so nobody re-litigates them:
 
-- **Bottom-center, one fixed node.** It clears the sidebar and the top-right session area, the two places a GenosDB app puts chrome. One node reused forever means no DOM churn and no queue to reason about.
+- **`popover` on the stack, not `z-index` on the toast.** A modal `<dialog>` lives in the top layer, and its `::backdrop` covers every element in the normal flow no matter how high you push `z-index`. Promoting the stack with `popover="manual"` puts it in the top layer too, *after* the dialog, so feedback about what just happened in a modal is actually readable. This is not theoretical: a toast saying *"Paste a mnemonic phrase first"* is triggered from inside the identity modal.
+- **Bottom-right.** It clears the sidebar and the top-right session pill, the two places a GenosDB app puts chrome, and leaves the content column untouched while messages come and go.
 - **Two durations, not one.** `Saved` is read at a glance; `🛡️ [SM-ACLs] Write denied for node b4dd25bd…` is not. A single timeout either rushes the message that matters or lingers on the one that doesn't.
-- **`role="status"` + `aria-live="polite"`.** Two attributes. Without them the app gives no feedback at all to a screen reader — and `polite` (never `assertive`) waits for a pause instead of interrupting.
-- **Click to dismiss**, which costs one line and no markup — better than a `×` button that adds a node and a hit target to every message.
-- **One at a time; a new message replaces the one on screen.** An example has no need for a stack, and if two operations race to report, the last one is the truth.
-- **`prefers-reduced-motion`** keeps the fade and drops the slide.
+- **Four kinds, one glance.** The 3px left bar carries the meaning — `--ok`, `--danger`, `--warn` — so severity is legible before the sentence is read. The icon is `aria-hidden`: the text alone is the message.
+- **`role="status"` + `aria-live="polite"` on the container**, so every message appended to it is announced. Without them the app gives a screen reader no feedback at all, and `polite` (never `assertive`) waits for a pause instead of interrupting.
+- **Click to dismiss**, one line and no markup — better than a `×` button that adds a node and a hit target to every message.
+- **`prefers-reduced-motion`** drops the slide and keeps the message.
 
 **Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 

@@ -30,9 +30,10 @@
             --border-subtle: #262b33;
             --border-strong: #333a44;
 
-            /* Contrast pairs */
+            /* Contrast pairs & elevation */
             --text-on-accent: #ffffff;
             --backdrop: rgba(0, 0, 0, .6);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .35);
 
             /* Shape & rhythm (8px grid) */
             --radius-sm: 6px;
@@ -287,28 +288,61 @@
             color: var(--text-tertiary);
         }
 
-        /* ── Toast ──────────────────────────────────────────────── */
-        .toast {
+        /* ── Toasts ─────────────────────────────────────────────── */
+        /* The stack is the popover, so it joins the top layer once and shows
+           above a modal <dialog>'s ::backdrop — which no z-index can beat.
+           inset/margin/padding/border reset the browser's popover defaults. */
+        .toast-stack {
             position: fixed;
-            left: 50%;
+            inset: auto;
+            right: var(--space-5);
             bottom: var(--space-5);
-            transform: translate(-50%, 16px);
-            padding: var(--space-2) var(--space-4);
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-strong);
-            border-radius: 999px;
-            font-size: 13px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .2s, transform .2s;
-            z-index: 10;
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            overflow: visible;
         }
 
-        .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
-        .toast.error { border-color: var(--danger); color: var(--danger); }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--text-tertiary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            animation: toast-in .3s ease;
+            transition: opacity .4s, transform .4s;
+        }
+
+        .toast-icon { font-size: 18px; line-height: 1; }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warn); }
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
 
         @media (prefers-reduced-motion: reduce) {
-            .toast { transition: opacity .2s; transform: translate(-50%, 0); }
+            .toast { animation: none; }
+            .toast.out { transform: none; }
         }
 
         /* ── Responsive ─────────────────────────────────────────── */
@@ -414,7 +448,7 @@
         </div>
     </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
     <script type="module">
         /**
@@ -478,7 +512,7 @@
             permission: $("permission-select"),
             share: $("share-btn"),
             collaborators: $("collaborators-list"),
-            toast: $("toast")
+            toasts: $("toasts")
         }
 
         /** Session + view state. The DOM is the state for the document list. */
@@ -489,16 +523,54 @@
         let currentPermission = "read"
 
         // ── Feedback ────────────────────────────────────────────────
-        let toastTimer
-        const toast = (message, isError = false) => {
-            el.toast.textContent = message
-            el.toast.classList.toggle("error", isError)
-            el.toast.classList.add("show")
-            clearTimeout(toastTimer)
-            // Errors stay longer: the message you most need to read is the longest one.
-            toastTimer = setTimeout(() => el.toast.classList.remove("show"), isError ? 5000 : 3000)
+        // Three, rotating: the oldest drops as newer ones arrive. With a 3s life
+        // that absorbs one message per second sustained — far above the rate a
+        // human generates — and three is also as many as anyone reads at a
+        // glance before they start merely scanning. If an app routinely
+        // overflows this, the fix is not a bigger cap: those events belong in
+        // the presence counter or an activity panel, not in a transient toast.
+        const MAX_TOASTS = 3
+        const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" }
+
+        /** Remove a toast, and put the stack away once it is empty. */
+        const dropToast = (node) => {
+            node.classList.add("out")
+            setTimeout(() => {
+                node.remove()
+                if (!el.toasts.children.length && el.toasts.matches(":popover-open")) el.toasts.hidePopover()
+            }, 400)
         }
-        el.toast.addEventListener("click", () => el.toast.classList.remove("show"))
+
+        /**
+         * Feedback for every operation. Messages stack instead of replacing each
+         * other: in a P2P app a peer event can land while you are saving, and the
+         * one you did not ask for is often the one worth reading.
+         * @param {string} message
+         * @param {'info'|'success'|'error'|'warning'} [kind='info']
+         */
+        const toast = (message, kind = "info") => {
+            const node = document.createElement("div")
+            node.className = `toast ${kind}`
+
+            const icon = document.createElement("span")
+            icon.className = "toast-icon"
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+            icon.setAttribute("aria-hidden", "true") // the text alone is the message
+
+            const text = document.createElement("span")
+            text.className = "toast-text"
+            text.textContent = message
+
+            node.append(icon, text)
+            node.addEventListener("click", () => dropToast(node))
+            el.toasts.append(node)
+
+            while (el.toasts.children.length > MAX_TOASTS) el.toasts.firstElementChild.remove()
+            if (!el.toasts.matches(":popover-open")) el.toasts.showPopover()
+
+            // Errors stay longer: the message you most need to read is the longest one.
+            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
+        }
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
 
@@ -523,25 +595,25 @@
 
         const generateIdentity = async () => {
             const identity = await db.sm.startNewUserRegistration()
-            if (!identity) return toast("Could not generate an identity", true)
+            if (!identity) return toast("Could not generate an identity", "error")
             el.mnemonic.value = identity.mnemonic
             el.generatedAddress.textContent = `New address: ${identity.address}`
             setModalPhase("generated")
-            toast("Identity generated — save the phrase before you leave")
+            toast("Identity generated — save the phrase before you leave", "success")
         }
 
         const copyPhrase = async () => {
             await navigator.clipboard.writeText(el.mnemonic.value)
-            toast("Phrase copied to clipboard")
+            toast("Phrase copied to clipboard", "success")
         }
 
         const loginWithMnemonic = async () => {
             const mnemonic = el.mnemonic.value.trim()
-            if (!mnemonic) return toast("Paste a mnemonic phrase first", true)
+            if (!mnemonic) return toast("Paste a mnemonic phrase first", "error")
             try {
                 await db.sm.loginOrRecoverUserWithMnemonic(mnemonic)
             } catch {
-                toast("That mnemonic is not valid", true)
+                toast("That mnemonic is not valid", "error")
             }
         }
 
@@ -549,25 +621,25 @@
             try {
                 await db.sm.loginOrRecoverUserWithMnemonic(SUPERADMIN.mnemonic)
             } catch {
-                toast("Could not sign in as the demo superadmin", true)
+                toast("Could not sign in as the demo superadmin", "error")
             }
         }
 
         const protectWithPasskey = async () => {
             try {
                 const address = await db.sm.protectCurrentIdentityWithWebAuthn()
-                if (!address) return toast("Passkey registration cancelled", true)
+                if (!address) return toast("Passkey registration cancelled", "error")
             } catch {
-                toast("Could not register the passkey", true)
+                toast("Could not register the passkey", "error")
             }
         }
 
         const loginWithPasskey = async () => {
             try {
                 const address = await db.sm.loginCurrentUserWithWebAuthn()
-                if (!address) toast("Passkey login cancelled", true)
+                if (!address) toast("Passkey login cancelled", "error")
             } catch {
-                toast("Could not sign in with the passkey", true)
+                toast("Could not sign in with the passkey", "error")
             }
         }
 
@@ -704,7 +776,7 @@
             // use a CRDT; that is an editor concern, not a GenosDB one.)
             const { unsubscribe } = await db.get(docId, (node) => {
                 if (!node) {
-                    toast("This document was deleted")
+                    toast("This document was deleted", "warning")
                     return closeDocument()
                 }
                 renderEditor(node)
@@ -744,9 +816,9 @@
                 await openDocument(docId)
                 el.title.focus()
                 el.title.select()
-                toast("Document created — you are its owner")
+                toast("Document created — you are its owner", "success")
             } catch (error) {
-                toast(error.message, true)
+                toast(error.message, "error")
             }
         }
 
@@ -761,15 +833,15 @@
                     // and accepts 'delete' for a put. Merge by hand so the node keeps
                     // its owner and collaborators.
                     const { result } = await db.get(currentDocId)
-                    if (!result) return toast("This document no longer exists", true)
+                    if (!result) return toast("This document no longer exists", "error")
                     await db.put({ ...result.value, ...changes }, currentDocId)
                 } else {
                     // acls.set merges over the stored node and re-checks permissions on every peer.
                     await db.sm.acls.set(changes, currentDocId)
                 }
-                toast("Saved")
+                toast("Saved", "success")
             } catch (error) {
-                toast(error.message, true)
+                toast(error.message, "error")
             }
         }
 
@@ -778,9 +850,9 @@
             if (!confirm("Delete this document for every peer?")) return
             try {
                 await db.sm.acls.delete(currentDocId)
-                toast("Document deleted")
+                toast("Document deleted", "success")
             } catch (error) {
-                toast(error.message, true)
+                toast(error.message, "error")
             }
         }
 
@@ -821,13 +893,13 @@
 
         const grantAccess = async () => {
             const address = el.collaboratorAddress.value.trim()
-            if (!currentDocId || !address) return toast("Enter a collaborator address", true)
+            if (!currentDocId || !address) return toast("Enter a collaborator address", "error")
             try {
                 await db.sm.acls.grant(currentDocId, address, el.permission.value)
                 el.collaboratorAddress.value = ""
-                toast(`Granted ${el.permission.value} to ${db.sm.abbrAddr(address)}`)
+                toast(`Granted ${el.permission.value} to ${db.sm.abbrAddr(address)}`, "success")
             } catch (error) {
-                toast(error.message, true)
+                toast(error.message, "error")
             }
         }
 
@@ -835,9 +907,9 @@
             if (!confirm(`Revoke access for ${db.sm.abbrAddr(address)}?`)) return
             try {
                 await db.sm.acls.revoke(currentDocId, address)
-                toast(`Access revoked for ${db.sm.abbrAddr(address)}`)
+                toast(`Access revoked for ${db.sm.abbrAddr(address)}`, "success")
             } catch (error) {
-                toast(error.message, true)
+                toast(error.message, "error")
             }
         }
 
