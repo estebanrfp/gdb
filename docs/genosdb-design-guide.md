@@ -27,10 +27,17 @@ How much of this guide applies depends on what the page is *for*, not on how it 
 
 **Which one?** If the page has a session, permissions, or more than one view, it is full. If it exists to show a call and its result, it is minimal. When in doubt, minimal: chrome a demo doesn't need is noise between the reader and the API.
 
-The minimal profile is **not** a licence to improvise a palette. It is the token block plus this starter — copy it whole, add only what your demo actually renders:
+The minimal profile is **not** a licence to improvise a palette — but neither does it drag the whole token block along. **Copy only the tokens you actually use**, with their exact values from §2. Four or five is normal; a demo whose CSS outweighs its lesson has lost the plot, and a 15-line example that spends 40 lines declaring tokens it never reads is worse than one with no CSS at all.
 
 ```css
-/* the :root token block from §2 goes here, unchanged */
+:root {
+    /* only what this page paints — same names, same values as §2 */
+    --bg-primary: #0d0f12;
+    --text-primary: #e8eaed;
+    --accent: #4c8dff;
+    --border-subtle: #262b33;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
 * { box-sizing: border-box; }
 body {
     margin: 0;
@@ -56,12 +63,14 @@ li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); }
 
 Twenty lines buy a demo that belongs to the same product as the app next to it. That is the whole cost of coherence — which is why no example ships a palette of its own.
 
+The floor is lower still: a page that paints nothing needs no CSS. `chat.html` teaches its API in 15 lines with **zero** style rules, and adding tokens it never reads would only bury the lesson. The rule is not "always include the starter" — it is **the CSS follows the DOM**. One input and one list produce ten lines on their own; if you find yourself writing eighty, you have built an application and belong in the full profile.
+
 ---
 
 ## 1. Philosophy
 
 1. **Content is the protagonist.** Chrome (navigation, session, widgets) stays visually quiet; data takes the full viewport height. Never let a fixed panel steal reading space.
-2. **Dark, minimal, precise.** One dark theme, generous whitespace, subtle borders instead of shadows, restrained color reserved for meaning (roles, status, actions).
+2. **Minimal, precise, one vocabulary.** Generous whitespace, subtle borders instead of shadows, restrained color reserved for meaning (roles, status, actions). One set of token *names* everywhere; the palette behind them is chosen by what the page shows (§2).
 3. **The API dictates the UX.** GenosDB's methods have natural interface consequences — mnemonic identity wants a focused modal, the security state callback wants a reactive session pill, governance roles want visible badges, realtime deltas want live DOM. Design *from* the API, not against it.
 4. **No UI frameworks, no dependencies for style.** Design tokens + plain CSS cover everything, whether the app is a three-file example or a Bun-bundled product. The only sanctioned UI dependencies are functional (e.g. DOMPurify for untrusted content).
 5. **Small surface, strong opinions.** When in doubt, do less.
@@ -117,11 +126,36 @@ Copy this `:root` block as-is. Every color, radius and spacing in your app must 
 }
 ```
 
-### Color mode: dark only
+### Color mode: chosen by what the page shows
 
-GenosDB applications ship **dark-only by default** — examples, testbeds and instruments add no theme state at all.
+One vocabulary of tokens, two sets of values. The names above never change; a page picks its palette by **what the reader is looking at**, which is a property of the page, not a matter of taste:
 
-For **consumer-facing product apps**, a theme toggle is a sanctioned opt-in pattern, with exact rules:
+| The reader is looking at… | Palette | Why |
+| --- | --- | --- |
+| **Data and measurements** — monitors, probes, benches, charts | **dark** | The background disappears and the data carries the page. §5.4 |
+| **An interface built to be learned** — testbeds, playgrounds | **light** | It reads like interactive documentation, next to the docs it illustrates |
+| **A product** — example applications | **dark** | It *is* the product; this is GenosDB's face |
+
+Pick once, at the top of the file, and never mix. The light set redefines values only — no component rule ever changes:
+
+```css
+:root {
+    /* Light values — same names, same roles */
+    --bg-primary: #f4f6fa;      --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f3f7;     --bg-elevated: #ffffff;
+    --text-primary: #1a1d24;    --text-secondary: #6b7280;
+    --text-tertiary: #9aa1ad;
+    --accent: #2563eb;          --accent-hover: #1d4ed8;
+    --ok: #16a34a;              --warn: #b45309;
+    --danger: #dc2626;          --violet: #7c3aed;
+    --border-subtle: #e4e7ee;   --border-strong: #d4d9e3;
+    --text-on-accent: #ffffff;  --backdrop: rgba(26, 29, 36, .45);
+}
+```
+
+**If switching palettes forces you to touch a single component rule, the token system is broken — fix the tokens.** That is the whole point of having one vocabulary: `acls.html` (light testbed) and `docs.html` (dark application) should differ in fifteen values and nothing else.
+
+For **consumer-facing product apps**, a runtime theme toggle is a sanctioned opt-in pattern on top of this, with exact rules:
 
 1. **One icon button** in the top bar, next to the session pill, with an `aria-label`. The icon shows the mode you'll switch **to** (🌙 while in light, ☀️ while in dark).
 2. Implementation: a `data-theme` attribute on `<html>`, a `[data-theme="light"]` block that **redefines tokens only**, `localStorage` persistence, and `prefers-color-scheme` as the first-visit default.
@@ -353,7 +387,7 @@ Minimal CSS contracts — copy and restyle only via tokens.
 Before shipping a GenosDB app or example, verify. The list is written for the **full profile**; a **minimal** example only owes 1, 2, 7, 9, 10 and 12 — and 5 as well if it logs anyone in:
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
-2. ☐ Dark theme only; no toggle unless the product truly requires it.
+2. ☐ Palette picked by what the page shows (§2) and applied by redefining token *values* only — never a component rule, never a second vocabulary. No runtime toggle unless the product truly requires it.
 3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible via backdrop/`Esc` — no × button) — no standing Sign-in button, re-entry via contextual CTAs.
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
 5. ☐ Examples use the canonical demo identities (§4.5) — `superAdmins` points at `SUPERADMIN.address`, never a placeholder, and each identity in the file has a one-click login button.
