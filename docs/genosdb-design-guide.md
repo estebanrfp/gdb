@@ -199,6 +199,15 @@ The modal contains, in order:
 1. A one-paragraph hint explaining the trust model (e.g. what a guest can do, how roles are earned).
 2. **One `<textarea>`** serving both purposes: paste an existing mnemonic, or display a freshly generated one (set `readOnly` after generating; `resize: none`).
 3. Action row: `Generate identity` · `Copy phrase` · `Login with mnemonic` · `Protect with passkey` (after generating) · `Login with passkey` (only if `db.sm.hasExistingWebAuthnRegistration()`).
+
+> **Passkeys need a valid RP ID, not just a secure context.** WebAuthn derives its Relying Party ID from the hostname and requires a *domain*; an IP address never qualifies. `127.0.0.1` is a secure context, so `PublicKeyCredential` exists and every check you would think to write passes — and registration then fails with `SecurityError: This is an invalid domain`. Verified on the same page and the same code: `localhost` reaches the authenticator, `127.0.0.1` throws. Gate the buttons on all three conditions, or a developer testing on an IP meets a raw browser error:
+>
+> ```javascript
+> const PASSKEYS_AVAILABLE =
+>     window.isSecureContext &&
+>     !!window.PublicKeyCredential &&
+>     !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
+> ```
 4. A demo/superadmin one-click shortcut, in examples and testbeds only (§4.5).
 
 Wiring rules:

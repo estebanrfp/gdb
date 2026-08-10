@@ -746,13 +746,30 @@
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
 
+        /**
+         * Passkeys need two things, and only the first is obvious.
+         *
+         * A secure context — `https:`, `localhost` or `127.0.0.1` — which is why
+         * `PublicKeyCredential` exists on all of them. And a valid RP ID, which
+         * WebAuthn takes from the hostname and requires to be a *domain*. An IP
+         * is not, so `127.0.0.1` passes every check you would think to make and
+         * then fails at registration with "This is an invalid domain".
+         *
+         * Verified on the same page, same code: localhost reaches the
+         * authenticator, 127.0.0.1 throws SecurityError.
+         */
+        const PASSKEYS_AVAILABLE =
+            window.isSecureContext &&
+            !!window.PublicKeyCredential &&
+            !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
+
         // ── Identity modal (three-phase state machine) ──────────────
         const setModalPhase = (phase) => {
             const generated = phase === "generated"
             show(el.generate, !generated)
             show(el.copy, generated)
-            show(el.passkeyProtect, generated)
-            show(el.passkeyLogin, !generated && db.sm.hasExistingWebAuthnRegistration())
+            show(el.passkeyProtect, generated && PASSKEYS_AVAILABLE)
+            show(el.passkeyLogin, !generated && PASSKEYS_AVAILABLE && db.sm.hasExistingWebAuthnRegistration())
             show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
             show(el.phraseWarning, generated) // only a fresh phrase can still be lost
             el.mnemonic.readOnly = generated
