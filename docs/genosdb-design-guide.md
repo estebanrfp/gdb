@@ -414,10 +414,9 @@ Copy these three blocks verbatim. They are the whole component; there is nothing
 .toast.error   { border-left-color: var(--danger); }
 .toast.warning { border-left-color: var(--warn); }
 
-/* The newest message sits at the bottom and reads at full strength; the ones
-   behind it step back just enough to send the eye there. */
-.toast:nth-last-child(2) { opacity: .85; }
-.toast:nth-last-child(3) { opacity: .7; }
+/* The newest message sits at the bottom and reads at full strength; every
+   older one steps back by the same amount to send the eye there. */
+.toast:not(:last-child) { opacity: .6; }
 
 .toast.out { opacity: 0; transform: translateX(20px); }
 
@@ -476,7 +475,7 @@ Why each decision, so nobody re-litigates them:
 - **Bottom-right.** It clears the sidebar and the top-right session pill, the two places a GenosDB app puts chrome, and leaves the content column untouched while messages come and go.
 - **Two durations, not one.** `Saved` is read at a glance; `🛡️ [SM-ACLs] Write denied for node b4dd25bd…` is not. A single timeout either rushes the message that matters or lingers on the one that doesn't.
 - **Four kinds, one glance.** The 3px left bar carries the meaning — `--ok`, `--danger`, `--warn` — so severity is legible before the sentence is read. The icon is `aria-hidden`: the text alone is the message.
-- **The stack has a focal point.** Older messages fade to `.85` and `.7` while the newest stays at full strength, so the eye lands on what just happened instead of scanning three equals. Two selectors, no JavaScript, and the existing `transition` animates the step-back as each new message arrives. Keep it subtle: this is a reading hint, not a disabled state.
+- **The stack has a focal point.** Every older message sits at `.6` while the newest stays at full strength, so the eye lands on what just happened instead of scanning three equals. One selector, no JavaScript, independent of the cap — and the existing `transition` animates the step-back as each new message arrives. Older messages fade *as a group*, all to the same value: grading them individually reads as a decay effect and pulls attention back up the stack, which is the opposite of the point. Keep it subtle; this is a reading hint, not a disabled state.
 - **`role="status"` + `aria-live="polite"` on the container**, so every message appended to it is announced. Without them the app gives a screen reader no feedback at all, and `polite` (never `assertive`) waits for a pause instead of interrupting.
 - **Click to dismiss**, one line and no markup — better than a `×` button that adds a node and a hit target to every message.
 - **`prefers-reduced-motion`** drops the slide and keeps the message.
