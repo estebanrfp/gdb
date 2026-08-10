@@ -150,6 +150,16 @@
 
         .presence { color: var(--text-tertiary); font-size: 12px; }
 
+        /* A field that asks for something, so it is drawn — unlike the document
+           body, which is content and carries no frame. */
+        .search { width: 260px; font-size: 13px; }
+
+        .list-empty {
+            padding: 15px 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
         /* ── Buttons ────────────────────────────────────────────── */
         button {
             font-family: inherit;
@@ -362,33 +372,63 @@
         .empty h2 { margin: 0 0 var(--space-2); font-size: 16px; color: var(--text-primary); }
 
         /* ── Identity modal ─────────────────────────────────────── */
+        /* A door, not a form: one line of context, the field, and full-width
+           actions stacked so each reads at a glance. Anything that needs a
+           paragraph goes to the foot, under the fold of attention. */
         dialog {
-            width: min(580px, calc(100vw - var(--space-6)));
-            padding: var(--space-5);
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
             background: var(--bg-elevated);
             border: 1px solid var(--border-strong);
             border-radius: var(--radius-lg);
             color: var(--text-primary);
+            text-align: center;
         }
 
         dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 
-        dialog h2 { margin: 0 0 var(--space-2); font-size: 17px; }
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
 
-        .modal-hint { margin: 0 0 var(--space-4); font-size: 13px; color: var(--text-secondary); }
-        .modal-hint a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
-        .modal-hint a:hover { color: var(--accent-hover); }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
 
-        #mnemonic-input { min-height: 84px; font-family: var(--mono); font-size: 13px; }
+        #mnemonic-input { min-height: 88px; font-family: var(--mono); font-size: 13px; text-align: left; }
 
-        .modal-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+        }
+
+        /* Full width and tall enough to read without aiming. */
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
 
         .modal-addr {
             margin-top: var(--space-3);
             font-family: var(--mono);
             font-size: 12px;
             color: var(--text-tertiary);
+            word-break: break-all;
         }
+
+        .modal-warn {
+            margin: var(--space-4) 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--warn);
+        }
+
+        .modal-foot {
+            margin: var(--space-5) 0 0;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .modal-foot a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+        .modal-foot a:hover { color: var(--accent-hover); }
+
+        /* The share dialog carries real content, so it reads left-aligned. */
+        #share-modal { width: min(520px, calc(100vw - var(--space-6))); text-align: left; }
 
         /* ── Toasts ─────────────────────────────────────────────── */
         /* The stack is the popover, so it joins the top layer once and shows
@@ -469,26 +509,29 @@
 <body>
 
     <dialog id="identity-modal">
-        <h2>Your identity</h2>
-        <p class="modal-hint">
-            Every document is signed with your key. Without an identity you can read what peers share, but
-            nothing you write would be verifiable — so creating and editing stay locked.
-        </p>
-        <p class="modal-hint">
-            In this demo any identity can write from the start, so two windows sync straight away. A real app
-            makes that permission <em>earned</em> — see <a href="governance.html">Governance</a>.
-        </p>
-        <label for="mnemonic-input">Mnemonic phrase</label>
-        <textarea id="mnemonic-input" placeholder="Paste your mnemonic phrase, or generate a new identity…"></textarea>
+        <h2 class="modal-title">Collaborative Docs</h2>
+        <p class="modal-hint">Node-level ACLs on a serverless P2P graph.</p>
+
+        <textarea id="mnemonic-input"
+            placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
         <p id="generated-address" class="modal-addr hidden"></p>
+
         <div class="modal-actions">
-            <button id="generate-btn">Generate identity</button>
-            <button id="copy-btn" class="hidden">Copy phrase</button>
-            <button id="passkey-protect-btn" class="hidden">Protect with passkey (recommended)</button>
-            <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+            <button id="generate-btn" class="primary">Generate new identity</button>
             <button id="login-btn" class="primary">Login with mnemonic</button>
+            <button id="copy-btn" class="hidden">Copy phrase</button>
+            <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
+            <button id="passkey-login-btn" class="hidden">Login with passkey</button>
             <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
         </div>
+
+        <p id="phrase-warning" class="modal-warn hidden">
+            SAVE THIS PHRASE! It is your only way to recover this identity.
+        </p>
+        <p class="modal-foot">
+            In this demo any identity writes from the start. A real app makes it
+            <em>earned</em> — see <a href="governance.html">Governance</a>.
+        </p>
     </dialog>
 
     <dialog id="share-modal">
@@ -523,6 +566,8 @@
         <header class="topbar">
             <h1 class="brand">Collaborative Docs <span>· ACLs</span></h1>
             <div class="session">
+                <input type="text" id="search-input" class="search" placeholder="Search documents…"
+                    aria-label="Search documents">
                 <span id="presence" class="presence">0 peers</span>
                 <span id="session-addr" class="session-addr"></span>
                 <button id="logout-btn" class="ghost hidden">Logout</button>
@@ -533,6 +578,7 @@
             <nav class="sidebar">
                 <button id="new-doc-btn" class="primary" disabled title="Sign in to create documents">New document</button>
                 <ul id="doc-list" class="doc-list"></ul>
+                <p id="list-empty" class="list-empty hidden">No document matches that search.</p>
             </nav>
 
             <div class="main">
@@ -605,6 +651,7 @@
             modal: $("identity-modal"),
             mnemonic: $("mnemonic-input"),
             generatedAddress: $("generated-address"),
+            phraseWarning: $("phrase-warning"),
             generate: $("generate-btn"),
             copy: $("copy-btn"),
             passkeyProtect: $("passkey-protect-btn"),
@@ -615,7 +662,9 @@
             logout: $("logout-btn"),
             presence: $("presence"),
             newDoc: $("new-doc-btn"),
+            search: $("search-input"),
             docList: $("doc-list"),
+            listEmpty: $("list-empty"),
             emptyView: $("empty-view"),
             emptyHint: $("empty-hint"),
             editorView: $("editor-view"),
@@ -706,6 +755,7 @@
             show(el.passkeyLogin, !generated && db.sm.hasExistingWebAuthnRegistration())
             show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
             show(el.generatedAddress, generated)
+            show(el.phraseWarning, generated) // only a fresh phrase can still be lost
             el.mnemonic.readOnly = generated
         }
 
@@ -849,8 +899,48 @@
                         $(`doc-${id}`)?.remove()
                         if (id === currentDocId) closeDocument()
                     }
+
+                    // A document arriving while a search is active must obey it.
+                    if (el.search.value.trim()) scheduleSearch()
                 }
             )
+        }
+
+        /**
+         * Search runs as a STATIC query — `db.map` without a callback executes
+         * once and returns `results` — so the live subscription above is never
+         * torn down. The engine does the matching; the app only hides rows.
+         *
+         * `$text` is field-level, never global, so searching title and content
+         * means combining two of them with `$or`, exactly as the MAP guide shows.
+         */
+        let searchTimer
+
+        const applySearch = async () => {
+            const term = el.search.value.trim()
+            const items = [...el.docList.querySelectorAll("li")]
+
+            if (!term) {
+                items.forEach((li) => show(li, true))
+                show(el.listEmpty, false)
+                return
+            }
+
+            const { results } = await db.map({
+                query: {
+                    type: "document",
+                    $or: [{ title: { $text: term } }, { content: { $text: term } }]
+                }
+            })
+
+            const matches = new Set(results.map((n) => n.id))
+            items.forEach((li) => show(li, matches.has(li.id.slice(4))))
+            show(el.listEmpty, matches.size === 0)
+        }
+
+        const scheduleSearch = () => {
+            clearTimeout(searchTimer)
+            searchTimer = setTimeout(applySearch, 250)
         }
 
         const markActive = (id) => {
@@ -971,6 +1061,8 @@
                 if (!isSuperadmin(currentUser)) {
                     await db.sm.acls.grant(docId, SUPERADMIN.address, "delete")
                 }
+                // A filter that hides what you just created is hostile: drop it.
+                if (el.search.value) { el.search.value = ""; applySearch() }
                 await openDocument(docId)
                 el.title.focus()
                 el.title.select()
@@ -1119,6 +1211,7 @@
         el.shareModal.addEventListener("click", (e) => { if (e.target === el.shareModal) el.shareModal.close() })
         el.shareOpen.addEventListener("click", () => el.shareModal.showModal())
         el.previewBtn.addEventListener("click", togglePreview)
+        el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
         el.copy.addEventListener("click", copyPhrase)
         el.login.addEventListener("click", loginWithMnemonic)
