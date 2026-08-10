@@ -1,359 +1,886 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenosDB - Collaborative Editor ACLs Demo</title>
+    <title>GenosDB — Collaborative Docs (node-level ACLs)</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f4f7f9; color: #333; }
-        .container { display: flex; height: 100vh; }
-        .sidebar { width: 250px; background-color: #ffffff; border-right: 1px solid #e0e0e0; padding: 20px; display: flex; flex-direction: column; }
-        .main-content { flex-grow: 1; padding: 20px; display: flex; flex-direction: column; }
-        #app { display: none; width: 100%; height: 100%; }
-        #auth-view { padding: 40px; max-width: 500px; margin: auto; text-align: center; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2, h3 { color: #1a202c; }
-        textarea, input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: none; }
-        button { background-color: #4299e1; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 5px 0; transition: background-color 0.2s; }
-        button:hover { background-color: #3182ce; }
-        button.secondary { background-color: #718096; }
-        button.secondary:hover { background-color: #4a5568; }
-        button.danger { background-color: #e53e3e; }
-        button.danger:hover { background-color: #c53030; }
-        #doc-list { list-style-type: none; padding: 0; margin-top: 20px; }
-        #doc-list li { padding: 10px; cursor: pointer; border-radius: 4px; }
-        #doc-list li:hover { background-color: #edf2f7; }
-        #doc-list li.active { background-color: #bee3f8; font-weight: bold; }
-        #editor-view { display: none; flex-grow: 1; display: flex; flex-direction: column; }
-        #doc-content { flex-grow: 1; font-size: 16px; line-height: 1.6; }
-        .user-status { background-color: #e2e8f0; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 12px; word-wrap: break-word; }
-        .sharing-panel { margin-top: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e0e0e0; border-radius: 4px; }
-        #collaborators-list { list-style-type: none; padding: 0; font-size: 14px; }
-        #collaborators-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
-        .user-addr { font-family: monospace; }
-        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
-        hr { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+        :root {
+            /* Backgrounds (dark → elevated) */
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+
+            /* Text */
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+
+            /* Accent & status */
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
+
+            /* Borders */
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+
+            /* Contrast pairs */
+            --text-on-accent: #ffffff;
+            --backdrop: rgba(0, 0, 0, .6);
+
+            /* Shape & rhythm (8px grid) */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+
+            /* Typography */
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+            /* Layout */
+            --sidebar-width: 260px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        .layout {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            height: 100vh;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+            padding: var(--space-5) var(--space-4);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            overflow-y: auto;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .brand span { color: var(--text-tertiary); font-weight: 400; }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100vh;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-5);
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .content {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-5);
+        }
+
+        /* ── Session (top-right) ────────────────────────────────── */
+        .session {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-size: 13px;
+        }
+
+        .session-addr {
+            font-family: var(--mono);
+            color: var(--text-secondary);
+        }
+
+        .presence { color: var(--text-tertiary); font-size: 12px; }
+
+        /* ── Buttons ────────────────────────────────────────────── */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-strong);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .45; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--text-on-accent); }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        /* ── Forms ──────────────────────────────────────────────── */
+        label {
+            display: block;
+            margin-bottom: var(--space-2);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+            resize: none;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+        input:disabled, textarea[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
+
+        /* ── Document list ──────────────────────────────────────── */
+        .doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+        .doc-list li {
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .doc-list li:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .doc-list li.active { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
+
+        /* ── Editor ─────────────────────────────────────────────── */
+        .editor { display: flex; flex-direction: column; gap: var(--space-4); height: 100%; }
+
+        .editor-head { display: flex; align-items: center; gap: var(--space-3); }
+        .editor-head input { font-size: 18px; font-weight: 600; }
+
+        #doc-content { flex: 1; min-height: 240px; font-size: 15px; line-height: 1.7; }
+
+        .editor-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-family: var(--mono);
+        }
+
+        .perm-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+        .perm-owner { color: var(--violet); }
+        .perm-delete { color: var(--warn); }
+        .perm-write { color: var(--ok); }
+        .perm-read { color: var(--text-tertiary); }
+
+        /* ── Sharing panel ──────────────────────────────────────── */
+        .panel {
+            padding: var(--space-4);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .panel h3 { margin: 0; font-size: 13px; font-weight: 600; }
+        .panel-hint { margin: 0; font-size: 12px; color: var(--text-tertiary); }
+        .panel-hint.warn { color: var(--warn); }
+
+        .share-row { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-2); }
+
+        .collab-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+        .collab-list li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-2) 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .collab-addr { font-family: var(--mono); color: var(--text-secondary); font-size: 13px; }
+
+        .empty { color: var(--text-secondary); max-width: 46ch; }
+        .empty h2 { margin: 0 0 var(--space-2); font-size: 16px; color: var(--text-primary); }
+
+        /* ── Identity modal ─────────────────────────────────────── */
+        dialog {
+            width: min(580px, calc(100vw - var(--space-6)));
+            padding: var(--space-5);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        dialog h2 { margin: 0 0 var(--space-2); font-size: 17px; }
+
+        .modal-hint { margin: 0 0 var(--space-4); font-size: 13px; color: var(--text-secondary); }
+
+        #mnemonic-input { min-height: 84px; font-family: var(--mono); font-size: 13px; }
+
+        .modal-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+
+        .modal-addr {
+            margin-top: var(--space-3);
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* ── Toast ──────────────────────────────────────────────── */
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: var(--space-5);
+            transform: translate(-50%, 16px);
+            padding: var(--space-2) var(--space-4);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s, transform .2s;
+            z-index: 10;
+        }
+
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .toast.error { border-color: var(--danger); color: var(--danger); }
+
+        /* ── Responsive ─────────────────────────────────────────── */
+        @media (max-width: 820px) {
+            body { overflow: auto; }
+            .layout { grid-template-columns: 1fr; height: auto; }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .main { height: auto; }
+            .share-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
+
 <body>
 
-    <div id="auth-view">
-        <h1>GenosDB Collaborative Editor</h1>
-        <p>Log in or create a new identity to get started.</p>
-        <textarea id="mnemonic-input" rows="3" placeholder="Paste your mnemonic phrase here..."></textarea>
-        <button id="login-btn">Login with Mnemonic</button>
-        <button id="generate-btn" class="secondary">Generate New Identity</button>
-        <div id="generated-info" style="display:none; margin-top: 15px; text-align: left; background: #fff9e6; padding: 10px; border-radius: 4px; font-size: 14px;">
-            <p><strong>Save this information securely!</strong> It's the only way to recover your account.</p>
-            <p><strong>Address:</strong> <code id="new-address" class="user-addr"></code></p>
-            <p><strong>Mnemonic:</strong> <code id="new-mnemonic"></code></p>
+    <dialog id="identity-modal">
+        <h2>Your identity</h2>
+        <p class="modal-hint">
+            Every document is signed with your key. Without an identity you can read what peers share, but
+            nothing you write would be verifiable — so creating and editing stay locked.
+        </p>
+        <label for="mnemonic-input">Mnemonic phrase</label>
+        <textarea id="mnemonic-input" placeholder="Paste your mnemonic phrase, or generate a new identity…"></textarea>
+        <p id="generated-address" class="modal-addr hidden"></p>
+        <div class="modal-actions">
+            <button id="generate-btn">Generate identity</button>
+            <button id="copy-btn" class="hidden">Copy phrase</button>
+            <button id="passkey-protect-btn" class="hidden">Protect with passkey (recommended)</button>
+            <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+            <button id="login-btn" class="primary">Login with mnemonic</button>
+            <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
         </div>
-    </div>
+    </dialog>
 
-    <div id="app" class="container">
-        <div class="sidebar">
-            <h2>Documents</h2>
-            <div id="user-status" class="user-status">Loading...</div>
-            <button id="new-doc-btn">New Document</button>
-            <button id="logout-btn" class="secondary">Log Out</button>
-            <hr>
-            <ul id="doc-list"></ul>
-        </div>
-        <div class="main-content">
-            <div id="editor-view">
-                <input type="text" id="doc-title" placeholder="Document title...">
-                <textarea id="doc-content" placeholder="Write something amazing..."></textarea>
-                <button id="save-btn" style="align-self: flex-end;">Save Changes</button>
+    <div class="layout">
+        <nav class="sidebar">
+            <h1 class="brand">Collaborative Docs <span>· ACLs</span></h1>
+            <button id="new-doc-btn" class="primary" disabled title="Sign in to create documents">New document</button>
+            <ul id="doc-list" class="doc-list"></ul>
+        </nav>
 
-                <div id="sharing-panel" class="sharing-panel" style="display:none;">
-                    <h3>Manage Access</h3>
-                    <p>Only the owner can share or change permissions.</p>
-                    <input type="text" id="collaborator-address" placeholder="Collaborator's ETH address">
-                    <select id="permission-select">
-                        <option value="read">Read (read)</option>
-                        <option value="write">Write (write)</option>
-                    </select>
-                    <button id="share-btn">Share</button>
-                    <hr>
-                    <h4>Current Collaborators:</h4>
-                    <ul id="collaborators-list"></ul>
+        <div class="main">
+            <header class="topbar">
+                <span id="presence" class="presence">0 peers</span>
+                <div class="session">
+                    <span id="session-addr" class="session-addr"></span>
+                    <button id="logout-btn" class="ghost hidden">Logout</button>
                 </div>
-            </div>
-            <div id="placeholder-view">
-                <h2>Select a document or create a new one.</h2>
-            </div>
+            </header>
+
+            <main class="content">
+                <div id="empty-view" class="empty">
+                    <h2>No document open</h2>
+                    <p id="empty-hint">Create one to become its owner, or open a document a peer shared with you.</p>
+                </div>
+
+                <article id="editor-view" class="editor hidden">
+                    <div class="editor-head">
+                        <input type="text" id="doc-title" placeholder="Document title…" aria-label="Document title">
+                        <button id="save-btn" class="primary">Save</button>
+                        <button id="delete-btn" class="danger">Delete</button>
+                    </div>
+
+                    <div class="editor-meta">
+                        <span id="doc-perm" class="perm-tag"></span>
+                        <span id="doc-owner"></span>
+                        <span id="doc-modified"></span>
+                    </div>
+
+                    <textarea id="doc-content" placeholder="Write something…" aria-label="Document content"></textarea>
+
+                    <section id="sharing-panel" class="panel hidden">
+                        <h3>Manage access</h3>
+                        <p class="panel-hint">
+                            Only the owner grants or revokes, and peers enforce it on every write. Levels
+                            nest: <code>write</code> adds editing to <code>read</code>, and
+                            <code>delete</code> adds removal on top. New documents grant the superadmin
+                            <code>delete</code> so someone can moderate — moderation is granted here, not
+                            inherited from a role, and you can revoke it.
+                        </p>
+                        <div class="share-row">
+                            <input type="text" id="collaborator-address" placeholder="0x… collaborator address"
+                                aria-label="Collaborator address">
+                            <select id="permission-select" aria-label="Permission level">
+                                <option value="read">read</option>
+                                <option value="write">write</option>
+                                <option value="delete">delete</option>
+                            </select>
+                            <button id="share-btn">Grant</button>
+                        </div>
+                        <p class="panel-hint warn">
+                            <code>read</code> is an intent label, not confidentiality: in a P2P graph every peer already
+                            holds the bytes. Encrypt the value to keep it private.
+                        </p>
+                        <ul id="collaborators-list" class="collab-list"></ul>
+                    </section>
+                </article>
+            </main>
         </div>
     </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script type="module">
-        import { gdb } from "https://cdn.jsdelivr.net/npm/genosdb@latest/dist/index.min.js";
+        /**
+         * Collaborative Docs — node-level ACLs over a serverless P2P graph.
+         *
+         * Every document is a node whose `owner` and `collaborators` decide who may
+         * read, edit or delete it. Permissions are enforced by every peer, not by a
+         * server: the ACL middleware re-checks each incoming operation against the
+         * cryptographically verified signer, so a tampered client changes nothing.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { rtc, sm })          — boot with the Security Manager + ACLs
+         *   · db.sm.setSecurityStateChangeCallback — single source of truth for session UI
+         *   · db.sm.startNewUserRegistration / loginOrRecoverUserWithMnemonic — identity
+         *   · db.map(options, cb)             — ONE realtime subscription, four actions
+         *   · db.get(id, cb)                  — reactive read of the open document
+         *   · db.sm.acls.set / grant / revoke / delete — the ACL surface
+         *
+         * Two windows side by side show it working. Peers reject what they must.
+         */
+        import { gdb } from "../dist/index.js"
 
-        // --- Application State ---
-        let db;
-        let currentUserAddress = null;
-        let currentDocId = null;
-        let currentDocUnsubscribe = null;
-        const docListUnsubscribes = {};
-
-        // --- DOM Elements ---
-        const authView = document.getElementById('auth-view');
-        const appView = document.getElementById('app');
-        const userStatusEl = document.getElementById('user-status');
-        const mnemonicInput = document.getElementById('mnemonic-input');
-        const editorView = document.getElementById('editor-view');
-        const placeholderView = document.getElementById('placeholder-view');
-        const docListEl = document.getElementById('doc-list');
-        const docTitleEl = document.getElementById('doc-title');
-        const docContentEl = document.getElementById('doc-content');
-        const saveBtn = document.getElementById('save-btn');
-        const sharingPanel = document.getElementById('sharing-panel');
-        const collaboratorsListEl = document.getElementById('collaborators-list');
-
-        // --- Main Function ---
-        async function main() {
-            // Initialize GenosDB with SM and ACLs modules enabled
-            db = await gdb("collaborative-editor-acl-demo", {
-                rtc: true,
-                sm: {
-                    // At least one superAdmin is required, even if we don't use it for app logic.
-                    superAdmins: ["0x0000000000000000000000000000000000000000"],
-                    acls: true, // Enable the ACLs module!
-                },
-            });
-
-            // Callback to react to security state changes (login/logout)
-            db.sm.setSecurityStateChangeCallback(handleAuthStateChange);
-            
-            setupEventListeners();
+        // Canonical demo superadmin shared by every GenosDB example — a public,
+        // throwaway identity that protects nothing, so any window can log in with
+        // one click. TESTING ONLY: never ship a known mnemonic in a real app.
+        const SUPERADMIN = {
+            name: "Superadmin", emoji: "🛡️",
+            mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper",
+            address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
         }
 
-        function setupEventListeners() {
-            document.getElementById('generate-btn').addEventListener('click', handleGenerateIdentity);
-            document.getElementById('login-btn').addEventListener('click', handleLogin);
-            document.getElementById('logout-btn').addEventListener('click', () => db.sm.clearSecurity());
-            document.getElementById('new-doc-btn').addEventListener('click', createNewDocument);
-            saveBtn.addEventListener('click', saveDocument);
-            document.getElementById('share-btn').addEventListener('click', shareDocument);
+        const $ = (id) => document.getElementById(id)
+
+        const el = {
+            modal: $("identity-modal"),
+            mnemonic: $("mnemonic-input"),
+            generatedAddress: $("generated-address"),
+            generate: $("generate-btn"),
+            copy: $("copy-btn"),
+            passkeyProtect: $("passkey-protect-btn"),
+            passkeyLogin: $("passkey-login-btn"),
+            login: $("login-btn"),
+            demoLogin: $("demo-login-btn"),
+            sessionAddr: $("session-addr"),
+            logout: $("logout-btn"),
+            presence: $("presence"),
+            newDoc: $("new-doc-btn"),
+            docList: $("doc-list"),
+            emptyView: $("empty-view"),
+            emptyHint: $("empty-hint"),
+            editorView: $("editor-view"),
+            title: $("doc-title"),
+            content: $("doc-content"),
+            save: $("save-btn"),
+            delete: $("delete-btn"),
+            perm: $("doc-perm"),
+            owner: $("doc-owner"),
+            modified: $("doc-modified"),
+            sharingPanel: $("sharing-panel"),
+            collaboratorAddress: $("collaborator-address"),
+            permission: $("permission-select"),
+            share: $("share-btn"),
+            collaborators: $("collaborators-list"),
+            toast: $("toast")
         }
 
-        // --- Authentication Logic ---
-        function handleAuthStateChange(state) {
-            currentUserAddress = state.activeAddress;
-            if (state.isActive) {
-                authView.style.display = 'none';
-                appView.style.display = 'flex';
-                userStatusEl.innerHTML = `<strong>User:</strong> <span class="user-addr">${state.abbrAddr}</span>`;
-                loadAllDocuments();
-            } else {
-                authView.style.display = 'block';
-                appView.style.display = 'none';
-                resetUI();
-            }
+        /** Session + view state. The DOM is the state for the document list. */
+        let db
+        let currentUser = null
+        let currentDocId = null
+        let docUnsubscribe = null
+        let currentPermission = "read"
+
+        // ── Feedback ────────────────────────────────────────────────
+        let toastTimer
+        const toast = (message, isError = false) => {
+            el.toast.textContent = message
+            el.toast.classList.toggle("error", isError)
+            el.toast.classList.add("show")
+            clearTimeout(toastTimer)
+            toastTimer = setTimeout(() => el.toast.classList.remove("show"), 3000)
         }
 
-        async function handleGenerateIdentity() {
-            const identity = await db.sm.startNewUserRegistration();
-            if (identity) {
-                document.getElementById('generated-info').style.display = 'block';
-                document.getElementById('new-address').innerText = identity.address;
-                document.getElementById('new-mnemonic').innerText = identity.mnemonic;
-                mnemonicInput.value = identity.mnemonic;
-            }
+        const show = (node, visible) => node.classList.toggle("hidden", !visible)
+
+        // ── Identity modal (three-phase state machine) ──────────────
+        const setModalPhase = (phase) => {
+            const generated = phase === "generated"
+            show(el.generate, !generated)
+            show(el.copy, generated)
+            show(el.passkeyProtect, generated)
+            show(el.passkeyLogin, !generated && db.sm.hasExistingWebAuthnRegistration())
+            show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
+            show(el.generatedAddress, generated)
+            el.mnemonic.readOnly = generated
         }
 
-        async function handleLogin() {
-            const mnemonic = mnemonicInput.value.trim();
-            if (!mnemonic) {
-                alert("Please enter or generate a mnemonic phrase.");
-                return;
-            }
+        const resetModal = () => {
+            el.mnemonic.value = ""
+            el.mnemonic.readOnly = false
+            el.generatedAddress.textContent = ""
+            setModalPhase("signed-out")
+        }
+
+        const generateIdentity = async () => {
+            const identity = await db.sm.startNewUserRegistration()
+            if (!identity) return toast("Could not generate an identity", true)
+            el.mnemonic.value = identity.mnemonic
+            el.generatedAddress.textContent = `New address: ${identity.address}`
+            setModalPhase("generated")
+            toast("Identity generated — save the phrase before you leave")
+        }
+
+        const copyPhrase = async () => {
+            await navigator.clipboard.writeText(el.mnemonic.value)
+            toast("Phrase copied to clipboard")
+        }
+
+        const loginWithMnemonic = async () => {
+            const mnemonic = el.mnemonic.value.trim()
+            if (!mnemonic) return toast("Paste a mnemonic phrase first", true)
             try {
-                await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
-                document.getElementById('generated-info').style.display = 'none';
-            } catch (e) {
-                alert("Invalid mnemonic. Please check the phrase.");
+                await db.sm.loginOrRecoverUserWithMnemonic(mnemonic)
+            } catch {
+                toast("That mnemonic is not valid", true)
             }
         }
 
-        // --- Document Logic ---
+        const loginAsDemoSuperadmin = async () => {
+            try {
+                await db.sm.loginOrRecoverUserWithMnemonic(SUPERADMIN.mnemonic)
+            } catch {
+                toast("Could not sign in as the demo superadmin", true)
+            }
+        }
 
-        function loadAllDocuments() {
-            // We use db.map to get all documents and subscribe to list changes
-            db.map({ query: { type: "document" } }, ({ id, value, action }) => {
-                if (action === 'initial' || action === 'added') {
-                    addDocumentToList(id, value.title);
-                } else if (action === 'updated') {
-                    const li = document.getElementById(`doc-${id}`);
-                    if (li) li.textContent = value.title;
-                } else if (action === 'removed') {
-                    const li = document.getElementById(`doc-${id}`);
-                    if (li) li.remove();
+        const protectWithPasskey = async () => {
+            try {
+                const address = await db.sm.protectCurrentIdentityWithWebAuthn()
+                if (!address) return toast("Passkey registration cancelled", true)
+            } catch {
+                toast("Could not register the passkey", true)
+            }
+        }
+
+        const loginWithPasskey = async () => {
+            try {
+                const address = await db.sm.loginCurrentUserWithWebAuthn()
+                if (!address) toast("Passkey login cancelled", true)
+            } catch {
+                toast("Could not sign in with the passkey", true)
+            }
+        }
+
+        // ── Session ─────────────────────────────────────────────────
+        // The SM emits several inactive notifications while generating or
+        // logging in. Only a real active → inactive transition tears the
+        // session down: resetting on every notification would wipe the
+        // freshly generated phrase before the user has saved it.
+        let wasActive = null
+
+        const onSecurityStateChange = ({ isActive, activeAddress, abbrAddr }) => {
+            currentUser = isActive ? activeAddress : null
+
+            el.sessionAddr.textContent = isActive ? abbrAddr : ""
+            show(el.logout, isActive)
+            el.newDoc.disabled = !isActive
+            el.newDoc.title = isActive ? "" : "Sign in to create documents"
+            el.emptyHint.textContent = isActive
+                ? "Create one to become its owner, or open a document a peer shared with you."
+                : "Sign in to create documents. You can still read what peers have shared."
+
+            // The document list is NOT touched here. It is subscribed once at boot
+            // and lives for the whole page: the query is the same signed in or out,
+            // and re-subscribing on every session change is what tears down a live
+            // subscription and leaves the other window frozen.
+            if (isActive) {
+                el.modal.close()
+                resetModal()
+            } else if (wasActive) {
+                closeDocument()
+                resetModal()
+                el.modal.showModal() // signed out *is* the modal's state
+            } else if (wasActive === null && !el.modal.open) {
+                el.modal.showModal() // first load without a session
+            }
+
+            wasActive = isActive
+        }
+
+        // ── Document list (one subscription, four actions) ──────────
+        const buildListItem = (id, value) => {
+            const li = document.createElement("li")
+            li.id = `doc-${id}`
+            li.textContent = value.title || "Untitled"
+            li.classList.toggle("active", id === currentDocId)
+            li.addEventListener("click", () => openDocument(id))
+            return li
+        }
+
+        /** Subscribed exactly once, at boot, for the lifetime of the page. */
+        const subscribeToDocuments = async () => {
+            await db.map(
+                { query: { type: "document" }, field: "created", order: "desc" },
+                ({ id, value, action }) => {
+                    // The four canonical DOM gestures: initial appends (it arrives
+                    // already sorted by the engine), added prepends, updated rebuilds
+                    // and moves to the top, removed removes.
+                    if (action === "initial") {
+                        el.docList.append(buildListItem(id, value))
+                        return
+                    }
+                    if (action === "added") {
+                        el.docList.prepend(buildListItem(id, value))
+                        return
+                    }
+                    if (action === "updated") {
+                        $(`doc-${id}`)?.remove()
+                        el.docList.prepend(buildListItem(id, value))
+                        return
+                    }
+                    if (action === "removed") {
+                        $(`doc-${id}`)?.remove()
+                        if (id === currentDocId) closeDocument()
+                    }
                 }
-            });
+            )
         }
 
-        function addDocumentToList(id, title) {
-            if (document.getElementById(`doc-${id}`)) return; // Avoid duplicates
-            const li = document.createElement('li');
-            li.id = `doc-${id}`;
-            li.textContent = title;
-            li.addEventListener('click', () => loadDocumentIntoEditor(id));
-            docListEl.appendChild(li);
+        const markActive = (id) => {
+            el.docList.querySelectorAll("li").forEach((li) => li.classList.remove("active"))
+            $(`doc-${id}`)?.classList.add("active") // the list item may not exist yet
         }
 
-        async function loadDocumentIntoEditor(docId) {
-            if (currentDocUnsubscribe) {
-                currentDocUnsubscribe(); // Stop listening for changes on the previous doc
-            }
-            currentDocId = docId;
+        // ── Editor ──────────────────────────────────────────────────
+        const permissionOf = (value) => {
+            if (!currentUser) return "read"
+            if (value.owner === currentUser) return "owner"
+            return value.collaborators?.[currentUser] ?? "read"
+        }
 
-            // Mark the active doc in the list
-            document.querySelectorAll('#doc-list li').forEach(li => li.classList.remove('active'));
-            document.getElementById(`doc-${docId}`).classList.add('active');
+        /** Node timestamps are HLC objects — the epoch lives in `physical`. */
+        const localTime = (timestamp) => {
+            const millis = typeof timestamp === "number" ? timestamp : timestamp?.physical
+            return millis ? new Date(millis).toLocaleString() : ""
+        }
 
-            editorView.style.display = 'flex';
-            placeholderView.style.display = 'none';
+        const renderEditor = (node) => {
+            const { value, timestamp } = node
+            const permission = currentPermission = permissionOf(value)
+            // read ⊂ write ⊂ delete: `delete` is the widest grant, so it edits too.
+            const canWrite = permission === "owner" || permission === "write" || permission === "delete"
+            const canDelete = permission === "owner" || permission === "delete"
 
-            // We use db.get with a callback to get the doc and subscribe to its changes
+            el.perm.textContent = permission
+            el.perm.className = `perm-tag perm-${permission}`
+            el.owner.textContent = value.owner ? `owner ${db.sm.abbrAddr(value.owner)}` : "unowned"
+            el.modified.textContent = localTime(timestamp)
+
+            el.title.value = value.title ?? ""
+            el.content.value = value.content ?? ""
+
+            el.title.disabled = !canWrite
+            el.content.readOnly = !canWrite
+            el.save.disabled = !canWrite
+            el.save.title = canWrite ? "" : `Your '${permission}' access does not include editing`
+            el.delete.disabled = !canDelete
+            el.delete.title = canDelete ? "" : `Your '${permission}' access does not include deleting`
+
+            show(el.sharingPanel, permission === "owner")
+            if (permission === "owner") renderCollaborators(value.collaborators ?? {})
+        }
+
+        const openDocument = async (docId) => {
+            docUnsubscribe?.() // one document watched at a time
+            currentDocId = docId
+            markActive(docId)
+            show(el.emptyView, false)
+            show(el.editorView, true)
+
+            // `db.get` with a callback fires once with the current node and again
+            // on every change — local or from a peer. Rendering straight from it
+            // keeps the editor honest: what you see is what the graph holds.
+            // (A production editor would reconcile with the text being typed, or
+            // use a CRDT; that is an editor concern, not a GenosDB one.)
             const { unsubscribe } = await db.get(docId, (node) => {
                 if (!node) {
-                    resetUI();
-                    alert("This document has been deleted.");
-                    return;
+                    toast("This document was deleted")
+                    return closeDocument()
                 }
-                renderEditor(node);
-            });
-            currentDocUnsubscribe = unsubscribe;
+                renderEditor(node)
+            })
+            docUnsubscribe = unsubscribe
         }
 
-        async function createNewDocument() {
-            const title = prompt("Title for the new document:", "Untitled Document");
-            if (!title) return;
+        const closeDocument = () => {
+            docUnsubscribe?.()
+            docUnsubscribe = null
+            currentDocId = null
+            currentPermission = "read"
+            markActive(null)
+            show(el.editorView, false)
+            show(el.emptyView, true)
+        }
 
-            // db.sm.acls.set creates a protected node.
-            // The current user automatically becomes the owner.
+        const isSuperadmin = (address) =>
+            address?.toLowerCase() === SUPERADMIN.address.toLowerCase()
+
+        const createDocument = async () => {
             try {
                 const docId = await db.sm.acls.set({
-                    type: 'document',
-                    title: title,
-                    content: ''
-                });
-                loadDocumentIntoEditor(docId);
+                    type: "document",
+                    title: "Untitled",
+                    content: "",
+                    created: Date.now()
+                })
+                // Moderation is granted, never inherited. A superadmin role carries no
+                // power over someone else's node: the ACL layer judges by `owner` and
+                // `collaborators` alone. So the owner hands the superadmin `delete` at
+                // creation — a normal ACL entry every peer accepts, visible in the panel
+                // below, and revocable by the owner.
+                if (!isSuperadmin(currentUser)) {
+                    await db.sm.acls.grant(docId, SUPERADMIN.address, "delete")
+                }
+                await openDocument(docId)
+                el.title.focus()
+                el.title.select()
+                toast("Document created — you are its owner")
             } catch (error) {
-                console.error("Error creating document:", error);
-                alert("Could not create document. Are you logged in?");
+                toast(error.message, true)
             }
         }
 
-        async function saveDocument() {
-            if (!currentDocId) return;
-
-            const { result: existingDoc } = await db.get(currentDocId);
-            if (!existingDoc) {
-                alert("The document no longer exists.");
-                return;
-            }
-
+        const saveDocument = async () => {
+            if (!currentDocId) return
+            const changes = { title: el.title.value, content: el.content.value, modified: Date.now() }
             try {
-                // We use db.sm.acls.set to update. The ACLs middleware
-                // will automatically verify if the user has 'write' permission.
-                await db.sm.acls.set({
-                    ...existingDoc.value,
-                    title: docTitleEl.value,
-                    content: docContentEl.value
-                }, currentDocId);
-                alert("Document saved.");
+                if (currentPermission === "delete") {
+                    // `acls.set` gates its local guard on 'write' alone, so a 'delete'
+                    // collaborator has to write through db.put. Access is not being
+                    // bypassed: the ACL middleware runs on this and every other peer
+                    // and accepts 'delete' for a put. Merge by hand so the node keeps
+                    // its owner and collaborators.
+                    const { result } = await db.get(currentDocId)
+                    if (!result) return toast("This document no longer exists", true)
+                    await db.put({ ...result.value, ...changes }, currentDocId)
+                } else {
+                    // acls.set merges over the stored node and re-checks permissions on every peer.
+                    await db.sm.acls.set(changes, currentDocId)
+                }
+                toast("Saved")
             } catch (error) {
-                console.error("Error saving:", error);
-                alert(`Error saving: ${error.message}`);
+                toast(error.message, true)
             }
         }
 
-        // --- Permissions (ACLs) Logic ---
-
-        function renderEditor(node) {
-            const { value } = node;
-            docTitleEl.value = value.title || '';
-            docContentEl.value = value.content || '';
-
-            // UI permission logic
-            const isOwner = value.owner === currentUserAddress;
-            const hasWritePermission = value.collaborators?.[currentUserAddress] === 'write';
-            const canWrite = isOwner || hasWritePermission;
-
-            // Enable/disable editing and saving
-            docTitleEl.disabled = !canWrite;
-            docContentEl.readOnly = !canWrite;
-            saveBtn.style.display = canWrite ? 'block' : 'none';
-
-            // Show the sharing panel only to the owner
-            sharingPanel.style.display = isOwner ? 'block' : 'none';
-            if (isOwner) {
-                renderCollaborators(value.collaborators || {});
-            }
-        }
-
-        function renderCollaborators(collaborators) {
-            collaboratorsListEl.innerHTML = '';
-            for (const addr in collaborators) {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span class="user-addr">${addr} (${collaborators[addr]})</span>
-                    <button class="danger revoke-btn" data-addr="${addr}">Revoke</button>
-                `;
-                collaboratorsListEl.appendChild(li);
-            }
-            // Add listeners to the new revoke buttons
-            document.querySelectorAll('.revoke-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => handleRevoke(e.target.dataset.addr));
-            });
-        }
-
-        async function shareDocument() {
-            const address = document.getElementById('collaborator-address').value.trim();
-            const permission = document.getElementById('permission-select').value;
-            
-            if (!currentDocId || !address) {
-                alert("Missing document ID or collaborator address.");
-                return;
-            }
-            
+        const deleteDocument = async () => {
+            if (!currentDocId) return
+            if (!confirm("Delete this document for every peer?")) return
             try {
-                // db.sm.acls.grant grants permissions. Only the owner can execute it.
-                await db.sm.acls.grant(currentDocId, address, permission);
-                alert(`'${permission}' permission granted to ${address}`);
-                document.getElementById('collaborator-address').value = '';
-            } catch(error) {
-                console.error("Error sharing:", error);
-                alert(`Error sharing: ${error.message}`);
+                await db.sm.acls.delete(currentDocId)
+                toast("Document deleted")
+            } catch (error) {
+                toast(error.message, true)
             }
         }
-        
-        async function handleRevoke(address) {
-            if (!currentDocId || !address || !confirm(`Are you sure you want to revoke access for ${address}?`)) {
-                return;
+
+        // ── Permissions (ACLs) ──────────────────────────────────────
+        const renderCollaborators = (collaborators) => {
+            const entries = Object.entries(collaborators)
+            el.collaborators.replaceChildren()
+
+            if (!entries.length) {
+                const li = document.createElement("li")
+                li.className = "panel-hint"
+                li.textContent = "No collaborators yet. Grant an address above to share this document."
+                el.collaborators.append(li)
+                return
             }
 
+            for (const [address, permission] of entries) {
+                const li = document.createElement("li")
+
+                const who = isSuperadmin(address)
+                    ? `${SUPERADMIN.emoji} ${SUPERADMIN.name}`
+                    : db.sm.abbrAddr(address)
+
+                const label = document.createElement("span")
+                label.className = "collab-addr"
+                label.textContent = `${who} · ${permission}`
+                label.title = address
+
+                const revoke = document.createElement("button")
+                revoke.className = "danger"
+                revoke.textContent = "Revoke"
+                revoke.addEventListener("click", () => revokeAccess(address))
+
+                li.append(label, revoke)
+                el.collaborators.append(li)
+            }
+        }
+
+        const grantAccess = async () => {
+            const address = el.collaboratorAddress.value.trim()
+            if (!currentDocId || !address) return toast("Enter a collaborator address", true)
             try {
-                // db.sm.acls.revoke removes all permissions for a user. Only the owner can do this.
-                await db.sm.acls.revoke(currentDocId, address);
-                alert(`Access revoked for ${address}`);
-            } catch(error) {
-                console.error("Error revoking:", error);
-                alert(`Error revoking: ${error.message}`);
+                await db.sm.acls.grant(currentDocId, address, el.permission.value)
+                el.collaboratorAddress.value = ""
+                toast(`Granted ${el.permission.value} to ${db.sm.abbrAddr(address)}`)
+            } catch (error) {
+                toast(error.message, true)
             }
         }
 
-        function resetUI() {
-            docListEl.innerHTML = '';
-            editorView.style.display = 'none';
-            placeholderView.style.display = 'block';
-            if (currentDocUnsubscribe) currentDocUnsubscribe();
-            currentDocId = null;
-            currentUserAddress = null;
+        const revokeAccess = async (address) => {
+            if (!confirm(`Revoke access for ${db.sm.abbrAddr(address)}?`)) return
+            try {
+                await db.sm.acls.revoke(currentDocId, address)
+                toast(`Access revoked for ${db.sm.abbrAddr(address)}`)
+            } catch (error) {
+                toast(error.message, true)
+            }
         }
 
-        // Start the application
-        document.addEventListener('DOMContentLoaded', main);
+        // ── Boot ────────────────────────────────────────────────────
+        db = await gdb("genosdb-collaborative-docs", {
+            debug: true,
+            rtc: true,
+            sm: {
+                // Trust here flows through node-level ACLs, but the constitution
+                // still needs an authority.
+                superAdmins: [SUPERADMIN.address],
+
+                // The default ladder keeps a `guest` read-only, so peers reject an
+                // unpromoted signer's operations ("role: guest DENIED write") and
+                // nothing this visitor writes ever reaches the others. That gate is
+                // the subject of the governance demo, not of this one: here every
+                // visitor writes, and each document's ACL decides what they may
+                // touch. A real app earns `write` instead — see governance.md.
+                customRoles: {
+                    superadmin: { can: ["assignRole", "deleteAny"], inherits: ["admin"] },
+                    admin: { can: ["delete"], inherits: ["manager"] },
+                    manager: { can: ["publish"], inherits: ["user"] },
+                    user: { can: ["write", "link", "sync"], inherits: ["guest"] },
+                    guest: { can: ["read", "sync", "write", "delete"] }
+                },
+
+                acls: true
+            }
+        })
+
+        el.modal.addEventListener("click", (e) => { if (e.target === el.modal) el.modal.close() })
+        el.generate.addEventListener("click", generateIdentity)
+        el.copy.addEventListener("click", copyPhrase)
+        el.login.addEventListener("click", loginWithMnemonic)
+        el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
+        el.passkeyProtect.addEventListener("click", protectWithPasskey)
+        el.passkeyLogin.addEventListener("click", loginWithPasskey)
+        el.logout.addEventListener("click", () => db.sm.clearSecurity())
+        el.newDoc.addEventListener("click", createDocument)
+        el.save.addEventListener("click", saveDocument)
+        el.delete.addEventListener("click", deleteDocument)
+        el.share.addEventListener("click", grantAccess)
+
+        const updatePresence = () => {
+            const count = Object.keys(db.room?.getPeers() ?? {}).length
+            el.presence.textContent = `${count} ${count === 1 ? "peer" : "peers"}`
+        }
+        db.room?.on("peer:join", updatePresence)
+        db.room?.on("peer:leave", updatePresence)
+        updatePresence()
+
+        db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
+        // Read-only guests still see whatever peers replicated.
+        subscribeToDocuments()
     </script>
 </body>
+
 </html>

@@ -8,10 +8,53 @@ The goal is coherence without complexity: every rule here is implementable in pl
 
 GenosDB applications ship in two shapes, and this guide applies equally to both:
 
-- **No-build (examples, testbeds, prototypes):** three files — `index.html`, `styles.css`, `app.js` — importing GenosDB from a CDN. Zero tooling.
+- **No-build (examples, testbeds, prototypes):** a single self-contained `.html` — the shape of every official example, so a reader can save one file and run it — or three files (`index.html`, `styles.css`, `app.js`) once it outgrows that. Zero tooling either way.
 - **Bundled (production apps):** installed from npm and bundled into the app. **Bun is the recommended bundler and runtime** — `bun build` inlines GenosDB's core, and the engine's optional `*.min.js` plugins are copied next to the output bundle. See [Bundler Configuration](bundler-configuration.md) for Bun, Vite, Webpack and esbuild setups.
 
 The design language is identical in both — tokens and patterns don't care how the bytes arrived.
+
+### Two profiles, one language
+
+How much of this guide applies depends on what the page is *for*, not on how it ships. There are two profiles, and they share the same tokens and the same palette — a reader must never feel they have landed on a different product.
+
+| | **Minimal profile** | **Full profile** |
+| --- | --- | --- |
+| What it is | A page that teaches one API | An application: identity, permissions, state |
+| Examples | `todolist` · `singleNode` · `geo` · `paste` | `docs` · `acls` · `governance` · `collab` · `notesdev` |
+| Chrome | None — one column, no sidebar, no top bar | Sidebar · sticky top bar · full-height content (§5) |
+| Applies | §2 tokens · §3 data display · §7 realtime · §8 semantics | The whole guide |
+| Skips | §4 identity · §5 architecture · §6 components it doesn't use | — |
+
+**Which one?** If the page has a session, permissions, or more than one view, it is full. If it exists to show a call and its result, it is minimal. When in doubt, minimal: chrome a demo doesn't need is noise between the reader and the API.
+
+The minimal profile is **not** a licence to improvise a palette. It is the token block plus this starter — copy it whole, add only what your demo actually renders:
+
+```css
+/* the :root token block from §2 goes here, unchanged */
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: var(--space-5);
+    max-width: 640px;
+    font: 14px/1.5 var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+h1 { font-size: 17px; }
+input, button {
+    font: inherit;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+button { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); cursor: pointer; }
+ul { list-style: none; margin: 0; padding: 0; }
+li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); }
+```
+
+Twenty lines buy a demo that belongs to the same product as the app next to it. That is the whole cost of coherence — which is why no example ships a palette of its own.
 
 ---
 
@@ -53,6 +96,10 @@ Copy this `:root` block as-is. Every color, radius and spacing in your app must 
     /* Borders */
     --border-subtle: #262b33;
     --border-strong: #333a44;
+
+    /* Contrast pairs (text over accent, modal backdrop) */
+    --text-on-accent: #ffffff;
+    --backdrop: rgba(0, 0, 0, .6);
 
     /* Shape & rhythm (8px grid) */
     --radius-sm: 6px;           /* buttons, inputs */
@@ -116,7 +163,7 @@ The modal contains, in order:
 1. A one-paragraph hint explaining the trust model (e.g. what a guest can do, how roles are earned).
 2. **One `<textarea>`** serving both purposes: paste an existing mnemonic, or display a freshly generated one (set `readOnly` after generating; `resize: none`).
 3. Action row: `Generate identity` · `Copy phrase` · `Login with mnemonic` · `Protect with passkey` (after generating) · `Login with passkey` (only if `db.sm.hasExistingWebAuthnRegistration()`).
-4. Optional demo/superadmin shortcut for showcases.
+4. A demo/superadmin one-click shortcut, in examples and testbeds only (§4.5).
 
 Wiring rules:
 
@@ -192,6 +239,38 @@ Two implementation rules:
 
 - **Disable gated controls, don't hide them** (`disabled` + an explanatory `title` such as *"Sign in to share your camera"*): a visible-but-locked control teaches the trust model; a missing one just looks broken.
 - Ephemeral channel traffic (GenosRTC) does **not** pass through the graph's RBAC — the role gate on the UI keeps honest peers silent, and the **signed graph remains the source of truth** that corrects any transient view.
+
+### 4.5 Demo identities: one canonical set for every example
+
+Examples and testbeds share **one fixed set of public, throwaway identities** so that any two windows of any demo can log in with a single click and already know each other — a device to show the trust model working, never part of a production app, which has no mnemonic in its source. Copy this block verbatim; never invent new addresses.
+
+```javascript
+// These are public, throwaway identities (they protect nothing) included so each
+// window of this demo can log in with a single click.
+const SUPERADMIN = {
+  name: 'Superadmin', emoji: '🛡️',
+  // TESTING ONLY: one-button governance authority for this demo.
+  mnemonic: 'panic now afford carbon donate lecture drift excite collect essay stuff prosper',
+  address: '0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA',
+}
+const ALICE = {
+  name: 'Alice', emoji: '👩‍🦰',
+  mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
+  address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
+}
+const BOB = {
+  name: 'Bob', emoji: '👨‍🦱',
+  mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
+  address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
+}
+```
+
+Rules:
+
+- **`superAdmins` always references `SUPERADMIN.address`** — even when the demo's trust flows entirely through node-level ACLs and the superadmin never acts, the constitution still needs an authority. A placeholder address (`0x000…`, `0x111…`) is never acceptable.
+- **The one-click login is a real button**, the demo shortcut of §4.1: a quiet `ghost` button on the same action row as `Login with mnemonic`, labelled with the identity's emoji and name (`🛡️ Superadmin (demo)`). It hides during the *after generating* phase so it never invites abandoning an unsaved phrase.
+- Take only the identities the demo actually uses: a two-party sharing demo needs Alice and Bob, a governance demo needs the superadmin too. An unused mnemonic sitting in the file is dead code.
+- Reuse the identities across examples rather than adding new ones — a reader who has already met Alice and Bob recognizes them in the next testbed.
 
 ---
 
@@ -271,19 +350,20 @@ Minimal CSS contracts — copy and restyle only via tokens.
 
 ## 9. Checklist (for AIs and humans)
 
-Before shipping a GenosDB app or example, verify:
+Before shipping a GenosDB app or example, verify. The list is written for the **full profile**; a **minimal** example only owes 1, 2, 7, 9, 10 and 12 — and 5 as well if it logs anyone in:
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Dark theme only; no toggle unless the product truly requires it.
 3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible via backdrop/`Esc` — no × button) — no standing Sign-in button, re-entry via contextual CTAs.
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
-5. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
-6. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
-7. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
-8. ☐ Feedback via toasts — no `alert()`/`confirm()` except destructive-action confirms.
-9. ☐ Realtime: one subscription, four actions handled, ordering/window delegated to the engine.
-10. ☐ Presence gated by degrees: watch anonymously · broadcast with an identity · contribute with an earned role (gated controls disabled, not hidden).
-11. ☐ Verified live with two browsers.
+5. ☐ Examples use the canonical demo identities (§4.5) — `superAdmins` points at `SUPERADMIN.address`, never a placeholder, and each identity in the file has a one-click login button.
+6. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
+7. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
+8. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
+9. ☐ Feedback via toasts — no `alert()`/`confirm()` except destructive-action confirms.
+10. ☐ Realtime: one subscription, four actions handled, ordering/window delegated to the engine.
+11. ☐ Presence gated by degrees: watch anonymously · broadcast with an identity · contribute with an earned role (gated controls disabled, not hidden).
+12. ☐ Verified live with two browsers.
 
 ---
 
