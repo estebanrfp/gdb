@@ -352,7 +352,61 @@ Centered narrow column (~440px), no sidebar. An uppercase eyebrow label, a large
 
 Minimal CSS contracts — copy and restyle only via tokens.
 
-**Toast (never `alert()`):** fixed bottom-center pill, `--bg-elevated` + `--border-strong`, slides up on `.show`, `--danger` border for errors, auto-dismiss ~3s. All operation feedback (saved, deleted, permission denied) goes through it: security errors from `executeWithPermission` read cleanly in a toast.
+### Toast — the canonical implementation
+
+**Never `alert()`.** It blocks the thread, so in a P2P app it freezes the very sync you are demonstrating, and it cannot be styled or read politely by a screen reader. Every operation result — saved, deleted, permission denied, the errors thrown by `acls.*` and `executeWithPermission` — goes through the toast.
+
+Copy these three blocks verbatim. They are the whole component; there is nothing else to build.
+
+```html
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+```
+
+```css
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: var(--space-5);
+    transform: translate(-50%, 16px);
+    padding: var(--space-2) var(--space-4);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
+.toast.error { border-color: var(--danger); color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+    .toast { transition: opacity .2s; transform: translate(-50%, 0); }
+}
+```
+
+```javascript
+let toastTimer
+const toast = (message, isError = false) => {
+    toastEl.textContent = message
+    toastEl.classList.toggle("error", isError)
+    toastEl.classList.add("show")
+    clearTimeout(toastTimer)
+    // Errors stay longer: the message you most need to read is the longest one.
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), isError ? 5000 : 3000)
+}
+toastEl.addEventListener("click", () => toastEl.classList.remove("show"))
+```
+
+Why each decision, so nobody re-litigates them:
+
+- **Bottom-center, one fixed node.** It clears the sidebar and the top-right session area, the two places a GenosDB app puts chrome. One node reused forever means no DOM churn and no queue to reason about.
+- **Two durations, not one.** `Saved` is read at a glance; `🛡️ [SM-ACLs] Write denied for node b4dd25bd…` is not. A single timeout either rushes the message that matters or lingers on the one that doesn't.
+- **`role="status"` + `aria-live="polite"`.** Two attributes. Without them the app gives no feedback at all to a screen reader — and `polite` (never `assertive`) waits for a pause instead of interrupting.
+- **Click to dismiss**, which costs one line and no markup — better than a `×` button that adds a node and a hit target to every message.
+- **One at a time; a new message replaces the one on screen.** An example has no need for a stack, and if two operations race to report, the last one is the truth.
+- **`prefers-reduced-motion`** keeps the fade and drops the slide.
 
 **Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 

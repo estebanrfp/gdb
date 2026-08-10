@@ -304,8 +304,12 @@
             z-index: 10;
         }
 
-        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
         .toast.error { border-color: var(--danger); color: var(--danger); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { transition: opacity .2s; transform: translate(-50%, 0); }
+        }
 
         /* ── Responsive ─────────────────────────────────────────── */
         @media (max-width: 820px) {
@@ -491,8 +495,10 @@
             el.toast.classList.toggle("error", isError)
             el.toast.classList.add("show")
             clearTimeout(toastTimer)
-            toastTimer = setTimeout(() => el.toast.classList.remove("show"), 3000)
+            // Errors stay longer: the message you most need to read is the longest one.
+            toastTimer = setTimeout(() => el.toast.classList.remove("show"), isError ? 5000 : 3000)
         }
+        el.toast.addEventListener("click", () => el.toast.classList.remove("show"))
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
 
