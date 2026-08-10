@@ -415,19 +415,21 @@
 
         /* One contextual control instead of another button in the stack:
            it pastes while the field is empty, copies once it holds a phrase. */
+        /* A line icon, not a pictogram: it inherits the text colour and carries
+           no palette of its own, like every other mark in the interface. */
         .field-action {
             position: absolute;
             right: 6px;
             bottom: 6px;
-            padding: 2px 6px;
-            font-size: 15px;
-            line-height: 1;
+            display: flex;
+            padding: 5px;
             background: none;
             border: none;
-            opacity: .55;
+            color: var(--text-tertiary);
         }
 
-        .field-action:hover:not(:disabled) { opacity: 1; border-color: transparent; }
+        .field-action svg { width: 15px; height: 15px; }
+        .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
 
         .modal-actions {
             display: flex;
@@ -544,7 +546,13 @@
         <div class="mnemonic-field">
             <textarea id="mnemonic-input"
                 placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
-            <button id="mnemonic-clip" class="field-action" title="Paste phrase" aria-label="Paste phrase">📋</button>
+            <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </button>
         </div>
 
         <div class="modal-actions">
@@ -819,31 +827,23 @@
             toast("Identity generated — save the phrase before you leave", "success")
         }
 
-        /** Empty field → paste; filled field → copy. One control, no extra button. */
-        const syncClipAffordance = () => {
-            const filled = !!el.mnemonic.value.trim()
-            el.clip.title = filled ? "Copy phrase" : "Paste phrase"
-            el.clip.setAttribute("aria-label", el.clip.title)
-        }
+        /**
+         * Copy only, and only when there is something to copy.
+         *
+         * Reading the clipboard (`readText`) triggers a browser permission
+         * prompt; writing does not. Offering a paste button would make a demo
+         * ask for clipboard access before the user has done anything — for a
+         * gesture the keyboard already handles.
+         */
+        const syncClipAffordance = () => show(el.clip, !!el.mnemonic.value.trim())
 
-        const useClipboard = async () => {
-            if (el.mnemonic.value.trim()) {
-                try {
-                    await navigator.clipboard.writeText(el.mnemonic.value)
-                    toast("Phrase copied to clipboard", "success")
-                } catch {
-                    // The phrase is already on screen; say so rather than failing silently.
-                    toast("Clipboard unavailable — select the phrase and copy it", "warning")
-                }
-                return
-            }
+        const copyPhrase = async () => {
             try {
-                const text = (await navigator.clipboard.readText()).trim()
-                if (!text) return toast("Clipboard is empty", "warning")
-                el.mnemonic.value = text
-                syncClipAffordance()
+                await navigator.clipboard.writeText(el.mnemonic.value)
+                toast("Phrase copied to clipboard", "success")
             } catch {
-                toast("Clipboard unavailable — paste with your keyboard", "warning")
+                // The phrase is already on screen; say so rather than failing silently.
+                toast("Clipboard unavailable — select the phrase and copy it", "warning")
             }
         }
 
@@ -1284,7 +1284,7 @@
         el.previewBtn.addEventListener("click", togglePreview)
         el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
-        el.clip.addEventListener("click", useClipboard)
+        el.clip.addEventListener("click", copyPhrase)
         el.mnemonic.addEventListener("input", syncClipAffordance)
         el.login.addEventListener("click", loginWithMnemonic)
         el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
