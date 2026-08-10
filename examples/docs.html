@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GenosDB — Collaborative Docs (node-level ACLs)</title>
+
+    <!-- Markdown rendering. DOMPurify is not optional: a document's body is
+         written by a peer, and a P2P app has no server to sanitize for you. -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+
     <style>
         :root {
             /* Backgrounds (dark → elevated) */
@@ -50,7 +56,7 @@
             --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 
             /* Layout */
-            --sidebar-width: 260px;
+            --sidebar-width: 350px;
         }
 
         * { box-sizing: border-box; }
@@ -69,20 +75,22 @@
         .hidden { display: none !important; }
 
         /* ── Layout ─────────────────────────────────────────────── */
+        /* One full-width bar holds every piece of chrome; below it, list and
+           content. The content column never resizes: no panel opens inside it. */
         .layout {
             display: grid;
-            grid-template-columns: var(--sidebar-width) 1fr;
+            grid-template-rows: auto 1fr;
             height: 100vh;
         }
 
-        .sidebar {
+        .topbar {
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
             gap: var(--space-4);
-            padding: var(--space-5) var(--space-4);
+            padding: var(--space-3) var(--space-5);
             background: var(--bg-secondary);
-            border-right: 1px solid var(--border-subtle);
-            overflow-y: auto;
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .brand {
@@ -94,29 +102,35 @@
 
         .brand span { color: var(--text-tertiary); font-weight: 400; }
 
+        .body {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            min-height: 0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            min-height: 0;
+        }
+
+        .sidebar > button { margin: var(--space-4); }
+
         .main {
             display: flex;
             flex-direction: column;
             min-width: 0;
-            height: 100vh;
-        }
-
-        .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--space-4);
-            padding: var(--space-3) var(--space-5);
+            min-height: 0;
             background: var(--bg-primary);
-            border-bottom: 1px solid var(--border-subtle);
         }
 
         .content {
             flex: 1;
             min-height: 0;
+            display: flex;
+            flex-direction: column;
             overflow-y: auto;
             padding: var(--space-5);
         }
@@ -188,29 +202,119 @@
         input:disabled, textarea[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
 
         /* ── Document list ──────────────────────────────────────── */
-        .doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+        /* Separators instead of gaps, and room to breathe: a list of documents
+           is content, not a menu. The left bar carries state without weight. */
+        .doc-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
 
         .doc-list li {
-            padding: var(--space-2) var(--space-3);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            border-left: 3px solid transparent;
             cursor: pointer;
+        }
+
+        .doc-list li:hover { background: var(--bg-tertiary); }
+        .doc-list li.active { background: var(--bg-tertiary); border-left-color: var(--accent); }
+        .doc-list li.shared { border-left-color: var(--warn); }
+
+        .doc-title-line {
+            font-weight: 600;
+            color: var(--text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .doc-list li:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-        .doc-list li.active { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
+        .doc-excerpt {
+            margin-top: 2px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
         /* ── Editor ─────────────────────────────────────────────── */
-        .editor { display: flex; flex-direction: column; gap: var(--space-4); height: 100%; }
+        .editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-        .editor-head { display: flex; align-items: center; gap: var(--space-3); }
-        .editor-head input { font-size: 18px; font-weight: 600; }
+        /* A band of its own: the document's identity above, its body below. */
+        .doc-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: var(--space-4);
+        }
+
+        .doc-actions { display: flex; align-items: center; gap: var(--space-2); }
+
+        /* The document IS the page: title and body carry no frame. A box around
+           what you are writing only competes with it. Fields that ask for data —
+           the collaborator address below — keep theirs. */
+        #doc-title, #doc-content {
+            border: none;
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        #doc-title { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+        #doc-title::placeholder, #doc-content::placeholder { color: var(--text-tertiary); }
+
+        /* No border means no frame to grey out: state has to come from the text. */
+        #doc-title:disabled, #doc-content[readonly] { color: var(--text-secondary); background: none; }
 
         #doc-content { flex: 1; min-height: 240px; font-size: 15px; line-height: 1.7; }
 
+        /* ── Markdown preview ───────────────────────────────────── */
+        .preview {
+            flex: 1;
+            min-height: 240px;
+            overflow-y: auto;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .preview > :first-child { margin-top: 0; }
+        .preview h1, .preview h2, .preview h3 { line-height: 1.3; margin: var(--space-5) 0 var(--space-3); }
+        .preview h1 { font-size: 22px; }
+        .preview h2 { font-size: 18px; }
+        .preview h3 { font-size: 16px; }
+        .preview p, .preview ul, .preview ol { margin: 0 0 var(--space-4); }
+        .preview code {
+            font-family: var(--mono);
+            font-size: 13px;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+        }
+        .preview pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            overflow-x: auto;
+        }
+        .preview pre code { background: none; padding: 0; }
+        .preview blockquote {
+            margin: 0 0 var(--space-4);
+            padding-left: var(--space-4);
+            border-left: 3px solid var(--border-strong);
+            color: var(--text-secondary);
+        }
+        .preview a { color: var(--accent); }
+        .preview img { max-width: 100%; }
+
+        /* The permission line is the lesson of this example, so it sits inside
+           the header band rather than floating over the body. */
         .editor-meta {
             display: flex;
             align-items: center;
@@ -218,7 +322,10 @@
             font-size: 12px;
             color: var(--text-tertiary);
             font-family: var(--mono);
+            white-space: nowrap;
         }
+
+        .doc-status { color: var(--text-tertiary); }
 
         .perm-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
         .perm-owner { color: var(--violet); }
@@ -226,18 +333,13 @@
         .perm-write { color: var(--ok); }
         .perm-read { color: var(--text-tertiary); }
 
-        /* ── Sharing panel ──────────────────────────────────────── */
-        .panel {
-            padding: var(--space-4);
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-3);
-        }
+        /* ── Sharing (a dialog, never a panel) ──────────────────── */
+        /* Kept out of the content column on purpose: a panel that opens under
+           the editor shrinks the writing area, and since only the owner sees
+           it, the document would change size depending on your permissions. */
+        .panel { display: flex; flex-direction: column; gap: var(--space-3); }
 
-        .panel h3 { margin: 0; font-size: 13px; font-weight: 600; }
+        .panel h3 { margin: 0; font-size: 17px; font-weight: 600; }
         .panel-hint { margin: 0; font-size: 12px; color: var(--text-tertiary); }
         .panel-hint.warn { color: var(--warn); }
 
@@ -353,9 +455,12 @@
         /* ── Responsive ─────────────────────────────────────────── */
         @media (max-width: 820px) {
             body { overflow: auto; }
-            .layout { grid-template-columns: 1fr; height: auto; }
+            .layout { height: auto; }
+            .body { grid-template-columns: 1fr; }
             .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
-            .main { height: auto; }
+            .doc-list { max-height: 40vh; }
+            .doc-header { flex-wrap: wrap; }
+            .editor-meta { order: 3; width: 100%; }
             .share-row { grid-template-columns: 1fr; }
         }
     </style>
@@ -386,70 +491,79 @@
         </div>
     </dialog>
 
+    <dialog id="share-modal">
+        <section class="panel">
+            <h3>Manage access</h3>
+            <p class="panel-hint">
+                Only the owner grants or revokes, and peers enforce it on every write. Levels
+                nest: <code>write</code> adds editing to <code>read</code>, and
+                <code>delete</code> adds removal on top. New documents grant the superadmin
+                <code>delete</code> so someone can moderate — moderation is granted here, not
+                inherited from a role, and you can revoke it.
+            </p>
+            <div class="share-row">
+                <input type="text" id="collaborator-address" placeholder="0x… collaborator address"
+                    aria-label="Collaborator address">
+                <select id="permission-select" aria-label="Permission level">
+                    <option value="read">read</option>
+                    <option value="write">write</option>
+                    <option value="delete">delete</option>
+                </select>
+                <button id="share-btn">Grant</button>
+            </div>
+            <p class="panel-hint warn">
+                <code>read</code> is an intent label, not confidentiality: in a P2P graph every peer already
+                holds the bytes. Encrypt the value to keep it private.
+            </p>
+            <ul id="collaborators-list" class="collab-list"></ul>
+        </section>
+    </dialog>
+
     <div class="layout">
-        <nav class="sidebar">
+        <header class="topbar">
             <h1 class="brand">Collaborative Docs <span>· ACLs</span></h1>
-            <button id="new-doc-btn" class="primary" disabled title="Sign in to create documents">New document</button>
-            <ul id="doc-list" class="doc-list"></ul>
-        </nav>
-
-        <div class="main">
-            <header class="topbar">
+            <div class="session">
                 <span id="presence" class="presence">0 peers</span>
-                <div class="session">
-                    <span id="session-addr" class="session-addr"></span>
-                    <button id="logout-btn" class="ghost hidden">Logout</button>
-                </div>
-            </header>
+                <span id="session-addr" class="session-addr"></span>
+                <button id="logout-btn" class="ghost hidden">Logout</button>
+            </div>
+        </header>
 
-            <main class="content">
-                <div id="empty-view" class="empty">
-                    <h2>No document open</h2>
-                    <p id="empty-hint">Create one to become its owner, or open a document a peer shared with you.</p>
-                </div>
+        <div class="body">
+            <nav class="sidebar">
+                <button id="new-doc-btn" class="primary" disabled title="Sign in to create documents">New document</button>
+                <ul id="doc-list" class="doc-list"></ul>
+            </nav>
 
-                <article id="editor-view" class="editor hidden">
-                    <div class="editor-head">
-                        <input type="text" id="doc-title" placeholder="Document title…" aria-label="Document title">
-                        <button id="save-btn" class="primary">Save</button>
-                        <button id="delete-btn" class="danger">Delete</button>
+            <div class="main">
+                <main class="content">
+                    <div id="empty-view" class="empty">
+                        <h2>No document open</h2>
+                        <p id="empty-hint">Create one to become its owner, or open a document a peer shared with you.</p>
                     </div>
 
-                    <div class="editor-meta">
-                        <span id="doc-perm" class="perm-tag"></span>
-                        <span id="doc-owner"></span>
-                        <span id="doc-modified"></span>
-                    </div>
-
-                    <textarea id="doc-content" placeholder="Write something…" aria-label="Document content"></textarea>
-
-                    <section id="sharing-panel" class="panel hidden">
-                        <h3>Manage access</h3>
-                        <p class="panel-hint">
-                            Only the owner grants or revokes, and peers enforce it on every write. Levels
-                            nest: <code>write</code> adds editing to <code>read</code>, and
-                            <code>delete</code> adds removal on top. New documents grant the superadmin
-                            <code>delete</code> so someone can moderate — moderation is granted here, not
-                            inherited from a role, and you can revoke it.
-                        </p>
-                        <div class="share-row">
-                            <input type="text" id="collaborator-address" placeholder="0x… collaborator address"
-                                aria-label="Collaborator address">
-                            <select id="permission-select" aria-label="Permission level">
-                                <option value="read">read</option>
-                                <option value="write">write</option>
-                                <option value="delete">delete</option>
-                            </select>
-                            <button id="share-btn">Grant</button>
+                    <article id="editor-view" class="editor hidden">
+                        <div class="doc-header">
+                            <input type="text" id="doc-title" placeholder="Document title…" aria-label="Document title">
+                            <div class="editor-meta">
+                                <span id="doc-perm" class="perm-tag"></span>
+                                <span id="doc-owner"></span>
+                                <span id="doc-modified"></span>
+                                <span id="doc-status" class="doc-status"></span>
+                            </div>
+                            <div class="doc-actions">
+                                <button id="preview-btn">Preview</button>
+                                <button id="share-open-btn" class="hidden">Share</button>
+                                <button id="delete-btn" class="danger">Delete</button>
+                            </div>
                         </div>
-                        <p class="panel-hint warn">
-                            <code>read</code> is an intent label, not confidentiality: in a P2P graph every peer already
-                            holds the bytes. Encrypt the value to keep it private.
-                        </p>
-                        <ul id="collaborators-list" class="collab-list"></ul>
-                    </section>
-                </article>
-            </main>
+
+                        <textarea id="doc-content" placeholder="Write something… Markdown is supported."
+                            aria-label="Document content"></textarea>
+                        <div id="doc-preview" class="preview hidden"></div>
+                    </article>
+                </main>
+            </div>
         </div>
     </div>
 
@@ -507,12 +621,15 @@
             editorView: $("editor-view"),
             title: $("doc-title"),
             content: $("doc-content"),
-            save: $("save-btn"),
+            preview: $("doc-preview"),
+            previewBtn: $("preview-btn"),
+            status: $("doc-status"),
             delete: $("delete-btn"),
             perm: $("doc-perm"),
             owner: $("doc-owner"),
             modified: $("doc-modified"),
-            sharingPanel: $("sharing-panel"),
+            shareModal: $("share-modal"),
+            shareOpen: $("share-open-btn"),
             collaboratorAddress: $("collaborator-address"),
             permission: $("permission-select"),
             share: $("share-btn"),
@@ -689,8 +806,20 @@
         const buildListItem = (id, value) => {
             const li = document.createElement("li")
             li.id = `doc-${id}`
-            li.textContent = value.title || "Untitled"
+
+            const title = document.createElement("div")
+            title.className = "doc-title-line"
+            title.textContent = value.title || "Untitled"
+
+            const excerpt = document.createElement("div")
+            excerpt.className = "doc-excerpt"
+            excerpt.textContent = (value.content || "No content yet").slice(0, 80)
+
+            li.append(title, excerpt)
             li.classList.toggle("active", id === currentDocId)
+            // A left bar carries state without adding weight: blue for the open
+            // document, amber for one a peer shared with you.
+            li.classList.toggle("shared", !!currentUser && value.owner !== currentUser)
             li.addEventListener("click", () => openDocument(id))
             return li
         }
@@ -754,18 +883,37 @@
             el.owner.textContent = value.owner ? `owner ${db.sm.abbrAddr(value.owner)}` : "unowned"
             el.modified.textContent = localTime(timestamp)
 
-            el.title.value = value.title ?? ""
-            el.content.value = value.content ?? ""
+            // Never overwrite the field you are typing in. Autosave means our own
+            // write comes straight back through this callback, and reassigning
+            // .value would jump the caret to the end on every keystroke.
+            if (document.activeElement !== el.title) el.title.value = value.title ?? ""
+            if (document.activeElement !== el.content) el.content.value = value.content ?? ""
 
             el.title.disabled = !canWrite
             el.content.readOnly = !canWrite
-            el.save.disabled = !canWrite
-            el.save.title = canWrite ? "" : `Your '${permission}' access does not include editing`
             el.delete.disabled = !canDelete
             el.delete.title = canDelete ? "" : `Your '${permission}' access does not include deleting`
 
-            show(el.sharingPanel, permission === "owner")
+            // Sharing lives in a dialog, so the editor keeps its size whatever
+            // your permission is — only the button appears or not.
+            show(el.shareOpen, permission === "owner")
             if (permission === "owner") renderCollaborators(value.collaborators ?? {})
+            if (permission !== "owner" && el.shareModal.open) el.shareModal.close()
+
+            if (!el.preview.classList.contains("hidden")) renderPreview()
+        }
+
+        /** Markdown is written by a peer: sanitize before it ever reaches innerHTML. */
+        const renderPreview = () => {
+            el.preview.innerHTML = DOMPurify.sanitize(marked.parse(el.content.value || ""))
+        }
+
+        const togglePreview = () => {
+            const showing = el.preview.classList.contains("hidden")
+            if (showing) renderPreview()
+            show(el.preview, showing)
+            show(el.content, !showing)
+            el.previewBtn.textContent = showing ? "Edit" : "Preview"
         }
 
         const openDocument = async (docId) => {
@@ -774,6 +922,9 @@
             markActive(docId)
             show(el.emptyView, false)
             show(el.editorView, true)
+            show(el.preview, false) // every document opens in edit mode
+            show(el.content, true)
+            el.previewBtn.textContent = "Preview"
 
             // `db.get` with a callback fires once with the current node and again
             // on every change — local or from a peer. Rendering straight from it
@@ -796,6 +947,7 @@
             currentDocId = null
             currentPermission = "read"
             markActive(null)
+            if (el.shareModal.open) el.shareModal.close()
             show(el.editorView, false)
             show(el.emptyView, true)
         }
@@ -828,6 +980,21 @@
             }
         }
 
+        /**
+         * No Save button: typing is the save. A quiet status word replaces the
+         * toast — an autosave that shouted every 600ms would be unusable, but
+         * without any signal you cannot tell whether your work is safe.
+         */
+        const AUTOSAVE_MS = 600
+        let saveTimer
+
+        const scheduleSave = () => {
+            if (!currentDocId || el.content.readOnly) return
+            el.status.textContent = "saving…"
+            clearTimeout(saveTimer)
+            saveTimer = setTimeout(saveDocument, AUTOSAVE_MS)
+        }
+
         const saveDocument = async () => {
             if (!currentDocId) return
             const changes = { title: el.title.value, content: el.content.value, modified: Date.now() }
@@ -845,9 +1012,11 @@
                     // acls.set merges over the stored node and re-checks permissions on every peer.
                     await db.sm.acls.set(changes, currentDocId)
                 }
-                toast("Saved", "success")
+                el.status.textContent = "saved"
+                setTimeout(() => { if (el.status.textContent === "saved") el.status.textContent = "" }, 2000)
             } catch (error) {
-                toast(error.message, "error")
+                el.status.textContent = ""
+                toast(error.message, "error")   // a failed save must still be loud
             }
         }
 
@@ -947,6 +1116,9 @@
         })
 
         el.modal.addEventListener("click", (e) => { if (e.target === el.modal) el.modal.close() })
+        el.shareModal.addEventListener("click", (e) => { if (e.target === el.shareModal) el.shareModal.close() })
+        el.shareOpen.addEventListener("click", () => el.shareModal.showModal())
+        el.previewBtn.addEventListener("click", togglePreview)
         el.generate.addEventListener("click", generateIdentity)
         el.copy.addEventListener("click", copyPhrase)
         el.login.addEventListener("click", loginWithMnemonic)
@@ -955,7 +1127,8 @@
         el.passkeyLogin.addEventListener("click", loginWithPasskey)
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
         el.newDoc.addEventListener("click", createDocument)
-        el.save.addEventListener("click", saveDocument)
+        el.title.addEventListener("input", scheduleSave)
+        el.content.addEventListener("input", scheduleSave)
         el.delete.addEventListener("click", deleteDocument)
         el.share.addEventListener("click", grantAccess)
 

@@ -485,6 +485,22 @@ Why each decision, so nobody re-litigates them:
 
 **Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent` (no outlines, no glows). Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
 
+**Content fields are not form fields.** A field the user *asks something of* — a search box, an address to grant, a filter — is drawn: border, background, focus ring, because they must find it and know where to click. A field that **is the content** — the body of an editor, a document's title — is not drawn at all: no border, no background, transparent onto the page, sized like the text it holds. The reader is looking at their own writing, and a box around it only competes with it.
+
+```css
+/* The document IS the page: nothing frames it. */
+.content-field {
+    border: none;
+    background: none;
+    padding: 0;
+    outline: none;
+    color: var(--text-primary);
+    font: inherit;
+}
+```
+
+Two rules keep this honest: the field must still be obviously editable on hover or focus (a caret is enough for a body; a title can gain a faint `--bg-tertiary` on hover), and **a disabled content field must read as disabled** — drop it to `--text-secondary`, since without a border there is no frame to grey out. That last one matters in a permissions demo: a read-only document has to *look* read-only.
+
 **Empty states:** one sentence in `--text-secondary` that tells the user how to earn the change they're looking at (e.g. *"No posts yet. Earn the author role and create one!"*) — in a governance world, empty states teach the ladder.
 
 **Permission hints:** when a control is hidden by role, show a quiet `--warn`-tinted note explaining how to unlock it, instead of leaving users wondering.
