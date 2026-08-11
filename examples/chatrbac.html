@@ -211,9 +211,50 @@
             --danger: #dc2626;
             --shadow: 0 6px 24px rgba(26, 29, 36, .07);
             --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
             --space-3: 12px;
+            --space-4: 16px;
             --space-5: 24px;
+            --space-6: 32px;
+            --backdrop: rgba(26, 29, 36, .45);
+            --text-on-accent: #ffffff;
         }
+
+        /* ── Confirm dialog (canonical component — §6) ─────────────── */
+        /* Never window.confirm: it blocks the thread, so in a P2P app it freezes
+           the very sync being demonstrated, rAF included. */
+        #confirm-modal {
+            box-sizing: border-box; /* this page has no global reset — padding would widen it */
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        #confirm-modal::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+        #confirm-modal .modal-title { margin: 0 0 var(--space-3); font-size: 20px; font-weight: 700; }
+        #confirm-modal .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-tertiary); }
+        #confirm-modal form { display: flex; flex-direction: column; gap: var(--space-2); }
+
+        #confirm-modal button {
+            width: 100%;
+            padding: 13px var(--space-4);
+            font-size: 14px;
+            font-weight: 600;
+            height: auto;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+
+        #confirm-modal .danger { background: var(--danger); color: var(--text-on-accent); }
+        #confirm-modal .danger:hover { background: var(--danger); filter: brightness(.93); }
+        #confirm-modal .ghost { background: none; border-color: var(--border-subtle); color: var(--text-primary); }
+        #confirm-modal .ghost:hover { background: none; border-color: var(--text-tertiary); }
 
         /* The stack itself is the popover, so it joins the top layer and paints
            above any modal backdrop — which no z-index can beat. */
@@ -326,6 +367,15 @@
         <div id="statusBar" class="status">Initializing...</div>
     </div>
 
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
+
     <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
     <script type="module">
@@ -371,6 +421,25 @@
 
             setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000);
         };
+
+        /**
+         * Ask before anything irreversible — the canonical confirm of §6.
+         *
+         * Replaces window.confirm, which blocks the main thread: peer messages
+         * queue and requestAnimationFrame never runs, so the live chat freezes
+         * behind it. `method="dialog"` puts each button's value in returnValue.
+         *
+         * @param {{title: string, body: string, confirmLabel: string}} question
+         * @returns {Promise<boolean>} whether the destructive action was accepted
+         */
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            const dialog = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-text').textContent = body;
+            document.getElementById('confirm-ok').textContent = confirmLabel;
+            dialog.addEventListener('close', () => resolve(dialog.returnValue === 'ok'), { once: true });
+            dialog.showModal();
+        });
 
         // Simplified DOM references
         const elements = {
@@ -532,9 +601,12 @@
                 return;
             }
 
-            if (!confirm('Are you sure you want to delete ALL messages? This action cannot be undone.')) {
-                return;
-            }
+            const confirmed = await confirmAction({
+                title: 'Delete every message?',
+                body: 'The whole room is cleared for every peer, and there is no undo.',
+                confirmLabel: 'Delete all'
+            });
+            if (!confirmed) return;
 
             try {
                 // Cancel current subscription

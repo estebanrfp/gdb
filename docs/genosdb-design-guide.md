@@ -4,6 +4,8 @@ Opinionated UI patterns, design tokens and page architectures for applications b
 
 The goal is coherence without complexity: every rule here is implementable in plain HTML + CSS + JavaScript, with no UI framework required.
 
+> **Read the reference app first: [`examples/docs.html`](../examples/docs.html)** ([live](https://estebanrfp.github.io/gdb/examples/docs.html)). It is one self-contained file, and it implements this guide end to end — the identity door (§4.1), the banded layout (§5), the toast and the confirm dialog (§6), the single realtime subscription (§7). Every rule below was extracted from it after being built and verified there, which is also the order to work in: copy from the file, use the text to understand *why*. **If the two disagree, the file is right** — the guide has fallen behind and that is a bug worth reporting.
+
 ### Two deployment shapes, one design language
 
 GenosDB applications ship in two shapes, and this guide applies equally to both:
@@ -133,7 +135,7 @@ One vocabulary of tokens, two sets of values. The names above never change; a pa
 
 | The reader is looking at… | Palette | Why |
 | --- | --- | --- |
-| **Data and measurements** — monitors, probes, benches, charts | **dark** | The background disappears and the data carries the page. §5.5 |
+| **Data and measurements** — monitors, probes, benches, charts | **dark** | The background disappears and the data carries the page. §5.6 |
 | **An interface built to be learned** — testbeds, playgrounds | **light** | It reads like interactive documentation, next to the docs it illustrates |
 | **A product** — example applications | **dark** | It *is* the product; this is GenosDB's face |
 
@@ -575,9 +577,44 @@ Rules:
 
 ## 5. Page Architecture by Application Type
 
-All layouts share the same skeleton: **one full-width top bar (brand + identity) · a list column · full-height content**. What changes is the content organism.
+> **The reference implementation is [`examples/docs.html`](../examples/docs.html)** ([live](https://estebanrfp.github.io/gdb/examples/docs.html)). Every rule in this chapter is taken from it and verified there. When the text and the file disagree, the file is right and the text is a bug — read it first, copy from it, and keep it in the other window while you build.
 
-### 5.0 The skeleton, and the order it boots in
+### 5.0 Chrome lives at the edges
+
+Before any specific architecture, one rule governs all of them: **the content occupies the middle and nothing else does.** Chrome goes to the edges, in bands, and each band answers a different question. A control placed in the wrong band is not a cosmetic problem — it steals reading space, or it moves while someone is reading.
+
+```
+┌─────────────────────────────────────────────┐
+│ ①  what this app is          who I am       │  ← identity of app + session
+├──────────────┬──────────────────────────────┤
+│ ② find/add   │                              │  ← the collection, and its search
+│──────────────│  ③  the content, alone       │
+│   item       │                              │
+│   item       │                              │
+│              ├──────────────────────────────┤
+│              │ ④ this item      the network │  ← state, never actions
+└──────────────┴──────────────────────────────┘
+```
+
+**① The top bar — the app and the session, nothing else.** Brand on the left; on the right the abbreviated address, theme and logout, as icons. Nothing here belongs to the open item, so the bar never changes as you work — and a bar that never changes is one the eye stops checking.
+
+**② The list column — the collection, with its own search at its head.** Search belongs to the list it filters, not to the app: put it in the top bar and it claims a place among the session controls, where it is neither. It shares one band with the *new* action, reduced to a `＋` — a full-width button spends a whole band on a single word, and that band is the most valuable strip on the page.
+
+**③ The content column — only the content.** No panel opens inside it, no toolbar appears, nothing resizes it. Anything that would push the text sideways goes in a `<dialog>` instead (§6).
+
+**④ The status bar — what is true, never what you can do.** It reports and never acts: state of the open item on the left (permission, owner, timestamp), state of the network on the right (`3 peers`). A button here would make the reader watch the bottom edge, which defeats the point of having one.
+
+Three rules make the bands hold:
+
+- **Connection state belongs at the bottom right.** It is ambient, it changes on its own, and nobody acts on it — the diagonal opposite of the brand, and as far as it gets from the content. In the top bar it competes with the session, which is the one thing up there people do act on.
+- **The status bar spans the content column only, not the sidebar.** The list then runs the full height of the window, unbroken, and the bar stays visually attached to the document it describes. A bar across the whole width cuts the list in two for information that has nothing to do with it.
+- **One surface, borders divide.** Every band shares `--bg-secondary` with the content; only 1px borders separate them. Give the content a darker well and it reads as a separate pane — and the content is not a pane inside the app, it *is* the app.
+
+**The rhythm is a single value: `--space-2` (8px).** Stacked controls, a field and the button under it, the gap between icons — all 8. Distinct blocks get `--space-4` or `--space-5`, never something in between. When two things sit 8px apart they read as one group; when the gap grows without a reason, the eye invents one.
+
+**Icons for chrome, words for content actions.** Anything permanent and repeated on every screen — theme, logout, *new* — is a line icon with a `title` and an `aria-label`. Anything acting on the open item — `Preview`, `Share`, `Delete` — keeps its word, because it is read once, deliberately, and its consequences differ. Never emoji in either case: a line icon inherits the text colour like every other mark on the page (§6), and an emoji brings a palette of its own that no theme can touch.
+
+### 5.1 The skeleton, and the order it boots in
 
 Two things every full-profile app gets right or spends a day debugging: where the chrome lives, and what runs when.
 
@@ -692,7 +729,7 @@ subscribeToItems()
 
 The `<script type="module">` opens with a comment naming the methods the file demonstrates and where to find them. These files are read as documentation; the header is the table of contents.
 
-### 5.1 Collection apps (CMS, marketplace, gallery)
+### 5.2 Collection apps (CMS, marketplace, gallery)
 
 ```
 ┌─────────┬──────────────────────────────┐
@@ -708,7 +745,7 @@ The `<script type="module">` opens with a comment naming the methods the file de
 - Cards: `--bg-secondary`, `--border-subtle`, `--radius-md`, hover = `translateY(-2px)` + `--border-strong`. Image on top (`object-fit: cover`), title, two-line clamped description, footer row with author tag (mono) and owner-only actions.
 - Secondary lists ("latest", "recent activity") are **sidebar widgets** — never a fixed bottom panel.
 
-### 5.2 List + editor (documents, notes, records)
+### 5.3 List + editor (documents, notes, records)
 
 The organism behind the canonical full-profile app: a list on the left, one open item on the right, and neither ever resizes the other.
 
@@ -732,15 +769,15 @@ The organism behind the canonical full-profile app: a list on the left, one open
 - **The editor has no borders** — it *is* the content, not a form field (§6). The empty state that precedes it is an icon over one line, centred on the whole canvas: an empty editor should read as waiting for you, not as a page that failed to load.
 - **The permission is stated, not implied**, in the status bar: a quiet tag (`READ` / `WRITE` / `DELETE`), the owner's abbreviated address and the timestamp. In a permissions app the user must be able to see why a field is disabled without clicking it — and reporting it below the text rather than above keeps it out of the way of the reading. Drop the address when the tag already reads `OWNER`: it is your own, and naming it says the same thing twice.
 
-### 5.3 Admin panels & dashboards
+### 5.4 Admin panels & dashboards
 
 Same skeleton; content organized as **stat cards first, tables second**. Tables use `--border-subtle` row separators (no zebra striping), mono for IDs/addresses, and row actions revealed on hover. Destructive actions are always `--danger` outline buttons, never filled by default.
 
-### 5.4 Social / chat / realtime feeds
+### 5.5 Social / chat / realtime feeds
 
 Single centered column (max-width ~680px) for the feed; composer pinned at the natural top or bottom of the column (not fixed over content). Presence ("N peers online") belongs in the top bar next to the session pill, in `--text-tertiary`.
 
-### 5.5 Instruments & testbeds (monitors, probes, benches)
+### 5.6 Instruments & testbeds (monitors, probes, benches)
 
 Centered narrow column (~440px), no sidebar. An uppercase eyebrow label, a large title, a one-line hint, then **stat cards in a row** (mono values) and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
 
