@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.1] - 2026-08-11
+
+### Fixed
+
+- **Rooms pointed at a single signalling relay connect in seconds again.** Setting `rtc: { relayUrls: ["wss://your-relay"] }` — one entry, the shape the guides recommend when you run your own signalling server and want nothing to leave your infrastructure — left two browsers opened at the same moment waiting 60 to 95 seconds before they could see each other and begin syncing; with two or more entries it was always about six. The cause was in the bundled transport, not in any relay, which is why every relay showed it: a peer claimed its dial slot only after gathering ICE candidates, a window of up to five seconds, so a repeat announcement arriving inside it started a second dial that overwrote the first, and since an answer is matched to a dial by peer and relay position alone — it carries no offer identifier — the reply to the first offer was then handed to the wrong connection. That connection stalls silently rather than failing, so nothing recovered until a 57-second reap and the 30-second cooldown behind it had passed. The bundled GenosRTC is rebuilt at 0.25.1, which claims the slot when the dial is decided and releases it if the offer fails, keeping one dial in flight per relay. Measured with two browsers booting simultaneously, three runs each: a single self-hosted Cloudflare relay 6.7 / 6.0 / 6.0 s where it was 94.2-96.6 s, and a single public relay 6.3 / 6.2 / 6.2 s where it alternated between 6 and 94. Reloading one browser and writing from it resynchronises in under a second. Nothing changes for rooms already listing several relays, the wire format is untouched and 0.23.0 peers interoperate — though each peer only stops waiting once it carries this build. If you worked around this by listing the same relay twice, one entry is enough again.
+
 ## [0.23.0] - 2026-08-09
 
 ### Changed
