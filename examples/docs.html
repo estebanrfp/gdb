@@ -498,8 +498,14 @@
         .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
 
 
+        /* It takes over the slot the demo shortcut leaves when the phrase is
+           generated, so it is sized like a button — same height, same gap.
+           The modal then keeps its height across both phases. */
         .modal-warn {
-            margin: var(--space-4) 0 0;
+            display: grid;
+            place-items: center;
+            min-height: 45px;
+            margin: var(--space-2) 0 0;
             font-size: 13px;
             font-weight: 600;
             color: var(--warn);
@@ -621,8 +627,7 @@
 
         <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
         <p class="modal-foot">
-            In this demo any identity writes from the start. A real app makes it
-            <em>earned</em> — see <a href="governance.html">Governance</a>.
+            Demo writes are open. Real apps earn access [<a href="governance.html">governance</a>].
         </p>
     </dialog>
 
