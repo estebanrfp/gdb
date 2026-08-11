@@ -133,7 +133,7 @@ One vocabulary of tokens, two sets of values. The names above never change; a pa
 
 | The reader is looking at… | Palette | Why |
 | --- | --- | --- |
-| **Data and measurements** — monitors, probes, benches, charts | **dark** | The background disappears and the data carries the page. §5.4 |
+| **Data and measurements** — monitors, probes, benches, charts | **dark** | The background disappears and the data carries the page. §5.5 |
 | **An interface built to be learned** — testbeds, playgrounds | **light** | It reads like interactive documentation, next to the docs it illustrates |
 | **A product** — example applications | **dark** | It *is* the product; this is GenosDB's face |
 
@@ -530,7 +530,96 @@ Rules:
 
 ## 5. Page Architecture by Application Type
 
-All layouts share the same skeleton: **sidebar (brand + nav + widgets) · sticky top bar (identity) · full-height content**. What changes is the content organism.
+All layouts share the same skeleton: **one full-width top bar (brand + identity) · a list column · full-height content**. What changes is the content organism.
+
+### 5.0 The skeleton, and the order it boots in
+
+Two things every full-profile app gets right or spends a day debugging: where the chrome lives, and what runs when.
+
+**The layout is a two-row grid over a two-column grid.** One bar holds every piece of chrome so nothing competes for the corner; below it, the list and the content sit side by side and neither ever resizes the other.
+
+```html
+<div class="layout">
+  <header class="topbar">
+    <h1 class="brand">App name <span>· what it demonstrates</span></h1>
+    <div class="session">
+      <input id="search-input" class="search" type="text" placeholder="Search…" aria-label="Search">
+      <span id="presence" class="presence">0 peers</span>
+      <button id="session-addr" class="session-addr" title="Copy your full address"></button>
+      <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme">…</button>
+      <button id="logout-btn" class="ghost hidden">Logout</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="sidebar">
+      <button id="new-btn" class="primary" disabled title="Sign in to create">New document</button>
+      <ul id="item-list" class="doc-list"></ul>
+      <p id="list-empty" class="list-empty hidden">Nothing matches that search.</p>
+    </nav>
+
+    <div class="main">
+      <main class="content">
+        <div id="empty-view" class="empty">…</div>
+        <article id="editor-view" class="editor hidden">…</article>
+      </main>
+    </div>
+  </div>
+</div>
+```
+
+```css
+body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
+.layout  { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+.topbar  { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--space-4); padding: var(--space-3) var(--space-5);
+           background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle); }
+.body    { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 0; }
+.sidebar { display: flex; flex-direction: column; min-height: 0;
+           background: var(--bg-secondary); border-right: 1px solid var(--border-subtle); }
+.main    { display: flex; flex-direction: column; min-width: 0; min-height: 0;
+           background: var(--bg-secondary); }
+.content { flex: 1; min-height: 0; display: flex; flex-direction: column;
+           overflow-y: auto; padding: var(--space-5); }
+```
+
+- **`min-height: 0` on every grid and flex child.** Without it a flex item refuses to shrink below its content, the column grows past the viewport, and `overflow-y` on `.content` never engages — the whole page scrolls instead of the list. This is the single most common layout bug in these apps.
+- **One surface, borders divide.** Bar, list and content share `--bg-secondary`; only the 1px borders separate them. A darker well under the content reads as a separate pane, and the document is not a pane — it is the page.
+- **`overflow: hidden` on `body`, `overflow-y: auto` on `.content`.** The page never scrolls; the column does.
+- **The top bar holds all the chrome** — search, presence, address, theme, logout — so the content column stays pure and never resizes when something appears.
+
+**The boot order is not arbitrary.** Everything hangs off `db`, so nothing can be wired before it exists, and the session callback must be able to fire the moment it is set:
+
+```javascript
+// 1. The database, with its constitution. Roles are declared here, once.
+db = await gdb("room-name", {
+    rtc: true,
+    sm: { superAdmins: [SUPERADMIN.address], customRoles: { /* … */ }, acls: true }
+})
+
+// 2. Theme, before anything paints.
+applyTheme(localStorage.theme ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
+
+// 3. Every listener. Pure DOM wiring — no data, no session.
+el.newDoc.addEventListener("click", createDocument)
+// …
+
+// 4. Presence, from the room.
+db.room?.on("peer:join", updatePresence)
+db.room?.on("peer:leave", updatePresence)
+updatePresence()
+
+// 5. The session callback LAST among the wiring — it fires immediately with the
+//    current state, and it opens the door. Everything it touches must exist.
+db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
+
+// 6. The data subscription, once, for the life of the page. Not inside the
+//    session callback: read-only guests still see whatever peers replicated,
+//    and re-subscribing is what freezes the other window (§7).
+subscribeToItems()
+```
+
+The `<script type="module">` opens with a comment naming the methods the file demonstrates and where to find them. These files are read as documentation; the header is the table of contents.
 
 ### 5.1 Collection apps (CMS, marketplace, gallery)
 
@@ -548,15 +637,37 @@ All layouts share the same skeleton: **sidebar (brand + nav + widgets) · sticky
 - Cards: `--bg-secondary`, `--border-subtle`, `--radius-md`, hover = `translateY(-2px)` + `--border-strong`. Image on top (`object-fit: cover`), title, two-line clamped description, footer row with author tag (mono) and owner-only actions.
 - Secondary lists ("latest", "recent activity") are **sidebar widgets** — never a fixed bottom panel.
 
-### 5.2 Admin panels & dashboards
+### 5.2 List + editor (documents, notes, records)
+
+The organism behind the canonical full-profile app: a list on the left, one open item on the right, and neither ever resizes the other.
+
+```
+┌──────────────────────────────────────────┐
+│ brand           search · peers · session │
+├───────────┬──────────────────────────────┤
+│ [New]     │  Title            READ owner │
+│ ─────────╴│  ────────────────────────────│
+│ ▍item     │                              │
+│  item     │  the document, no border      │
+│  item     │                              │
+└───────────┴──────────────────────────────┘
+```
+
+- **List items are title + a two-line excerpt**, separated by `--border-subtle`, with the open one marked by a left accent border and `--bg-tertiary`. No checkboxes, no per-item action buttons: the row opens the item, and the actions live where the item is open.
+- **Autosave, no Save button.** A debounce of ~600ms after the last keystroke, with a one-word status (`saving…` / `saved`) next to the title. A Save button in a P2P app is a lie about how the data travels — the graph has already accepted the write and told the peers. Guard the render against clobbering what the user is typing: skip it while `document.activeElement` is the field being edited.
+- **Secondary actions open a dialog, they don't expand the view.** Sharing, permissions, history — a panel that unfolds inside the content column shifts the text the user is reading. Three buttons in the header (`Preview` · `Share` · `Delete`) and everything else behind them.
+- **The editor has no borders** — it *is* the content, not a form field (§6). The empty state that precedes it is an icon over one line, centred on the whole canvas: an empty editor should read as waiting for you, not as a page that failed to load.
+- **The permission is stated, not implied**: a quiet tag by the title (`READ` / `WRITE` / `DELETE`) plus the owner's abbreviated address. In a permissions app, the user must be able to see why the field is disabled without clicking it.
+
+### 5.3 Admin panels & dashboards
 
 Same skeleton; content organized as **stat cards first, tables second**. Tables use `--border-subtle` row separators (no zebra striping), mono for IDs/addresses, and row actions revealed on hover. Destructive actions are always `--danger` outline buttons, never filled by default.
 
-### 5.3 Social / chat / realtime feeds
+### 5.4 Social / chat / realtime feeds
 
 Single centered column (max-width ~680px) for the feed; composer pinned at the natural top or bottom of the column (not fixed over content). Presence ("N peers online") belongs in the top bar next to the session pill, in `--text-tertiary`.
 
-### 5.4 Instruments & testbeds (monitors, probes, benches)
+### 5.5 Instruments & testbeds (monitors, probes, benches)
 
 Centered narrow column (~440px), no sidebar. An uppercase eyebrow label, a large title, a one-line hint, then **stat cards in a row** (mono values) and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
 
