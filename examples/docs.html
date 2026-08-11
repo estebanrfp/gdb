@@ -110,18 +110,26 @@
             height: 100vh;
         }
 
+        /* Every chrome band is 48px tall — top, list head and status read as one
+           system rather than three near-misses. */
         .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: var(--space-4);
-            padding: var(--space-3) var(--space-5);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-subtle);
         }
 
+        /* Truncates rather than pushing the session controls off the bar. */
         .brand {
             margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             font-size: 15px;
             font-weight: 600;
             letter-spacing: -0.01em;
@@ -143,15 +151,17 @@
             min-height: 0;
         }
 
-        /* Search and "new" share one band, aligned with the top bar's height so
-           the two chrome rows read as one line across the app. */
+        /* Search and "new" share one band, the same height as the top bar. */
         .sidebar-head {
             display: flex;
             align-items: center;
             gap: var(--space-2);
+            min-height: 48px;
             padding: var(--space-2) var(--space-3);
             border-bottom: 1px solid var(--border-subtle);
         }
+
+        .sidebar-head .icon-btn { margin-right: -6px; } /* same optical edge as above */
 
         /* No box: the band already delimits it, and a framed field competing with
            the list below would make the search look like the page's subject.
@@ -186,10 +196,14 @@
         }
 
         /* ── Session (top-right) ────────────────────────────────── */
+        /* Icon buttons carry 6px of padding of their own, so the row is pulled
+           back by that much: what must line up with the brand is the icon, not
+           the invisible hit area around it. */
         .session {
             display: flex;
             align-items: center;
             gap: var(--space-3);
+            margin-right: -6px;
             font-size: 13px;
         }
 
@@ -409,7 +423,8 @@
             align-items: center;
             justify-content: space-between;
             gap: var(--space-4);
-            padding: var(--space-3) var(--space-5);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-subtle);
         }
@@ -653,6 +668,11 @@
             .doc-header { flex-wrap: wrap; }
             .statusbar { flex-wrap: wrap; gap: var(--space-2); }
             .share-row { grid-template-columns: 1fr; }
+
+            /* Below ~400px the brand plus a mono address and two icons overrun
+               the bar. The subtitle is decoration and goes first; the address
+               is what a peer needs from you, so it stays. */
+            .brand span { display: none; }
         }
     </style>
 </head>
