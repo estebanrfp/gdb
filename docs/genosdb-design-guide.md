@@ -663,13 +663,14 @@ Two things every full-profile app gets right or spends a day debugging: where th
 - **The status bar sits under the content column only**, not across the sidebar: the list runs the full height beside it, unbroken, and the bar stays with the document it describes. Item state on the left, connection state on the right.
 
 ```css
-body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
-.layout  { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+body   { height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg-primary); }
+.layout  { display: grid; grid-template-rows: auto 1fr; height: 100vh; height: 100dvh; }
 .topbar  { display: flex; align-items: center; justify-content: space-between;
-           gap: var(--space-4); padding: var(--space-3) var(--space-5);
+           gap: var(--space-4); min-height: 48px; padding: var(--space-2) var(--space-5);
            background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle); }
-.body    { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 0; }
-.sidebar { display: flex; flex-direction: column; min-height: 0;
+.session { display: flex; align-items: center; gap: var(--space-3); margin-right: -6px; }
+.body    { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: 0; }
+.sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0;
            background: var(--bg-secondary); border-right: 1px solid var(--border-subtle); }
 .main    { display: flex; flex-direction: column; min-width: 0; min-height: 0;
            background: var(--bg-secondary); }
@@ -678,8 +679,9 @@ body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
 
 /* Search and "new" share one band at the head of the list. */
 .sidebar-head { display: flex; align-items: center; gap: var(--space-2);
-                padding: var(--space-2) var(--space-3);
+                min-height: 48px; padding: var(--space-2) var(--space-3);
                 border-bottom: 1px solid var(--border-subtle); }
+.sidebar-head .icon-btn { margin-right: -6px; }
 
 /* No box: the band already delimits it. Needs the element in the selector to
    outrank `input[type="text"]`, which it ties with and which is declared later. */
@@ -687,8 +689,16 @@ body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
 
 /* The mirror of the top bar, under the content column only. */
 .statusbar { display: flex; align-items: center; justify-content: space-between;
-             gap: var(--space-4); padding: var(--space-3) var(--space-5);
+             gap: var(--space-4); min-height: 48px; padding: var(--space-2) var(--space-5);
              background: var(--bg-secondary); border-top: 1px solid var(--border-subtle); }
+
+/* Stacked, and still one screen — see the hard layout rules below. */
+@media (max-width: 820px) {
+    .body { grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(0, 38vh) minmax(0, 1fr); }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+    .brand span { display: none; }   /* the subtitle is decoration; the width is not */
+}
 ```
 
 - **`min-height: 0` on every grid and flex child.** Without it a flex item refuses to shrink below its content, the column grows past the viewport, and `overflow-y` on `.content` never engages — the whole page scrolls instead of the list. This is the single most common layout bug in these apps.
@@ -783,9 +793,15 @@ Centered narrow column (~440px), no sidebar. An uppercase eyebrow label, a large
 
 ### Hard layout rules (learned the hard way)
 
-- The content column owns the full viewport height. No global fixed footers.
-- One responsive breakpoint is enough for examples: at `max-width: 820px` collapse to a single column (sidebar becomes a top block).
-- `overflow-y` lives on the content column, not on `body`.
+Each of these was a visible defect before it was a rule.
+
+- **`minmax(0, 1fr)`, never bare `1fr`.** A `1fr` track floors at `min-content`, so one `white-space: nowrap` excerpt of 80 characters is wider than a phone: the column stretches to fit it and drags the document, its buttons and the status bar off the right edge. The text truncates correctly — it just has nothing to truncate against. Same disease as the missing `min-width: 0` on a flex child, and worth checking together.
+- **`min-height: 0` and `min-width: 0` on every grid and flex child.** Without them a child refuses to shrink below its content, the column outgrows the viewport, and the `overflow` you set never engages. This is the single most common layout bug in these apps.
+- **The content column owns the full viewport height.** `overflow: hidden` on `body`, `overflow-y: auto` on the content column. The page never scrolls; the column does. No global fixed footers.
+- **Stacking is still one screen.** One breakpoint is enough — at `max-width: 820px` collapse to a single column — but do **not** let the layout fall to `height: auto` there. Handing scrolling back to the page pushes the status bar below the fold and leaves a band of page background under it, which reads as a broken app. Stack as grid rows inside the same full-height layout: `grid-template-rows: minmax(0, 38vh) minmax(0, 1fr)`, list scrolling in place, document taking the rest.
+- **`100dvh` alongside `100vh`.** A phone's address bar is not part of the viewport, and the first thing it swallows is the status bar at the bottom.
+- **Chrome bands share one height.** 48px for the top bar, the list head and the status bar alike. Three near-misses (70 / 48 / 43) read as carelessness; three identical values read as a system.
+- **Align the mark, not the hit area.** An icon button pads itself — typically 6px — so an icon in a bar padded to 24px optically sits at 30 while the text on the other side sits at 24. Pull the row back by that padding (`margin-right: -6px`) so what lines up is what the eye can see.
 
 ---
 

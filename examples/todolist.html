@@ -97,7 +97,14 @@
   <script type="module">
     import { gdb } from "../dist/index.js";
 
-    const db = await gdb('todoList', { debug: true, rtc: true });
+    // const db = await gdb('todoList', { debug: true, rtc: true });
+
+    const db = await gdb('todoList', {
+      debug: true,
+      rtc: { relayUrls: [
+        "wss://genosdb-relay.estebanrfp.workers.dev"
+      ] }
+    })
 
     const currentNodeIds = new Set();
 

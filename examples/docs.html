@@ -150,6 +150,7 @@
             flex-direction: column;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border-subtle);
+            min-width: 0; /* truncation in the list needs a floor to truncate against */
             min-height: 0;
         }
 
@@ -668,7 +669,11 @@
                page background under it. The bands keep their height; the list
                and the document scroll inside their own rows, as on desktop. */
             .body {
-                grid-template-columns: 1fr;
+                /* minmax(0, 1fr), not 1fr: a `1fr` track floors at min-content,
+                   and one nowrap excerpt of 80 characters is wider than the
+                   phone. The column then stretches and drags the document,
+                   its buttons and the status bar off the right edge. */
+                grid-template-columns: minmax(0, 1fr);
                 grid-template-rows: minmax(0, 38vh) minmax(0, 1fr);
             }
 
