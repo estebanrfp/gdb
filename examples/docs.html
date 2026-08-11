@@ -221,9 +221,15 @@
         .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
         .icon-btn svg { width: 16px; height: 16px; }
 
-        .icon-moon { display: none; }
-        [data-theme="light"] .icon-sun { display: none; }
-        [data-theme="light"] .icon-moon { display: block; }
+        /* One icon at a time, chosen by the preference — not by the palette in
+           force. On `system` the icon must say "system", whichever way the OS
+           happens to be leaning. */
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="light"] .icon-sun { display: block; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
 
         .list-empty {
             padding: 15px 20px;
@@ -683,6 +689,18 @@
         </p>
     </dialog>
 
+    <!-- Confirmation before anything irreversible. Never window.confirm: it
+         blocks the thread, which in a P2P app freezes the very sync being
+         demonstrated — rAF included, so the interface stops updating too. -->
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog" class="modal-actions">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
+
     <dialog id="share-modal">
         <section class="panel">
             <h3>Manage access</h3>
@@ -725,6 +743,11 @@
                     <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
                     </svg>
                 </button>
                 <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">
@@ -864,6 +887,10 @@
             share: $("share-btn"),
             collaborators: $("collaborators-list"),
             themeBtn: $("theme-btn"),
+            confirmModal: $("confirm-modal"),
+            confirmTitle: $("confirm-title"),
+            confirmText: $("confirm-text"),
+            confirmOk: $("confirm-ok"),
             toasts: $("toasts")
         }
 
@@ -928,16 +955,57 @@
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
 
         /**
-         * Theme: values only. `data-theme` on <html> swaps the token block and
-         * nothing else — the CSS below never mentions a theme. First visit
-         * follows the operating system; after that the choice is remembered.
+         * Ask before anything irreversible — the one thing a toast cannot do,
+         * because it reports what already happened.
+         *
+         * Replaces `window.confirm`, which blocks the main thread for as long as
+         * the dialog is up: peer messages queue, and `requestAnimationFrame`
+         * never runs, so the live interface freezes behind it. A <dialog> is
+         * asynchronous, styled by the same tokens, and closes on Esc for free —
+         * `method="dialog"` puts each button's value in `returnValue`.
+         *
+         * @param {{title: string, body: string, confirmLabel: string}} question
+         * @returns {Promise<boolean>} whether the destructive action was accepted
          */
-        const applyTheme = (theme) => {
-            document.documentElement.dataset.theme = theme
-            localStorage.docsTheme = theme
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            el.confirmTitle.textContent = title
+            el.confirmText.textContent = body
+            el.confirmOk.textContent = confirmLabel
+            el.confirmModal.addEventListener(
+                "close",
+                () => resolve(el.confirmModal.returnValue === "ok"),
+                { once: true } // Esc and the backdrop both land here, as a "no"
+            )
+            el.confirmModal.showModal()
+        })
+
+        /**
+         * Theme: values only. `data-theme` on <html> swaps the token block and
+         * nothing else — the CSS below never mentions a theme.
+         *
+         * Two attributes, because they answer different questions. `data-theme`
+         * is the palette in force, which is what the CSS paints from.
+         * `data-pref` is what the reader asked for, and only it can tell
+         * "dark because I chose dark" from "dark because the OS is dark" —
+         * the distinction the third state exists for.
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.docsTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
         }
 
-        applyTheme(localStorage.docsTheme ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
+        // On `system` the OS can change under us — follow it without a reload.
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.docsTheme ?? "system")
 
         /**
          * Passkeys need two things, and only the first is obvious.
@@ -1357,7 +1425,12 @@
 
         const deleteDocument = async () => {
             if (!currentDocId) return
-            if (!confirm("Delete this document for every peer?")) return
+            const confirmed = await confirmAction({
+                title: "Delete this document?",
+                body: "It disappears for every peer, and there is no undo.",
+                confirmLabel: "Delete"
+            })
+            if (!confirmed) return
             try {
                 await db.sm.acls.delete(currentDocId)
                 toast("Document deleted", "success")
@@ -1414,7 +1487,12 @@
         }
 
         const revokeAccess = async (address) => {
-            if (!confirm(`Revoke access for ${db.sm.abbrAddr(address)}?`)) return
+            const confirmed = await confirmAction({
+                title: "Revoke access?",
+                body: `${db.sm.abbrAddr(address)} loses this document on every peer.`,
+                confirmLabel: "Revoke"
+            })
+            if (!confirmed) return
             try {
                 await db.sm.acls.revoke(currentDocId, address)
                 toast(`Access revoked for ${db.sm.abbrAddr(address)}`, "success")
@@ -1460,8 +1538,10 @@
         el.shareModal.addEventListener("click", (e) => { if (e.target === el.shareModal) el.shareModal.close() })
         el.shareOpen.addEventListener("click", () => el.shareModal.showModal())
         el.previewBtn.addEventListener("click", togglePreview)
-        el.themeBtn.addEventListener("click", () =>
-            applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light"))
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
         el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
         el.clip.addEventListener("click", copyPhrase)

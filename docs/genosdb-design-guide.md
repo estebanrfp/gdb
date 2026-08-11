@@ -159,20 +159,43 @@ Pick once, at the top of the file, and never mix. The light set redefines values
 
 For **consumer-facing product apps**, a runtime theme toggle is a sanctioned opt-in pattern on top of this, with exact rules:
 
-1. **One icon button** in the top bar, next to the session pill, with an `aria-label`. The icon shows the mode you'll switch **to** (🌙 while in light, ☀️ while in dark).
-2. Implementation: a `data-theme` attribute on `<html>`, a `[data-theme="light"]` block that **redefines tokens only**, `localStorage` persistence, and `prefers-color-scheme` as the first-visit default.
+1. **One icon button** in the top bar, next to the session pill, with an `aria-label`. It cycles **three** states — `system → light → dark` — and the icon shows the state you are *in*, not the one you would switch to: a sun for light, a moon for dark, a monitor for system.
+2. **Three, not two, because "system" is not a palette — it is a deferral.** Two states force a choice on first visit and then ignore the reader who changes their OS at sunset. The third is also the honest default: nobody has expressed a preference yet.
+3. **Two attributes, because they answer different questions.** `data-theme` is the palette in force and the only thing the CSS reads. `data-pref` is what the reader asked for, and only it distinguishes *"dark because I chose dark"* from *"dark because the OS is dark"* — without it the button cannot draw its own state.
 
 ```javascript
-const applyTheme = (t) => {
-  document.documentElement.dataset.theme = t
-  localStorage.theme = t
-  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙'
+const THEME_ORDER = ['system', 'light', 'dark']
+const systemTheme = matchMedia('(prefers-color-scheme: light)')
+
+const applyTheme = (pref) => {
+  const root = document.documentElement
+  root.dataset.pref = pref
+  root.dataset.theme = pref === 'system' ? (systemTheme.matches ? 'light' : 'dark') : pref
+  localStorage.theme = pref
+  themeBtn.title = `Theme: ${pref}`
 }
-applyTheme(localStorage.theme ?? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
-themeBtn.onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')
+
+// On `system` the OS can change under us — follow it without a reload.
+systemTheme.addEventListener('change', () => {
+  if (document.documentElement.dataset.pref === 'system') applyTheme('system')
+})
+
+applyTheme(localStorage.theme ?? 'system')
+themeBtn.onclick = () =>
+  applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length])
 ```
 
-3. **The golden rule:** if enabling the toggle requires touching any component CSS, the token system is broken — fix the tokens, never patch components. A well-built toggle costs ~25 lines total and doubles as living proof that the design tokens work.
+```css
+/* Inline SVGs, one shown per preference. Never emoji: these sit beside the
+   other line icons and must inherit the text colour like they do. */
+.icon-moon, .icon-system { display: none; }
+[data-pref="dark"]   .icon-sun { display: none; }
+[data-pref="dark"]   .icon-moon { display: block; }
+[data-pref="system"] .icon-sun { display: none; }
+[data-pref="system"] .icon-system { display: block; }
+```
+
+4. **The golden rule:** if enabling the toggle requires touching any component CSS, the token system is broken — fix the tokens, never patch components. A well-built toggle costs ~25 lines total and doubles as living proof that the design tokens work.
 
 ---
 
@@ -839,6 +862,47 @@ Why each decision, so nobody re-litigates them:
 - **Click to dismiss**, one line and no markup — better than a `×` button that adds a node and a hit target to every message.
 - **`prefers-reduced-motion`** drops the slide and keeps the message.
 
+### Confirm — the other half of feedback
+
+A toast reports what already happened; **`confirm()` is the same mistake as `alert()`, for the same reason.** It blocks the main thread for as long as the dialog is up: incoming peer messages queue, and `requestAnimationFrame` never runs — so the live interface a GenosDB demo exists to show freezes behind a browser chrome box that says `127.0.0.1:5503 says`. It also cannot be styled, themed or translated.
+
+Ask with a `<dialog>` instead. `method="dialog"` puts each button's value into `returnValue`, so there is no click wiring and `Esc` already means *no*:
+
+```html
+<dialog id="confirm-modal">
+  <h2 class="modal-title" id="confirm-title"></h2>
+  <p class="modal-hint" id="confirm-text"></p>
+  <form method="dialog" class="modal-actions">
+    <button value="ok" id="confirm-ok" class="danger"></button>
+    <button value="cancel" class="ghost">Cancel</button>
+  </form>
+</dialog>
+```
+
+```javascript
+/** @returns {Promise<boolean>} whether the destructive action was accepted */
+const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+    el.confirmTitle.textContent = title
+    el.confirmText.textContent = body
+    el.confirmOk.textContent = confirmLabel
+    el.confirmModal.addEventListener(
+        "close",
+        () => resolve(el.confirmModal.returnValue === "ok"),
+        { once: true }   // Esc and the backdrop both land here, as a "no"
+    )
+    el.confirmModal.showModal()
+})
+
+// At the call site it reads like the thing it replaces.
+if (!await confirmAction({
+    title: "Delete this document?",
+    body: "It disappears for every peer, and there is no undo.",
+    confirmLabel: "Delete"
+})) return
+```
+
+Two rules for the wording: **the title asks, the body says what is lost**, and **the button names the act** (`Delete`, `Revoke`) rather than `OK` — a button labelled OK tells you nothing about what you are agreeing to. It carries `danger`; `Cancel` stays `ghost`, because the safe path should not compete.
+
 **Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 
 **Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent` (no outlines, no glows). Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
@@ -895,7 +959,7 @@ Before shipping a GenosDB app or example, verify. The list is written for the **
 6. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
 7. ☐ Addresses abbreviated + monospace; timestamps localized; remote content sanitized.
 8. ☐ Content column takes full height; secondary lists are sidebar widgets, not fixed panels.
-9. ☐ Feedback via toasts — no `alert()`/`confirm()` except destructive-action confirms.
+9. ☐ Feedback via toasts, questions via `<dialog>` — **no `alert()` and no `confirm()`**, both block the thread and freeze the sync being demonstrated (§6).
 10. ☐ Realtime: one subscription, four actions handled, ordering/window delegated to the engine.
 11. ☐ Presence gated by degrees: watch anonymously · broadcast with an identity · contribute with an earned role (gated controls disabled, not hidden).
 12. ☐ Verified live with two browsers.
