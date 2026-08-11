@@ -1,282 +1,839 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDB RBAC - WebAuthn Demo</title>
+    <title>GenosDB — Passkeys (WebAuthn identity)</title>
+
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            background-color: #f0f2f5; 
-            color: #333;
+        :root {
+            /* Backgrounds (dark → elevated) */
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+
+            /* Text */
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+
+            /* Accent & status */
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
+
+            /* Borders */
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+
+            /* Contrast pairs & elevation */
+            --text-on-accent: #ffffff;
+            --backdrop: rgba(0, 0, 0, .6);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+
+            /* Shape & rhythm (8px grid) */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+
+            /* Typography */
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
+
+        /* Values only — not one component rule changes below. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
+
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
+
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+
+            --backdrop: rgba(26, 29, 36, .45);
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        /* No collection to list, so no sidebar: one chrome band on top, one at
+           the bottom, and a narrow centred column for the only thing this page
+           has to show — the identity you are holding. */
+        .layout {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* Every chrome band is 48px tall. */
+        .topbar, .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+        }
+
+        .topbar { border-bottom: 1px solid var(--border-subtle); }
+        .statusbar { border-top: 1px solid var(--border-subtle); }
+
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .brand span { color: var(--text-tertiary); font-weight: 400; }
+
+        /* One surface: the bands and the content share a tone, borders divide. */
+        .content {
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-5);
+            background: var(--bg-secondary);
         }
-        .container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
-        }
-        h1 { 
-            color: #1a73e8; 
-            text-align: center;
-        }
-        button { 
-            background-color: #1a73e8; 
-            color: white; 
-            border: none; 
-            padding: 10px 15px; 
-            margin-top: 10px;
-            border-radius: 5px; 
-            cursor: pointer; 
-            font-size: 16px;
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        button.secondary { background-color: #6c757d; }
-        button.recommended { background-color: #28a745; }
-        button:hover { background-color: #1558b0; }
-        button.secondary:hover { background-color: #5a6268; }
-        button.recommended:hover { background-color: #218838; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        
-        .status { 
-            margin-bottom: 15px; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 5px; 
-            background-color: #e9ecef;
-            word-wrap: break-word;
-            text-align: center;
-        }
-        .info-box {
-             margin-top: 15px; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 5px; 
-            background-color: #e9ecef;
-            word-wrap: break-word;
-        }
-        .info-box code {
-            background-color: #d4d4d4;
-            padding: 2px 4px;
-            border-radius: 3px;
-            word-break: break-all;
-        }
-        .warning {
-            color: #d93025;
-            font-weight: bold;
-            background-color: #fddede;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            text-align: center;
-        }
-        .hidden { display: none; }
-        .button-group {
+
+        /* ── Session (top-right) ────────────────────────────────── */
+        /* Icon buttons pad their own hit area, so the row is pulled back by that
+           much: what lines up with the brand is the icon, not the box. */
+        .session {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            align-items: center;
+            gap: var(--space-3);
+            margin-right: -6px;
+            font-size: 13px;
         }
-        textarea {
+
+        .session-addr {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .session-addr:hover { color: var(--text-primary); }
+        .session-addr:empty { display: none; }
+
+        .presence { color: var(--text-tertiary); font-size: 12px; }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        /* One icon per preference, chosen by what was asked for — not by the
+           palette in force, or `system` could not draw itself. */
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* ── Identity panel (the whole content of this page) ─────── */
+        .identity {
+            width: min(440px, 100%);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+            text-align: center;
+        }
+
+        .identity h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+        .identity-hint { margin: 0; color: var(--text-secondary); }
+
+        /* The address is the point of the page, so it is stated in full and in
+           mono — abbreviate in chrome, never where the value IS the content. */
+        .address {
+            margin: 0;
+            padding: var(--space-4);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-family: var(--mono);
+            font-size: 13px;
+            word-break: break-all;
+            color: var(--text-primary);
+        }
+
+        /* Row of facts, each stating what the SM reports right now. */
+        .facts { list-style: none; margin: 0; padding: 0; text-align: left; }
+
+        .facts li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .facts dfn { font-style: normal; color: var(--text-secondary); }
+
+        .fact-value { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+        .fact-yes { color: var(--ok); }
+        .fact-no { color: var(--text-tertiary); }
+
+        .empty { display: flex; flex-direction: column; align-items: center; color: var(--text-secondary); }
+        .empty svg { width: 50px; height: 50px; margin-bottom: var(--space-4); }
+        .empty p { margin: 0; }
+
+        /* ── Buttons ────────────────────────────────────────────── */
+        button {
+            font: inherit;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--text-tertiary); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        .primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        .primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .ghost { background: none; }
+
+        /* ── Identity modal (the canonical door, §4.1) ──────────── */
+        dialog {
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+
+        .mnemonic-field { position: relative; }
+
+        #mnemonic-input {
+            min-height: 45px; /* the exact height of an action button */
+            display: block;   /* an inline-block textarea leaves 6px of descender below it */
             width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-family: monospace;
+            padding: var(--space-3);
+            padding-right: 32px; /* the copy icon never sits on the last word */
+            overflow: hidden;
+            resize: none;
+            background: none;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--mono);
+            font-size: 13px;
+            text-align: left;
+        }
+
+        /* The dialog focuses it on open, and an accent ring would spotlight the
+           one element here that should stay quiet. The caret says where you are. */
+        #mnemonic-input:focus { border-color: var(--border-strong); }
+        #mnemonic-input::placeholder { color: var(--text-tertiary); }
+
+        /* One contextual control instead of another button in the stack: it
+           appears only once the field holds a phrase. */
+        .field-action {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            display: flex;
+            padding: 5px;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+        }
+
+        .field-action svg { width: 15px; height: 15px; }
+        .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+
+        /* The gap above matches the gap between the buttons: the field is the
+           first step of the same stack, not a separate block. */
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            margin-top: var(--space-2);
+        }
+
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+        /* Takes the slot the demo shortcut leaves when a phrase is generated, so
+           the modal keeps its height across both phases. */
+        .modal-warn {
+            display: grid;
+            place-items: center;
+            min-height: 45px;
+            margin: var(--space-2) 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--warn);
+        }
+
+        .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--text-tertiary); }
+        .modal-foot a { color: var(--accent); }
+
+        /* ── Toasts (canonical component — §6) ──────────────────── */
+        /* The stack itself is the popover, so it joins the top layer and paints
+           above the dialog's ::backdrop — which no z-index can beat. */
+        .toast-stack {
+            position: fixed;
+            inset: auto;
+            right: var(--space-5);
+            bottom: var(--space-5);
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            overflow: visible;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--text-tertiary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
             font-size: 14px;
-            box-sizing: border-box;
-            resize: none; /* Recommended best practice */
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            animation: toast-in .3s ease;
+            transition: opacity .4s, transform .4s;
+        }
+
+        .toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
+        .toast.success .toast-icon { color: var(--ok); }
+        .toast.error   .toast-icon { color: var(--danger); }
+        .toast.warning .toast-icon { color: var(--warn); }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warn); }
+
+        /* The newest reads at full strength; every older one steps back equally. */
+        .toast:not(:last-child) { opacity: .6; }
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { animation: none; }
+            .toast.out { transform: none; }
+        }
+
+        @media (max-width: 820px) {
+            .brand span { display: none; } /* the subtitle is decoration; the width is not */
         }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>WebAuthn Demo</h1>
-        
-        <div id="statusArea" class="status">Awaiting initialization...</div>
 
-        <!-- LOGIN / REGISTER VIEW -->
-        <div id="loginView">
-            <p>Paste your mnemonic phrase to log in, or generate a new identity.</p>
-            <textarea id="mnemonicTextarea" rows="3" placeholder="Enter your 12-word mnemonic phrase here..."></textarea>
+    <!-- A mandatory door: without an identity this page has nothing to show,
+         and the app behind the blur is the thing you are about to hold. -->
+    <dialog id="identity-modal">
+        <h2 class="modal-title">Passkeys</h2>
+        <p class="modal-hint">A mnemonic identity, unlocked by your device.</p>
 
-            <div id="actionButtons">
-                <!-- Shown in default state -->
-                <button id="btnGenerate">Generate New Identity</button>
-                <button id="btnLoginMnemonic">Login with Mnemonic</button>
-                <button id="btnLoginPasskey" class="secondary">Login with Passkey</button>
+        <div class="mnemonic-field">
+            <textarea id="mnemonic-input"
+                placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+            <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </button>
+        </div>
 
-                <!-- Shown after generating an identity -->
-                <div id="newIdentityActions" class="hidden">
-                    <div class="warning">⚠️ SAVE THIS PHRASE SECURELY!</div>
-                    <div class="button-group">
-                        <button id="btnCopyMnemonic" class="secondary">Copy Phrase</button>
-                    </div>
-                    <button id="btnProtectPasskey" class="recommended">Protect Account with Passkey (Recommended)</button>
+        <div class="modal-actions">
+            <button id="generate-btn" class="primary">Generate new identity</button>
+            <button id="login-btn" class="primary">Login with mnemonic</button>
+            <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
+            <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+            <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
+        </div>
+
+        <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
+        <p class="modal-foot">
+            The phrase is the identity. A passkey only unlocks it on this device
+            [<a href="docs.html">see it used in an app</a>].
+        </p>
+    </dialog>
+
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Passkeys <span>· WebAuthn identity</span></h1>
+            <div class="session">
+                <button id="session-addr" class="session-addr" title="Copy your full address"></button>
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+                <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="content">
+            <div id="empty-view" class="empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M15 7a5 5 0 1 1-4.9 6H7v3H4v-3l3.1-3H10.1A5 5 0 0 1 15 7z" />
+                    <circle cx="16.5" cy="10.5" r="1" />
+                </svg>
+                <p>Sign in to see the identity this device is holding.</p>
+            </div>
+
+            <section id="identity-view" class="identity hidden">
+                <div>
+                    <h2>You are signed in</h2>
+                    <p class="identity-hint">
+                        This address signs every write you make. It was derived from your
+                        phrase — no server issued it, and no server can revoke it.
+                    </p>
                 </div>
-            </div>
-        </div>
 
-        <!-- LOGGED IN VIEW -->
-        <div id="appView" class="hidden">
-            <h3>Session Active</h3>
-            <div class="info-box">
-                <p><strong>Logged In As:</strong> <code id="loggedInUserAddress"></code></p>
-                <p><strong>Session protected by Passkey:</strong> <span id="sessionWebAuthnStatus"></span></p>
-            </div>
-            <button id="btnLogout" class="secondary">Logout</button>
-        </div>
+                <p id="full-address" class="address"></p>
+
+                <ul class="facts">
+                    <li>
+                        <dfn>Protected by a passkey</dfn>
+                        <span id="fact-protected" class="fact-value"></span>
+                    </li>
+                    <li>
+                        <dfn>Passkey registered on this device</dfn>
+                        <span id="fact-registered" class="fact-value"></span>
+                    </li>
+                </ul>
+
+                <button id="protect-btn" class="primary hidden">Protect this identity with a passkey</button>
+                <p id="protect-hint" class="identity-hint"></p>
+            </section>
+        </main>
+
+        <footer class="statusbar">
+            <span id="auth-method" class="presence"></span>
+            <span id="presence" class="presence">0 peers</span>
+        </footer>
     </div>
 
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
+
     <script type="module">
-        import { gdb } from "../dist/index.js";
+        /**
+         * Passkeys — a mnemonic identity that your device can unlock.
+         *
+         * The mnemonic IS the identity: it derives the key pair that signs every
+         * write, and it is the only way to recover the account. A passkey never
+         * replaces it — WebAuthn wraps the key so *this* device can release it
+         * without the phrase being typed again. Lose the device and the phrase
+         * still works; lose the phrase and nothing does.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { rtc, sm })                   — boot with the Security Manager
+         *   · db.sm.setSecurityStateChangeCallback     — the single source of truth for the UI
+         *   · db.sm.startNewUserRegistration           — a fresh identity, held in memory
+         *   · db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery — the phrase, once
+         *   · db.sm.loginOrRecoverUserWithMnemonic     — one method for login AND recovery
+         *   · db.sm.protectCurrentIdentityWithWebAuthn — wrap it in a passkey
+         *   · db.sm.loginCurrentUserWithWebAuthn       — unlock it without the phrase
+         *
+         * The flow this page exists to show: generate → protect → logout →
+         * login with passkey, and the phrase never typed a second time.
+         */
+        import { gdb } from "../dist/index.js"
 
-        // DOM Elements
-        const statusArea = document.getElementById('statusArea');
-        const loginView = document.getElementById('loginView');
-        const appView = document.getElementById('appView');
-        const mnemonicTextarea = document.getElementById('mnemonicTextarea');
-        
-        // Buttons
-        const btnGenerate = document.getElementById('btnGenerate');
-        const btnLoginMnemonic = document.getElementById('btnLoginMnemonic');
-        const btnLoginPasskey = document.getElementById('btnLoginPasskey');
-        const newIdentityActions = document.getElementById('newIdentityActions');
-        const btnCopyMnemonic = document.getElementById('btnCopyMnemonic');
-        const btnProtectPasskey = document.getElementById('btnProtectPasskey');
-        const btnLogout = document.getElementById('btnLogout');
-
-        // Display elements
-        const loggedInUserAddress = document.getElementById('loggedInUserAddress');
-        const sessionWebAuthnStatus = document.getElementById('sessionWebAuthnStatus');
-
-        let db = null;
-        
-        // --- Single Source of Truth for UI Updates ---
-        function updateUI(state) {
-            if (!state) return;
-
-            // --- Logged-In State ---
-            if (state.isActive) {
-                loginView.classList.add('hidden');
-                appView.classList.remove('hidden');
-
-                loggedInUserAddress.textContent = state.activeAddress;
-                sessionWebAuthnStatus.textContent = state.isWebAuthnProtected ? "Yes" : "No";
-                statusArea.textContent = `Logged in as ${state.activeAddress.substring(0,10)}...`;
-
-                // Reset textarea for next session
-                mnemonicTextarea.value = '';
-                mnemonicTextarea.readOnly = false;
-                return;
-            }
-
-            // --- Logged-Out State ---
-            loginView.classList.remove('hidden');
-            appView.classList.add('hidden');
-
-            // Conditionally enable Passkey login button
-            btnLoginPasskey.disabled = !state.hasWebAuthnHardwareRegistration;
-            statusArea.textContent = state.hasWebAuthnHardwareRegistration 
-                ? "Ready. Login with Mnemonic or Passkey." 
-                : "Ready. Login with Mnemonic or create a new identity.";
-
-            // --- "Confirmation State" after generating a new identity ---
-            if (state.hasVolatileIdentity) {
-                // Hide default buttons
-                btnGenerate.classList.add('hidden');
-                
-                // Show confirmation-specific actions
-                newIdentityActions.classList.remove('hidden');
-                
-                // Populate and lock the textarea
-                mnemonicTextarea.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery();
-                mnemonicTextarea.readOnly = true;
-                
-                statusArea.textContent = "New identity generated. SAVE YOUR MNEMONIC.";
-            } 
-            // --- Default Logged-Out State ---
-            else {
-                // Show default buttons
-                btnGenerate.classList.remove('hidden');
-
-                // Hide confirmation-specific actions
-                newIdentityActions.classList.add('hidden');
-
-                // Ensure textarea is clear and editable
-                if (document.activeElement !== mnemonicTextarea) {
-                    mnemonicTextarea.value = '';
-                }
-                mnemonicTextarea.readOnly = false;
-            }
+        // Canonical demo superadmin shared by every GenosDB example — a public,
+        // throwaway identity that protects nothing, so any window can log in with
+        // one click. TESTING ONLY: never ship a known mnemonic in a real app.
+        const SUPERADMIN = {
+            name: "Superadmin", emoji: "🛡️",
+            mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper",
+            address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
         }
 
-        async function initializeApp() {            
+        const $ = (id) => document.getElementById(id)
+
+        const el = {
+            modal: $("identity-modal"),
+            mnemonic: $("mnemonic-input"),
+            clip: $("mnemonic-clip"),
+            phraseWarning: $("phrase-warning"),
+            generate: $("generate-btn"),
+            login: $("login-btn"),
+            passkeyProtect: $("passkey-protect-btn"),
+            passkeyLogin: $("passkey-login-btn"),
+            demoLogin: $("demo-login-btn"),
+            sessionAddr: $("session-addr"),
+            themeBtn: $("theme-btn"),
+            logout: $("logout-btn"),
+            emptyView: $("empty-view"),
+            identityView: $("identity-view"),
+            fullAddress: $("full-address"),
+            factProtected: $("fact-protected"),
+            factRegistered: $("fact-registered"),
+            protect: $("protect-btn"),
+            protectHint: $("protect-hint"),
+            authMethod: $("auth-method"),
+            presence: $("presence"),
+            toasts: $("toasts")
+        }
+
+        let db
+        let currentUser = null
+
+        // ── Feedback ────────────────────────────────────────────────
+        // Three, rotating: the oldest drops as newer ones arrive. Never alert(),
+        // which blocks the thread and freezes the very sync being demonstrated.
+        const MAX_TOASTS = 3
+        const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕", warning: "!" }
+
+        const dropToast = (node) => {
+            node.classList.add("out")
+            setTimeout(() => {
+                node.remove()
+                if (!el.toasts.children.length && el.toasts.matches(":popover-open")) el.toasts.hidePopover()
+            }, 400)
+        }
+
+        /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+        const toast = (message, kind = "info") => {
+            const node = document.createElement("div")
+            node.className = `toast ${kind}`
+
+            const icon = document.createElement("span")
+            icon.className = "toast-icon"
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+            icon.setAttribute("aria-hidden", "true") // the text alone is the message
+
+            const text = document.createElement("span")
+            text.className = "toast-text"
+            text.textContent = message
+
+            node.append(icon, text)
+            node.addEventListener("click", () => dropToast(node))
+
+            // Show the stack first: a node appended while the container is still
+            // display:none starts its animation frozen at translateX(100%).
+            if (!el.toasts.matches(":popover-open")) el.toasts.showPopover()
+            el.toasts.append(node)
+            while (el.toasts.children.length > MAX_TOASTS) el.toasts.firstElementChild.remove()
+
+            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
+        }
+
+        const show = (node, visible) => node.classList.toggle("hidden", !visible)
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.webauthnTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.webauthnTheme ?? "system")
+
+        /**
+         * Passkeys need two things, and only the first is obvious.
+         *
+         * A secure context — `https:`, `localhost` or `127.0.0.1` — which is why
+         * `PublicKeyCredential` exists on all of them. And a valid RP ID, which
+         * WebAuthn takes from the hostname and requires to be a *domain*. An IP
+         * is not, so `127.0.0.1` passes every check you would think to make and
+         * then fails at registration with "This is an invalid domain".
+         *
+         * Verified on the same page, same code: localhost reaches the
+         * authenticator, 127.0.0.1 throws SecurityError.
+         */
+        const PASSKEYS_AVAILABLE =
+            window.isSecureContext &&
+            !!window.PublicKeyCredential &&
+            !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
+
+        // ── The door ────────────────────────────────────────────────
+        /**
+         * Drawn from the security state, never from local flags. The SM already
+         * publishes the phase: `hasVolatileIdentity` is true exactly while a
+         * freshly generated phrase sits in memory unsaved, and
+         * `hasWebAuthnHardwareRegistration` says whether this browser holds a
+         * credential — synchronously, unlike `hasExistingWebAuthnRegistration()`,
+         * which may return a Promise (and a Promise is always truthy).
+         */
+        const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+            // `hasVolatileIdentity` stays true after signing in with a fresh phrase —
+            // the identity lives in memory until a passkey secures it. Onboarding,
+            // though, ends the moment you are in.
+            const onboarding = hasVolatileIdentity && !isActive
+
+            show(el.generate, !onboarding)
+            show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
+            show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+            show(el.demoLogin, !onboarding) // hidden while a fresh phrase is unsaved
+            show(el.phraseWarning, onboarding) // only a fresh phrase can still be lost
+            el.mnemonic.readOnly = onboarding
+
+            // The phrase is the SM's to hand over — the app never keeps a copy.
+            if (onboarding) {
+                el.mnemonic.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? el.mnemonic.value
+            } else if (isActive || document.activeElement !== el.mnemonic) {
+                el.mnemonic.value = ""
+            }
+
+            syncClipAffordance()
+            autoGrow()
+        }
+
+        /** Copy only: `readText` raises a permission prompt, `writeText` does not. */
+        const syncClipAffordance = () => show(el.clip, !!el.mnemonic.value.trim())
+
+        /** Grow to fit: compact when empty, whole phrase visible when filled. */
+        const autoGrow = () => {
+            const field = el.mnemonic
+            field.style.height = "auto"
+            // scrollHeight excludes borders, and box-sizing counts them in height.
+            const borders = field.offsetHeight - field.clientHeight
+            field.style.height = `${field.scrollHeight + borders}px`
+        }
+
+        const copyPhrase = async () => {
             try {
-                statusArea.textContent = "Initializing GDB...";
-
-                db = await gdb("webAuthnDemoDB", {
-                    rtc: true,
-                    sm: {
-                        superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"], // Replace with your actual superadmin
-                    }
-                });
-
-                // The callback is our single source of truth. It will be called automatically
-                // after initialization (and after any silent WebAuthn resume).
-                db.sm.setSecurityStateChangeCallback(updateUI);
-
-            } catch (error) {
-                statusArea.textContent = `Initialization Error: ${error.message}`;
-                console.error("Initialization failed:", error);
+                await navigator.clipboard.writeText(el.mnemonic.value)
+                toast("Phrase copied to clipboard", "success")
+            } catch {
+                toast("Clipboard unavailable — select the phrase and copy it", "warning")
             }
         }
 
-        // --- Event Listeners (simple and clean) ---
-        btnGenerate.addEventListener('click', () => {
-            db.sm.startNewUserRegistration().catch(err => console.error(err));
-        });
+        const generateIdentity = async () => {
+            if (!await db.sm.startNewUserRegistration()) return toast("Could not generate an identity", "error")
+            // No UI here: the state change fires and renderIdentityModal draws it.
+            toast("Identity generated — save the phrase before you leave", "success")
+        }
 
-        btnLoginMnemonic.addEventListener('click', () => {
-            const mnemonic = mnemonicTextarea.value.trim();
-            if (mnemonic) {
-                db.sm.loginOrRecoverUserWithMnemonic(mnemonic).catch(err => console.error(err));
+        /** One method for both: a phrase this device has never seen recovers it. */
+        const loginWithMnemonic = async () => {
+            const mnemonic = el.mnemonic.value.trim()
+            if (!mnemonic) return toast("Paste a mnemonic phrase first", "error")
+            try { await db.sm.loginOrRecoverUserWithMnemonic(mnemonic) }
+            catch { toast("That mnemonic is not valid", "error") }
+        }
+
+        const loginAsDemoSuperadmin = async () => {
+            try { await db.sm.loginOrRecoverUserWithMnemonic(SUPERADMIN.mnemonic) }
+            catch { toast("Could not sign in as the demo superadmin", "error") }
+        }
+
+        const protectWithPasskey = async () => {
+            try {
+                if (await db.sm.protectCurrentIdentityWithWebAuthn())
+                    toast("Passkey registered — this device can unlock the identity now", "success")
+                else toast("Passkey registration cancelled", "error")
+            } catch { toast("Could not register the passkey", "error") }
+        }
+
+        const loginWithPasskey = async () => {
+            try {
+                if (!await db.sm.loginCurrentUserWithWebAuthn()) toast("Passkey login cancelled", "error")
+            } catch { toast("Could not sign in with the passkey", "error") }
+        }
+
+        // ── Session ─────────────────────────────────────────────────
+        /**
+         * One callback draws everything, and every branch reads the state it was
+         * given. The SM fires it several times while an identity is generated,
+         * which is harmless precisely because nothing here remembers anything:
+         * each pass redraws, so a repeat is idempotent rather than destructive.
+         */
+        const onSecurityStateChange = (state) => {
+            const { isActive, activeAddress, abbrAddr, isWebAuthnProtected, hasWebAuthnHardwareRegistration } = state
+            currentUser = isActive ? activeAddress : null
+
+            el.sessionAddr.textContent = isActive ? abbrAddr : ""
+            show(el.logout, isActive)
+            show(el.identityView, isActive)
+            show(el.emptyView, !isActive)
+
+            if (isActive) {
+                el.fullAddress.textContent = activeAddress
+                el.factProtected.textContent = isWebAuthnProtected ? "yes" : "no"
+                el.factProtected.className = `fact-value ${isWebAuthnProtected ? "fact-yes" : "fact-no"}`
+                el.factRegistered.textContent = hasWebAuthnHardwareRegistration ? "yes" : "no"
+                el.factRegistered.className = `fact-value ${hasWebAuthnHardwareRegistration ? "fact-yes" : "fact-no"}`
+
+                // Offering to protect what is already protected teaches the wrong
+                // thing; so does offering it where the RP ID makes it impossible.
+                show(el.protect, PASSKEYS_AVAILABLE && !isWebAuthnProtected)
+                el.protectHint.textContent = !PASSKEYS_AVAILABLE
+                    ? "Passkeys need HTTPS or localhost — an IP address is never a valid Relying Party ID."
+                    : isWebAuthnProtected
+                        ? "Log out and back in with the passkey: the phrase is never typed again."
+                        : "The phrase stays the only way to recover this identity elsewhere."
+
+                el.authMethod.textContent = isWebAuthnProtected ? "unlocked by passkey" : "unlocked by mnemonic"
             } else {
-                statusArea.textContent = "Please enter a mnemonic phrase.";
+                el.authMethod.textContent = ""
             }
-        });
 
-        btnLoginPasskey.addEventListener('click', () => {
-            db.sm.loginCurrentUserWithWebAuthn().catch(err => console.error(err));
-        });
+            renderIdentityModal(state)
 
-        btnCopyMnemonic.addEventListener('click', () => {
-            navigator.clipboard.writeText(mnemonicTextarea.value).then(() => {
-                statusArea.textContent = "Mnemonic copied to clipboard!";
-            }).catch(err => {
-                statusArea.textContent = "Failed to copy.";
-                console.error('Copy failed', err);
-            });
-        });
+            if (isActive) return el.modal.close()
+            if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
+        }
 
-        btnProtectPasskey.addEventListener('click', () => {
-            // No need to pass a private key; the SM uses the one from the volatile session.
-            db.sm.protectCurrentIdentityWithWebAuthn().catch(err => console.error(err));
-        });
-        
-        btnLogout.addEventListener('click', () => {
-            db.sm.clearSecurity().catch(err => console.error(err));
-        });
+        // ── Boot ────────────────────────────────────────────────────
+        db = await gdb("genosdb-webauthn-demo", {
+            rtc: true,
+            sm: { superAdmins: [SUPERADMIN.address] }
+        })
 
-        initializeApp();
+        // A mandatory door: Esc is native to <dialog> and must be refused
+        // explicitly, and there is no backdrop handler at all.
+        el.modal.addEventListener("cancel", (e) => { if (!currentUser) e.preventDefault() })
+
+        el.generate.addEventListener("click", generateIdentity)
+        el.login.addEventListener("click", loginWithMnemonic)
+        el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
+        el.passkeyProtect.addEventListener("click", protectWithPasskey)
+        el.passkeyLogin.addEventListener("click", loginWithPasskey)
+        el.protect.addEventListener("click", protectWithPasskey)
+        el.clip.addEventListener("click", copyPhrase)
+        el.mnemonic.addEventListener("input", () => { syncClipAffordance(); autoGrow() })
+        el.logout.addEventListener("click", () => db.sm.clearSecurity())
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+        el.sessionAddr.addEventListener("click", async () => {
+            if (!currentUser) return
+            try {
+                await navigator.clipboard.writeText(currentUser)
+                toast("Address copied to clipboard", "success")
+            } catch {
+                toast(currentUser, "info") // the clipboard can be refused; show it instead
+            }
+        })
+
+        const updatePresence = () => {
+            const count = Object.keys(db.room?.getPeers() ?? {}).length
+            el.presence.textContent = `${count} ${count === 1 ? "peer" : "peers"}`
+        }
+        db.room?.on("peer:join", updatePresence)
+        db.room?.on("peer:leave", updatePresence)
+        updatePresence()
+
+        autoGrow() // the browser may restore field content across reloads
+        db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
     </script>
 </body>
+
 </html>
