@@ -404,10 +404,13 @@
            not asking for attention. Only its border says "editable". */
         .mnemonic-field { position: relative; }
 
+        /* No fixed height: it grows with the phrase (see autoGrow). Compact while
+           empty, and a 24-word phrase is fully visible — you must be able to
+           check a recovery phrase without scrolling it. */
         #mnemonic-input {
-            min-height: 88px;
-            padding-bottom: 30px; /* room for the clipboard button */
             background: none;
+            padding-right: 32px; /* the copy icon never sits on the last word */
+            overflow: hidden;
             font-family: var(--mono);
             font-size: 13px;
             text-align: left;
@@ -813,6 +816,7 @@
             el.mnemonic.value = ""
             el.mnemonic.readOnly = false
             syncClipAffordance()
+            autoGrow()
             setModalPhase("signed-out")
         }
 
@@ -821,6 +825,7 @@
             if (!identity) return toast("Could not generate an identity", "error")
             el.mnemonic.value = identity.mnemonic
             syncClipAffordance()
+            autoGrow()
             setModalPhase("generated")
             toast("Identity generated — save the phrase before you leave", "success")
         }
@@ -834,6 +839,15 @@
          * gesture the keyboard already handles.
          */
         const syncClipAffordance = () => show(el.clip, !!el.mnemonic.value.trim())
+
+        /** Grow to fit: compact when empty, whole phrase visible when filled. */
+        const autoGrow = () => {
+            const field = el.mnemonic
+            field.style.height = "auto"
+            // scrollHeight excludes borders, and box-sizing counts them in height.
+            const borders = field.offsetHeight - field.clientHeight
+            field.style.height = `${field.scrollHeight + borders}px`
+        }
 
         const copyPhrase = async () => {
             try {
@@ -1283,7 +1297,7 @@
         el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
         el.clip.addEventListener("click", copyPhrase)
-        el.mnemonic.addEventListener("input", syncClipAffordance)
+        el.mnemonic.addEventListener("input", () => { syncClipAffordance(); autoGrow() })
         el.login.addEventListener("click", loginWithMnemonic)
         el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
         el.passkeyProtect.addEventListener("click", protectWithPasskey)
