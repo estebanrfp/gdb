@@ -166,6 +166,15 @@
 
         .sidebar-head .icon-btn { margin-right: -6px; } /* same optical edge as above */
 
+        /* Marks the field as a search without a box around it — the one job the
+           missing border used to do. Not a button: it is a label, not an action. */
+        .search-icon {
+            flex: 0 0 15px;
+            width: 15px;
+            height: 15px;
+            color: var(--text-tertiary);
+        }
+
         /* No box: the band already delimits it, and a framed field competing with
            the list below would make the search look like the page's subject.
            Needs to outrank `input[type="text"]`, which it ties with on specificity
@@ -798,6 +807,11 @@
         <div class="body">
             <nav class="sidebar">
                 <div class="sidebar-head">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.7-3.7" />
+                    </svg>
                     <input type="text" id="search-input" class="search" placeholder="Search documents…"
                         aria-label="Search documents">
                     <button id="new-doc-btn" class="icon-btn" disabled title="Sign in to create documents"

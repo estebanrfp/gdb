@@ -634,6 +634,7 @@ Two things every full-profile app gets right or spends a day debugging: where th
   <div class="body">
     <nav class="sidebar">
       <div class="sidebar-head">
+        <svg class="search-icon" aria-hidden="true">…</svg>
         <input id="search-input" class="search" type="text" placeholder="Search…" aria-label="Search">
         <button id="new-btn" class="icon-btn" disabled title="Sign in to create" aria-label="New">＋</button>
       </div>
@@ -658,7 +659,7 @@ Two things every full-profile app gets right or spends a day debugging: where th
 
 **Where each control lives, and why:**
 
-- **Search heads the list it filters**, inside the sidebar, with *new* beside it as a `＋`. A full-width button spends a whole band on one word, and search belongs to the list, not to the app.
+- **Search heads the list it filters**, inside the sidebar, with *new* beside it as a `＋`. A full-width button spends a whole band on one word, and search belongs to the list, not to the app. The field drops its box, so a magnifier sits at its head to do the one job the border used to: say what the field is. It is a label, not a button — no hover, no hit area, `aria-hidden` because the input already carries the label.
 - **The top bar holds only what is true of the session** — address, theme, logout — as icons. It never resizes and nothing in it belongs to the open item.
 - **The status bar sits under the content column only**, not across the sidebar: the list runs the full height beside it, unbroken, and the bar stays with the document it describes. Item state on the left, connection state on the right.
 
