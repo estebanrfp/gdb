@@ -488,12 +488,13 @@
         .field-action svg { width: 15px; height: 15px; }
         .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
 
-        /* No margin above: the field and the login button are one gesture, not
-           two, so the buttons sit straight under the phrase they act on. */
+        /* The gap above matches the gap between the buttons: the field is the
+           first step of the same stack, not a separate block. */
         .modal-actions {
             display: flex;
             flex-direction: column;
             gap: var(--space-2);
+            margin-top: var(--space-2);
         }
 
         /* Full width and tall enough to read without aiming. */
