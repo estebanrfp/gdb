@@ -588,17 +588,18 @@ Two things every full-profile app gets right or spends a day debugging: where th
   <header class="topbar">
     <h1 class="brand">App name <span>· what it demonstrates</span></h1>
     <div class="session">
-      <input id="search-input" class="search" type="text" placeholder="Search…" aria-label="Search">
-      <span id="presence" class="presence">0 peers</span>
       <button id="session-addr" class="session-addr" title="Copy your full address"></button>
-      <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme">…</button>
-      <button id="logout-btn" class="ghost hidden">Logout</button>
+      <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">…</button>
+      <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">…</button>
     </div>
   </header>
 
   <div class="body">
     <nav class="sidebar">
-      <button id="new-btn" class="primary" disabled title="Sign in to create">New document</button>
+      <div class="sidebar-head">
+        <input id="search-input" class="search" type="text" placeholder="Search…" aria-label="Search">
+        <button id="new-btn" class="icon-btn" disabled title="Sign in to create" aria-label="New">＋</button>
+      </div>
       <ul id="item-list" class="doc-list"></ul>
       <p id="list-empty" class="list-empty hidden">Nothing matches that search.</p>
     </nav>
@@ -608,10 +609,21 @@ Two things every full-profile app gets right or spends a day debugging: where th
         <div id="empty-view" class="empty">…</div>
         <article id="editor-view" class="editor hidden">…</article>
       </main>
+
+      <footer class="statusbar">
+        <div class="editor-meta">…permission · owner · timestamp…</div>
+        <span id="presence" class="presence">0 peers</span>
+      </footer>
     </div>
   </div>
 </div>
 ```
+
+**Where each control lives, and why:**
+
+- **Search heads the list it filters**, inside the sidebar, with *new* beside it as a `＋`. A full-width button spends a whole band on one word, and search belongs to the list, not to the app.
+- **The top bar holds only what is true of the session** — address, theme, logout — as icons. It never resizes and nothing in it belongs to the open item.
+- **The status bar sits under the content column only**, not across the sidebar: the list runs the full height beside it, unbroken, and the bar stays with the document it describes. Item state on the left, connection state on the right.
 
 ```css
 body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
@@ -626,6 +638,20 @@ body   { height: 100vh; overflow: hidden; background: var(--bg-primary); }
            background: var(--bg-secondary); }
 .content { flex: 1; min-height: 0; display: flex; flex-direction: column;
            overflow-y: auto; padding: var(--space-5); }
+
+/* Search and "new" share one band at the head of the list. */
+.sidebar-head { display: flex; align-items: center; gap: var(--space-2);
+                padding: var(--space-2) var(--space-3);
+                border-bottom: 1px solid var(--border-subtle); }
+
+/* No box: the band already delimits it. Needs the element in the selector to
+   outrank `input[type="text"]`, which it ties with and which is declared later. */
+.sidebar-head input.search { flex: 1; min-width: 0; border: none; background: none; font-size: 13px; }
+
+/* The mirror of the top bar, under the content column only. */
+.statusbar { display: flex; align-items: center; justify-content: space-between;
+             gap: var(--space-4); padding: var(--space-3) var(--space-5);
+             background: var(--bg-secondary); border-top: 1px solid var(--border-subtle); }
 ```
 
 - **`min-height: 0` on every grid and flex child.** Without it a flex item refuses to shrink below its content, the column grows past the viewport, and `overflow-y` on `.content` never engages — the whole page scrolls instead of the list. This is the single most common layout bug in these apps.
@@ -688,13 +714,15 @@ The organism behind the canonical full-profile app: a list on the left, one open
 
 ```
 ┌──────────────────────────────────────────┐
-│ brand           search · peers · session │
+│ brand                  0x12…cd  ☀  ⏻     │
 ├───────────┬──────────────────────────────┤
-│ [New]     │  Title            READ owner │
-│ ─────────╴│  ────────────────────────────│
+│ search  ＋ │  Title      Preview Share Del│
+│ ──────────│  ────────────────────────────│
 │ ▍item     │                              │
-│  item     │  the document, no border      │
+│  item     │  the document, no border     │
 │  item     │                              │
+│           ├──────────────────────────────┤
+│           │ READ owner 0x12…cd   3 peers │
 └───────────┴──────────────────────────────┘
 ```
 
@@ -702,7 +730,7 @@ The organism behind the canonical full-profile app: a list on the left, one open
 - **Autosave, no Save button.** A debounce of ~600ms after the last keystroke, with a one-word status (`saving…` / `saved`) next to the title. A Save button in a P2P app is a lie about how the data travels — the graph has already accepted the write and told the peers. Guard the render against clobbering what the user is typing: skip it while `document.activeElement` is the field being edited.
 - **Secondary actions open a dialog, they don't expand the view.** Sharing, permissions, history — a panel that unfolds inside the content column shifts the text the user is reading. Three buttons in the header (`Preview` · `Share` · `Delete`) and everything else behind them.
 - **The editor has no borders** — it *is* the content, not a form field (§6). The empty state that precedes it is an icon over one line, centred on the whole canvas: an empty editor should read as waiting for you, not as a page that failed to load.
-- **The permission is stated, not implied**: a quiet tag by the title (`READ` / `WRITE` / `DELETE`) plus the owner's abbreviated address. In a permissions app, the user must be able to see why the field is disabled without clicking it.
+- **The permission is stated, not implied**, in the status bar: a quiet tag (`READ` / `WRITE` / `DELETE`), the owner's abbreviated address and the timestamp. In a permissions app the user must be able to see why a field is disabled without clicking it — and reporting it below the text rather than above keeps it out of the way of the reading. Drop the address when the tag already reads `OWNER`: it is your own, and naming it says the same thing twice.
 
 ### 5.3 Admin panels & dashboards
 
