@@ -416,7 +416,6 @@ const db = await gdb('mydb', {
 
 ### Notes
 - ACLs is backward-compatible and opt-in. Existing apps continue working without changes.
-- Tested with `notesdev.html` for collaborative note sharing with permissions.
 
 ## [0.9.8] - 2025-08-30
 
