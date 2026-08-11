@@ -20,7 +20,7 @@ How much of this guide applies depends on what the page is *for*, not on how it 
 | | **Minimal profile** | **Full profile** |
 | --- | --- | --- |
 | What it is | A page that teaches one API | An application: identity, permissions, state |
-| Examples | `todolist` · `singleNode` · `geo` · `paste` | `docs` · `acls` · `governance` · `collab` · `notesdev` |
+| Examples | `todolist` · `singleNode` · `geo` · `paste` | `docs` · `acls` · `governance` · `collab` |
 | Chrome | None — one column, no sidebar, no top bar | Sidebar · sticky top bar · full-height content (§5) |
 | Applies | §2 tokens · §3 data display · §7 realtime · §8 semantics | The whole guide |
 | Skips | §4 identity · §5 architecture · §6 components it doesn't use | — |
