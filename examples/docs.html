@@ -593,14 +593,7 @@
             color: var(--warn);
         }
 
-        .modal-foot {
-            margin: var(--space-5) 0 0;
-            font-size: 12px;
-            color: var(--text-tertiary);
-        }
 
-        .modal-foot a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
-        .modal-foot a:hover { color: var(--accent-hover); }
 
         /* The share dialog carries real content, so it reads left-aligned. */
         #share-modal { width: min(520px, calc(100vw - var(--space-6))); text-align: left; }
@@ -727,9 +720,11 @@
         </div>
 
         <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
-        <p class="modal-foot">
-            Demo writes are open. Real apps earn access [<a href="governance.html">governance</a>].
-        </p>
+
+        <!-- Guidance for whoever reads this file, deliberately not on screen:
+             this demo grants `write` to guests so two windows can collaborate
+             immediately. A real app leaves guests read-only and has them earn
+             the role — see governance.html for how that promotion is signed. -->
     </dialog>
 
     <!-- Confirmation before anything irreversible. Never window.confirm: it

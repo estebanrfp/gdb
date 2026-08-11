@@ -343,9 +343,6 @@
             color: var(--warn);
         }
 
-        .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--text-tertiary); }
-        .modal-foot a { color: var(--accent); }
-
         /* ── Toasts (canonical component — §6) ──────────────────── */
         /* The stack itself is the popover, so it joins the top layer and paints
            above the dialog's ::backdrop — which no z-index can beat. */
@@ -444,10 +441,12 @@
         </div>
 
         <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
-        <p class="modal-foot">
-            The phrase is the identity. A passkey only unlocks it on this device
-            [<a href="docs.html">see it used in an app</a>].
-        </p>
+
+        <!-- Guidance for whoever reads this file, deliberately not on screen:
+             the phrase IS the identity — it derives the signing key and is the
+             only way to recover the account. A passkey never replaces it; it
+             wraps it so this device can release it without typing it again.
+             See the same door inside a real app in docs.html. -->
     </dialog>
 
     <div class="layout">

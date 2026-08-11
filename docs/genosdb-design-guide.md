@@ -253,7 +253,9 @@ Four blocks, in this order. Anything that needs a paragraph goes to the foot, un
   </div>
 
   <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
-  <p class="modal-foot">Demo writes are open. Real apps earn access [<a href="governance.html">governance</a>].</p>
+
+  <!-- Guidance for whoever reads this file, deliberately not on screen:
+       what this demo relaxes, and where the real pattern lives. -->
 </dialog>
 ```
 
@@ -481,7 +483,7 @@ Keeping the app visible behind the blur matters in both modes: a full-bleed logi
 
 - **Logging out returns to phase 1 with the modal open** — signed-out *is* the modal's state.
 - **Re-entry without reloading is contextual**, not chrome: a clickable read-only status hint, or the explanatory affordance of a gated control, re-opens the modal. The top-right area belongs to the session chip alone and stays empty while signed out.
-- The foot carries the trust model in one line, with the link where the reader reaches for it. Examples add the one-click demo shortcut of §4.5; production apps ship no mnemonic in their source.
+- **Explain the demo in a comment, not on screen.** An example carries things a real app would not — guest writes left open, a known mnemonic, a relaxed role ladder — and they have to be stated somewhere or the reader copies them into production. That somewhere is an HTML comment next to the markup it concerns. The door stays four blocks and nothing else; the person who needs the caveat is reading the file, not looking at the screen. Examples also add the one-click demo shortcut of §4.5; production apps ship no mnemonic in their source.
 
 ### 4.2 Session: always top-right
 
