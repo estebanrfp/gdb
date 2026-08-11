@@ -303,35 +303,56 @@ const PASSKEYS_AVAILABLE =
     !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
 ```
 
-#### Three phases, one function
+#### The phase comes from the state, not from a variable
 
-Button visibility is derived from the phase — never toggled one button at a time from scattered handlers.
+**The SM already publishes the phase — do not track it yourself.** The state passed to the session callback carries six properties, and the [SM API Reference](sm-api-reference.md) is explicit that the UI is driven by them:
+
+| Property | What it says |
+| --- | --- |
+| `isActive` | A session is open |
+| `activeAddress` · `abbrAddr` | The address, raw and pre-abbreviated for display |
+| `hasVolatileIdentity` | A freshly generated identity sits in memory, not yet secured |
+| `hasWebAuthnHardwareRegistration` | This browser holds a WebAuthn credential |
+| `isWebAuthnProtected` | The current session was opened or protected by a passkey |
+
+Every button follows from those. An app that mirrors them in its own flags has built a second source of truth, and the day the two disagree is the day the freshly generated phrase gets wiped before it was written down.
 
 | Phase | Visible | Hidden |
 | --- | --- | --- |
 | Signed out | `Generate new identity` · `Login with mnemonic` · `Login with passkey` *(only if a registration exists)* · demo shortcut | `Protect with passkey` · the warning · the copy icon |
-| After generating | `Login with mnemonic` *(must remain — no dead ends)* · `Protect with passkey` · the warning · the copy icon | `Generate new identity` *(one identity at a time)* · demo shortcut *(never invite abandoning an unsaved phrase)* |
-| Session active | — the modal closes itself; a logout resets to phase 1 and reopens it | |
+| Onboarding (`hasVolatileIdentity && !isActive`) | `Login with mnemonic` *(must remain — no dead ends)* · `Protect with passkey` · the warning · the copy icon | `Generate new identity` *(one identity at a time)* · demo shortcut *(never invite abandoning an unsaved phrase)* |
+| Session active | — the modal closes itself; a logout returns to phase 1 and reopens it | |
 
 ```javascript
-const setModalPhase = (phase) => {
-    const generated = phase === "generated"
-    show(el.generate, !generated)
-    show(el.passkeyProtect, generated && PASSKEYS_AVAILABLE)
-    show(el.passkeyLogin, !generated && PASSKEYS_AVAILABLE && db.sm.hasExistingWebAuthnRegistration())
-    show(el.demoLogin, !generated)      // hidden while a fresh phrase is unsaved
-    show(el.phraseWarning, generated)   // only a fresh phrase can still be lost
-    el.mnemonic.readOnly = generated
-}
+const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+    // `hasVolatileIdentity` stays true after signing in with a fresh phrase — the
+    // identity lives in memory until a passkey secures it. Onboarding, though, ends
+    // the moment you are in, and the phrase must not outlive it on screen.
+    const onboarding = hasVolatileIdentity && !isActive
 
-const resetModal = () => {
-    el.mnemonic.value = ""
-    el.mnemonic.readOnly = false
+    show(el.generate, !onboarding)
+    show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
+    show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+    show(el.demoLogin, !onboarding)      // hidden while a fresh phrase is unsaved
+    show(el.phraseWarning, onboarding)   // only a fresh phrase can still be lost
+    el.mnemonic.readOnly = onboarding
+
+    // The phrase is the SM's to hand over — the app never keeps a copy.
+    if (onboarding) {
+        el.mnemonic.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? el.mnemonic.value
+    } else if (isActive || document.activeElement !== el.mnemonic) {
+        el.mnemonic.value = ""   // signed in: always clear. Signed out: never mid-paste.
+    }
+
     syncClipAffordance()
     autoGrow()
-    setModalPhase("signed-out")
 }
 ```
+
+Two things fall out of rendering from the state instead of tracking it:
+
+- **`hasWebAuthnHardwareRegistration` replaces `hasExistingWebAuthnRegistration()`** inside the callback. The method may return a `Promise`, which in a boolean expression is always truthy — the property is synchronous and already current.
+- **There is no reset function and no `wasActive` flag.** The SM fires this callback several times while an identity is being generated, and that is harmless precisely because nothing here remembers anything: each pass redraws from the state, so a repeat is idempotent instead of destructive.
 
 The field grows with its content, so an empty field is compact and a 24-word phrase is fully visible — you must be able to check a recovery phrase without scrolling it:
 
@@ -351,11 +372,8 @@ Each one is a single SM call plus a toast on failure. The success path never toa
 
 ```javascript
 const generateIdentity = async () => {
-    const identity = await db.sm.startNewUserRegistration()
-    if (!identity) return toast("Could not generate an identity", "error")
-    el.mnemonic.value = identity.mnemonic
-    syncClipAffordance(); autoGrow()
-    setModalPhase("generated")
+    if (!await db.sm.startNewUserRegistration()) return toast("Could not generate an identity", "error")
+    // No UI here: the state change fires and renderIdentityModal draws it.
     toast("Identity generated — save the phrase before you leave", "success")
 }
 
@@ -386,43 +404,33 @@ const loginWithPasskey = async () => {
 `db.sm.setSecurityStateChangeCallback` is the **single source of truth**: it opens and closes the door, resets the field, and toggles every gated control. No other code path duplicates it, and nothing else calls `showModal()` — not even at boot.
 
 ```javascript
-// The SM emits several inactive notifications while generating or logging in.
-// Only a real active → inactive transition tears the session down: resetting
-// on every notification would wipe the freshly generated phrase before the
-// user has saved it.
-let wasActive = null
-
-const onSecurityStateChange = ({ isActive, activeAddress, abbrAddr }) => {
+const onSecurityStateChange = (state) => {
+    const { isActive, activeAddress, abbrAddr } = state
     currentUser = isActive ? activeAddress : null
 
     el.sessionAddr.textContent = isActive ? abbrAddr : ""
     show(el.logout, isActive)
     el.newDoc.disabled = !isActive
 
+    renderIdentityModal(state)
+
     // The data subscription is NOT touched here. It is subscribed once at boot
     // and lives for the whole page: the query is the same signed in or out, and
     // re-subscribing on every session change is what tears down a live
     // subscription and leaves the other window frozen (§7.1).
-    if (isActive) {
-        el.modal.close()
-        resetModal()
-    } else if (wasActive) {
-        resetModal()
-        el.modal.showModal()          // signed out *is* the modal's state
-    } else if (wasActive === null && !el.modal.open) {
-        el.modal.showModal()          // first load without a session
-    }
+    if (isActive) return el.modal.close()
 
-    wasActive = isActive
+    closeOpenItem()                          // no session, no open item — a no-op when none is
+    if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
 }
 
 db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
 ```
 
-Three traps live in those fifteen lines:
+Three things make those lines safe to run repeatedly:
 
-- **`wasActive` is not bookkeeping.** The SM reports `isActive: false` several times while an identity is being generated. Reacting to the notification instead of to the *transition* clears the textarea between generating a phrase and reading it — the phrase is gone, and it was the only copy.
-- **The starting value is `null`, not `false`.** First load and logout are different events: only the second closes an open document and resets state.
+- **The whole state object is passed on, not destructured away.** `renderIdentityModal(state)` gets every property; pulling out three and forwarding those three is how an app ends up re-deriving the rest by hand.
+- **Every branch is idempotent.** The SM reports `isActive: false` several times while an identity is being generated, so a callback that *remembers* — a reset flag, a previous value — will eventually act on a repeat and wipe a phrase that was never written down. One that only redraws cannot.
 - **The data subscription stays out of here.** Calling `db.map()` again on every session change is the most common way to break realtime in a GenosDB app: the new subscription replaces the live one, and the *other* window stops updating (§7.1).
 
 #### Mandatory or dismissible
@@ -881,7 +889,7 @@ Before shipping a GenosDB app or example, verify. The list is written for the **
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Palette picked by what the page shows (§2) and applied by redefining token *values* only — never a component rule, never a second vocabulary. No runtime toggle unless the product truly requires it.
-3. ☐ Identity uses the canonical door of §4.1 verbatim — single-textarea flow, three phases, the `wasActive` guard in the session callback, passkeys gated on the RP ID; mandatory or dismissible per the table, never a × button, no standing Sign-in button, re-entry via contextual CTAs.
+3. ☐ Identity uses the canonical door of §4.1 verbatim — single-textarea flow, **every button derived from the security state** (no local phase flags), passkeys gated on the RP ID; mandatory or dismissible per the table, never a × button, no standing Sign-in button, re-entry via contextual CTAs.
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
 5. ☐ Examples use the canonical demo identities (§4.5) — `superAdmins` points at `SUPERADMIN.address`, never a placeholder, and each identity in the file has a one-click login button.
 6. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.

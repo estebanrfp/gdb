@@ -906,32 +906,45 @@
             !!window.PublicKeyCredential &&
             !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
 
-        // ── Identity modal (three-phase state machine) ──────────────
-        const setModalPhase = (phase) => {
-            const generated = phase === "generated"
-            show(el.generate, !generated)
-            show(el.passkeyProtect, generated && PASSKEYS_AVAILABLE)
-            show(el.passkeyLogin, !generated && PASSKEYS_AVAILABLE && db.sm.hasExistingWebAuthnRegistration())
-            show(el.demoLogin, !generated) // hidden while a fresh phrase is unsaved
-            show(el.phraseWarning, generated) // only a fresh phrase can still be lost
-            el.mnemonic.readOnly = generated
-        }
+        /**
+         * The modal is drawn from the security state, never from local flags.
+         *
+         * The SM already publishes the phase: `hasVolatileIdentity` is true
+         * exactly while a freshly generated phrase sits in memory unsaved, and
+         * `hasWebAuthnHardwareRegistration` says whether this browser holds a
+         * credential — synchronously, unlike `hasExistingWebAuthnRegistration()`,
+         * which may return a Promise. Tracking any of this in our own variables
+         * would be a second source of truth that drifts from the first.
+         */
+        const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+            // `hasVolatileIdentity` stays true after signing in with a fresh phrase —
+            // the identity is in memory until a passkey secures it. Onboarding, though,
+            // ends the moment you are in, and the phrase must not outlive it on screen.
+            const onboarding = hasVolatileIdentity && !isActive
 
-        const resetModal = () => {
-            el.mnemonic.value = ""
-            el.mnemonic.readOnly = false
+            show(el.generate, !onboarding)
+            show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
+            show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+            show(el.demoLogin, !onboarding) // hidden while a fresh phrase is unsaved
+            show(el.phraseWarning, onboarding) // only a fresh phrase can still be lost
+            el.mnemonic.readOnly = onboarding
+
+            // The phrase is the SM's to hand over — we never keep a copy of it.
+            if (onboarding) {
+                el.mnemonic.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? el.mnemonic.value
+            } else if (isActive || document.activeElement !== el.mnemonic) {
+                // Signed in: always clear — nobody is mid-paste once they are through
+                // the door, and the phrase must not sit in the DOM behind it.
+                el.mnemonic.value = ""
+            }
+
             syncClipAffordance()
             autoGrow()
-            setModalPhase("signed-out")
         }
 
         const generateIdentity = async () => {
-            const identity = await db.sm.startNewUserRegistration()
-            if (!identity) return toast("Could not generate an identity", "error")
-            el.mnemonic.value = identity.mnemonic
-            syncClipAffordance()
-            autoGrow()
-            setModalPhase("generated")
+            if (!await db.sm.startNewUserRegistration()) return toast("Could not generate an identity", "error")
+            // No UI here: the state change fires and renderIdentityModal draws it.
             toast("Identity generated — save the phrase before you leave", "success")
         }
 
@@ -1001,13 +1014,15 @@
         }
 
         // ── Session ─────────────────────────────────────────────────
-        // The SM emits several inactive notifications while generating or
-        // logging in. Only a real active → inactive transition tears the
-        // session down: resetting on every notification would wipe the
-        // freshly generated phrase before the user has saved it.
-        let wasActive = null
-
-        const onSecurityStateChange = ({ isActive, activeAddress, abbrAddr }) => {
+        /**
+         * One callback draws the whole session, and every branch reads the state
+         * it was given. The SM fires this several times while an identity is
+         * being generated — which is harmless precisely because nothing here
+         * remembers anything: each pass redraws from the state, so a repeat is
+         * idempotent rather than destructive.
+         */
+        const onSecurityStateChange = (state) => {
+            const { isActive, activeAddress, abbrAddr } = state
             currentUser = isActive ? activeAddress : null
 
             el.sessionAddr.textContent = isActive ? abbrAddr : ""
@@ -1015,22 +1030,16 @@
             el.newDoc.disabled = !isActive
             el.newDoc.title = isActive ? "" : "Sign in to create documents"
 
+            renderIdentityModal(state)
+
             // The document list is NOT touched here. It is subscribed once at boot
             // and lives for the whole page: the query is the same signed in or out,
             // and re-subscribing on every session change is what tears down a live
             // subscription and leaves the other window frozen.
-            if (isActive) {
-                el.modal.close()
-                resetModal()
-            } else if (wasActive) {
-                closeDocument()
-                resetModal()
-                el.modal.showModal() // signed out *is* the modal's state
-            } else if (wasActive === null && !el.modal.open) {
-                el.modal.showModal() // first load without a session
-            }
+            if (isActive) return el.modal.close()
 
-            wasActive = isActive
+            closeDocument() // no session, no open document — a no-op when none is
+            if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
         }
 
         // ── Document list (one subscription, four actions) ──────────
