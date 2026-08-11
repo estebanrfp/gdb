@@ -455,7 +455,6 @@
                matches them instead of collapsing to a single line when autoGrow
                measures nothing (which is what a logout leaves behind). */
             min-height: 45px; /* the exact height of an action button */
-            border-color: var(--border-subtle);
             background: none;
             padding-right: 32px; /* the copy icon never sits on the last word */
             overflow: hidden;
@@ -479,10 +478,11 @@
             color: var(--text-tertiary);
         }
 
-        /* The dialog focuses this field on open, and an accent border would put
-           a spotlight on the one thing here that should stay quiet. The caret
-           already says where you are. */
-        #mnemonic-input:focus { border-color: var(--border-subtle); }
+        /* Keeps its ordinary grey border — it still has to read as a field — but
+           the dialog focuses it on open, and turning that border accent-blue
+           would spotlight the one element here that should stay quiet. In a
+           text field the caret already says where you are. */
+        #mnemonic-input:focus { border-color: var(--border-strong); }
 
         .field-action svg { width: 15px; height: 15px; }
         .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
