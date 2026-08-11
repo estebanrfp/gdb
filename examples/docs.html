@@ -145,12 +145,15 @@
 
         .sidebar > button { margin: var(--space-4); }
 
+        /* One surface for the whole app: bar, list and document share a tone and
+           the borders do the dividing. A darker well under the document reads
+           as a separate pane, and the document is not a pane — it is the page. */
         .main {
             display: flex;
             flex-direction: column;
             min-width: 0;
             min-height: 0;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
         }
 
         .content {
@@ -420,8 +423,19 @@
 
         .collab-addr { font-family: var(--mono); color: var(--text-secondary); font-size: 13px; }
 
-        .empty { color: var(--text-secondary); max-width: 46ch; }
-        .empty h2 { margin: 0 0 var(--space-2); font-size: 16px; color: var(--text-primary); }
+        /* Centred on the whole canvas, an icon over one line: an empty editor
+           should read as waiting for you, not as a page that failed to load. */
+        .empty {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-secondary);
+        }
+
+        .empty svg { width: 50px; height: 50px; margin-bottom: var(--space-4); }
+        .empty p { margin: 0; }
 
         /* ── Identity modal ─────────────────────────────────────── */
         /* A door, not a form: one line of context, the field, and full-width
@@ -464,10 +478,10 @@
             text-align: left;
         }
 
-        /* One contextual control instead of another button in the stack:
-           it pastes while the field is empty, copies once it holds a phrase. */
-        /* A line icon, not a pictogram: it inherits the text colour and carries
-           no palette of its own, like every other mark in the interface. */
+        /* One contextual control instead of another button in the stack: it
+           appears only once the field holds a phrase. A line icon, not a
+           pictogram — it inherits the text colour and carries no palette of
+           its own, like every other mark in the interface. */
         .field-action {
             position: absolute;
             right: 6px;
@@ -695,8 +709,12 @@
             <div class="main">
                 <main class="content">
                     <div id="empty-view" class="empty">
-                        <h2>No document open</h2>
-                        <p id="empty-hint">Create one to become its owner, or open a document a peer shared with you.</p>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
+                        <p>Select a document to view or create a new one.</p>
                     </div>
 
                     <article id="editor-view" class="editor hidden">
@@ -776,7 +794,6 @@
             docList: $("doc-list"),
             listEmpty: $("list-empty"),
             emptyView: $("empty-view"),
-            emptyHint: $("empty-hint"),
             editorView: $("editor-view"),
             title: $("doc-title"),
             content: $("doc-content"),
@@ -994,7 +1011,6 @@
             show(el.logout, isActive)
             el.newDoc.disabled = !isActive
             el.newDoc.title = isActive ? "" : "Sign in to create documents"
-            el.emptyHint.textContent = "Create one to become its owner, or open a document a peer shared with you."
 
             // The document list is NOT touched here. It is subscribed once at boot
             // and lives for the whole page: the query is the same signed in or out,

@@ -190,52 +190,242 @@ themeBtn.onclick = () => applyTheme(document.documentElement.dataset.theme === '
 
 This is the most GenosDB-specific chapter: the Security Manager's methods define the flow, the guide defines its shape. (Method-level best practices live in the [SM API Reference](sm-api-reference.md); this section covers the visual pattern.)
 
-### 4.1 Login & registration: a centered modal
+### 4.1 The identity door — the canonical implementation
 
-Identity actions live in a **centered modal** (native `<dialog>`), not in a sidebar panel or a separate page. Rationale: the mnemonic flow is short, focused and security-critical — a modal isolates it, keeps the app visible behind a dimmed backdrop, and disappears the instant the session activates.
+Every GenosDB app opens the same way: there is no server to log into, so the "login screen" is a door onto a graph that is already on the visitor's machine. This is the whole flow — markup, styling and wiring — settled across several examples. **Copy it; do not redesign it.** The parts that look like arbitrary detail are each the fix for a specific failure, noted where it applies.
 
-The modal contains, in order:
+Identity actions live in a **centered modal** (native `<dialog>`), never a sidebar panel or a separate page: the mnemonic flow is short, focused and security-critical, and a modal isolates it, keeps the app visible behind a dimmed backdrop, and disappears the instant the session activates.
 
-1. A one-paragraph hint explaining the trust model (e.g. what a guest can do, how roles are earned).
-2. **One `<textarea>`** serving both purposes: paste an existing mnemonic, or display a freshly generated one (set `readOnly` after generating; `resize: none`).
-3. Action row: `Generate identity` · `Copy phrase` · `Login with mnemonic` · `Protect with passkey` (after generating) · `Login with passkey` (only if `db.sm.hasExistingWebAuthnRegistration()`).
+**No standing "Sign in" button — the modal IS the door.** A distributed app has no server-side login page, so don't emulate one with a persistent button. The modal opens automatically on every load without an active session; returning passkey users never see it, because their session resumes and the security callback closes it.
 
-> **Passkeys need a valid RP ID, not just a secure context.** WebAuthn derives its Relying Party ID from the hostname and requires a *domain*; an IP address never qualifies. `127.0.0.1` is a secure context, so `PublicKeyCredential` exists and every check you would think to write passes — and registration then fails with `SecurityError: This is an invalid domain`. Verified on the same page and the same code: `localhost` reaches the authenticator, `127.0.0.1` throws. Gate the buttons on all three conditions, or a developer testing on an IP meets a raw browser error:
->
-> ```javascript
-> const PASSKEYS_AVAILABLE =
->     window.isSecureContext &&
->     !!window.PublicKeyCredential &&
->     !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
-> ```
-4. A demo/superadmin one-click shortcut, in examples and testbeds only (§4.5).
+#### The markup
 
-Wiring rules:
+Four blocks, in this order. Anything that needs a paragraph goes to the foot, under the fold of attention.
 
-```javascript
-// Backdrop click closes (the dialog itself is the event target then);
-// Esc is native to <dialog>. No × close button in the corner: the modal
-// is a door, not a window — a corner × reads as app-window chrome and,
-// in the backup phase, invites closing before the phrase is saved.
-modal.onclick = (e) => { if (e.target === modal) modal.close() }
+```html
+<dialog id="identity-modal">
+  <h2 class="modal-title">App name</h2>
+  <p class="modal-hint">One line on what this app is.</p>
+
+  <div class="mnemonic-field">
+    <textarea id="mnemonic-input"
+      placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+    <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="9" width="13" height="13" rx="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="modal-actions">
+    <button id="generate-btn" class="primary">Generate new identity</button>
+    <button id="login-btn" class="primary">Login with mnemonic</button>
+    <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
+    <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+    <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
+  </div>
+
+  <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
+  <p class="modal-foot">Demo writes are open. Real apps earn access [<a href="governance.html">governance</a>].</p>
+</dialog>
 ```
 
-…and the security state callback closes it on login — the user never dismisses it manually after authenticating.
+**One `<textarea>` does both jobs** — you paste an existing phrase into it, and a freshly generated one appears in it. Two fields would ask the visitor to understand the difference before they have one.
 
-**The modal is a three-phase state machine** (button visibility per phase):
+**The copy control is an icon inside the field, not a button in the stack.** It appears only once there is something to copy, and it only *copies*: `navigator.clipboard.readText()` raises a permission prompt while `writeText()` does not, so a paste button would make a demo ask for clipboard access before the visitor has done anything — for a gesture the keyboard already handles.
+
+#### The CSS
+
+```css
+dialog {
+  width: min(440px, calc(100vw - var(--space-6)));
+  padding: var(--space-6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  text-align: center;
+}
+dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+.modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.modal-hint  { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+
+.mnemonic-field { position: relative; }
+
+#mnemonic-input {
+  min-height: 45px;       /* the exact height of an action button */
+  display: block;         /* an inline-block textarea leaves 6px of descender below it */
+  background: none;       /* it sits on the modal's own surface */
+  padding-right: 32px;    /* the copy icon never sits on the last word */
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: left;
+}
+#mnemonic-input:focus { border-color: var(--border-strong); }  /* no accent ring — see below */
+
+.field-action {
+  position: absolute; right: 6px; bottom: 6px;
+  display: flex; padding: 5px;
+  background: none; border: none; color: var(--text-tertiary);
+}
+.field-action svg { width: 15px; height: 15px; }
+.field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+
+.modal-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+.modal-warn { display: grid; place-items: center; min-height: 45px; margin: var(--space-2) 0 0;
+              font-size: 13px; font-weight: 600; color: var(--warn); }
+.modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--text-tertiary); }
+```
+
+Four measurements carry the layout, and each answers a defect:
+
+- **`min-height: 45px` on the field, matching a button.** A logout empties the textarea, and `autoGrow` then measures nothing and collapses it to a single line — the modal visibly shrank on the way out. The floor keeps it the size of the stack it belongs to.
+- **`display: block` on the textarea.** An `inline-block` textarea sits on the text baseline and leaves ~6px of descender beneath it, so any margin you set below it reads 6px larger than the number in the CSS.
+- **`margin-top: var(--space-2)` above the actions, equal to the gap between them.** The field is the first step of one stack, not a separate block — a wider gap separates things that are not separate.
+- **The warning is sized like a button** (`min-height: 45px` + the same gap). It takes over the slot the demo shortcut vacates when a phrase is generated, so the modal keeps its height across phases instead of jumping under the cursor.
+
+**The mnemonic field keeps its ordinary grey border on focus** — the documented exception to the accent-on-focus rule for form fields (§6). The dialog focuses it on open, so the accent would fire before the visitor has done anything, spotlighting the one element that should stay quiet. In a text field the caret already says where you are.
+
+#### Passkeys: gate on the RP ID, not just the secure context
+
+WebAuthn derives its Relying Party ID from the hostname and requires a *domain*; an IP address never qualifies. `127.0.0.1` is a secure context, so `PublicKeyCredential` exists and every check you would think to write passes — and registration then fails with `SecurityError: This is an invalid domain`. Verified on the same page and the same code: `localhost` reaches the authenticator, `127.0.0.1` throws. Gate on all three conditions, or a developer testing on an IP meets a raw browser error:
+
+```javascript
+const PASSKEYS_AVAILABLE =
+    window.isSecureContext &&
+    !!window.PublicKeyCredential &&
+    !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
+```
+
+#### Three phases, one function
+
+Button visibility is derived from the phase — never toggled one button at a time from scattered handlers.
 
 | Phase | Visible | Hidden |
 | --- | --- | --- |
-| Signed out (fresh) | `Generate identity` · `Login with mnemonic` · `Login with passkey` *(only if a WebAuthn registration exists)* | `Copy phrase` · `Protect with passkey` |
-| After generating | `Copy phrase` · `Protect with passkey` *(labelled Recommended)* · `Login with mnemonic` *(must remain — no dead ends)* | `Generate identity` *(one identity at a time)* |
-| Session active | — modal auto-closes; on logout the textarea resets to editable and phase 1 returns | |
-
-**No standing "Sign in" button — the modal IS the door.** A distributed app has no server-side login page, so don't emulate one with a persistent button. Open the identity modal automatically on **every load without an active session**: the newcomer immediately learns what an identity is and how roles are earned, and returning passkey users never see it — their session resumes silently and the security callback closes it.
+| Signed out | `Generate new identity` · `Login with mnemonic` · `Login with passkey` *(only if a registration exists)* · demo shortcut | `Protect with passkey` · the warning · the copy icon |
+| After generating | `Login with mnemonic` *(must remain — no dead ends)* · `Protect with passkey` · the warning · the copy icon | `Generate new identity` *(one identity at a time)* · demo shortcut *(never invite abandoning an unsaved phrase)* |
+| Session active | — the modal closes itself; a logout resets to phase 1 and reopens it | |
 
 ```javascript
-// Boot: signed-out state = the identity dialog
-if (!db.sm.isSecurityActive()) identityModal.showModal()
+const setModalPhase = (phase) => {
+    const generated = phase === "generated"
+    show(el.generate, !generated)
+    show(el.passkeyProtect, generated && PASSKEYS_AVAILABLE)
+    show(el.passkeyLogin, !generated && PASSKEYS_AVAILABLE && db.sm.hasExistingWebAuthnRegistration())
+    show(el.demoLogin, !generated)      // hidden while a fresh phrase is unsaved
+    show(el.phraseWarning, generated)   // only a fresh phrase can still be lost
+    el.mnemonic.readOnly = generated
+}
+
+const resetModal = () => {
+    el.mnemonic.value = ""
+    el.mnemonic.readOnly = false
+    syncClipAffordance()
+    autoGrow()
+    setModalPhase("signed-out")
+}
 ```
+
+The field grows with its content, so an empty field is compact and a 24-word phrase is fully visible — you must be able to check a recovery phrase without scrolling it:
+
+```javascript
+const autoGrow = () => {
+    const field = el.mnemonic
+    field.style.height = "auto"
+    // scrollHeight excludes borders, and box-sizing counts them in height.
+    const borders = field.offsetHeight - field.clientHeight
+    field.style.height = `${field.scrollHeight + borders}px`
+}
+```
+
+#### The four actions
+
+Each one is a single SM call plus a toast on failure. The success path never toasts here — the session callback is what tells the user they are in.
+
+```javascript
+const generateIdentity = async () => {
+    const identity = await db.sm.startNewUserRegistration()
+    if (!identity) return toast("Could not generate an identity", "error")
+    el.mnemonic.value = identity.mnemonic
+    syncClipAffordance(); autoGrow()
+    setModalPhase("generated")
+    toast("Identity generated — save the phrase before you leave", "success")
+}
+
+const loginWithMnemonic = async () => {
+    const mnemonic = el.mnemonic.value.trim()
+    if (!mnemonic) return toast("Paste a mnemonic phrase first", "error")
+    try { await db.sm.loginOrRecoverUserWithMnemonic(mnemonic) }
+    catch { toast("That mnemonic is not valid", "error") }
+}
+
+const protectWithPasskey = async () => {
+    try {
+        if (!await db.sm.protectCurrentIdentityWithWebAuthn()) toast("Passkey registration cancelled", "error")
+    } catch { toast("Could not register the passkey", "error") }
+}
+
+const loginWithPasskey = async () => {
+    try {
+        if (!await db.sm.loginCurrentUserWithWebAuthn()) toast("Passkey login cancelled", "error")
+    } catch { toast("Could not sign in with the passkey", "error") }
+}
+```
+
+`loginOrRecoverUserWithMnemonic` is one method for both cases — a phrase the device has never seen recovers the identity rather than failing. There is no separate "recover" button, and the placeholder says so.
+
+#### The session callback owns the whole session UI
+
+`db.sm.setSecurityStateChangeCallback` is the **single source of truth**: it opens and closes the door, resets the field, and toggles every gated control. No other code path duplicates it, and nothing else calls `showModal()` — not even at boot.
+
+```javascript
+// The SM emits several inactive notifications while generating or logging in.
+// Only a real active → inactive transition tears the session down: resetting
+// on every notification would wipe the freshly generated phrase before the
+// user has saved it.
+let wasActive = null
+
+const onSecurityStateChange = ({ isActive, activeAddress, abbrAddr }) => {
+    currentUser = isActive ? activeAddress : null
+
+    el.sessionAddr.textContent = isActive ? abbrAddr : ""
+    show(el.logout, isActive)
+    el.newDoc.disabled = !isActive
+
+    // The data subscription is NOT touched here. It is subscribed once at boot
+    // and lives for the whole page: the query is the same signed in or out, and
+    // re-subscribing on every session change is what tears down a live
+    // subscription and leaves the other window frozen (§7.1).
+    if (isActive) {
+        el.modal.close()
+        resetModal()
+    } else if (wasActive) {
+        resetModal()
+        el.modal.showModal()          // signed out *is* the modal's state
+    } else if (wasActive === null && !el.modal.open) {
+        el.modal.showModal()          // first load without a session
+    }
+
+    wasActive = isActive
+}
+
+db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
+```
+
+Three traps live in those fifteen lines:
+
+- **`wasActive` is not bookkeeping.** The SM reports `isActive: false` several times while an identity is being generated. Reacting to the notification instead of to the *transition* clears the textarea between generating a phrase and reading it — the phrase is gone, and it was the only copy.
+- **The starting value is `null`, not `false`.** First load and logout are different events: only the second closes an open document and resets state.
+- **The data subscription stays out of here.** Calling `db.map()` again on every session change is the most common way to break realtime in a GenosDB app: the new subscription replaces the live one, and the *other* window stops updating (§7.1).
+
+#### Mandatory or dismissible
 
 **Never a × close button** — a corner × reads as window chrome and, in the backup phase, invites closing before the phrase is saved. Beyond that, the door has two modes, and the app picks by what a visitor without an identity can actually *do*:
 
@@ -245,16 +435,20 @@ if (!db.sm.isSecurityActive()) identityModal.showModal()
 | Closing | Backdrop click and `Esc` | Neither; only a successful sign-in |
 | Behind it | The app, fully usable read-only | The app, visible through the blur — it shows what you are about to join |
 
-The mandatory door needs one line, because `Esc` is native to `<dialog>` and must be refused explicitly:
-
 ```javascript
-identityModal.addEventListener("cancel", (e) => { if (!signedIn) e.preventDefault() })
+// Dismissible: the backdrop is the dialog itself as event target.
+modal.onclick = (e) => { if (e.target === modal) modal.close() }
+
+// Mandatory: Esc is native to <dialog> and must be refused explicitly.
+// There is no click handler at all — the backdrop does nothing.
+modal.addEventListener("cancel", (e) => { if (!currentUser) e.preventDefault() })
 ```
 
 Keeping the app visible behind the blur matters in both modes: a full-bleed login page hides the thing the newcomer came to see, and there is nothing to hide — the graph is already on their machine.
 
 - **Logging out returns to phase 1 with the modal open** — signed-out *is* the modal's state.
 - **Re-entry without reloading is contextual**, not chrome: a clickable read-only status hint, or the explanatory affordance of a gated control, re-opens the modal. The top-right area belongs to the session chip alone and stays empty while signed out.
+- The foot carries the trust model in one line, with the link where the reader reaches for it. Examples add the one-click demo shortcut of §4.5; production apps ship no mnemonic in their source.
 
 ### 4.2 Session: always top-right
 
@@ -555,7 +749,7 @@ Before shipping a GenosDB app or example, verify. The list is written for the **
 
 1. ☐ All colors/spacing/radii come from the token block — zero hardcoded values in components.
 2. ☐ Palette picked by what the page shows (§2) and applied by redefining token *values* only — never a component rule, never a second vocabulary. No runtime toggle unless the product truly requires it.
-3. ☐ Login/registration lives in a centered `<dialog>` with the single-textarea mnemonic flow; it auto-opens on every session-less load (dismissible via backdrop/`Esc` — no × button) — no standing Sign-in button, re-entry via contextual CTAs.
+3. ☐ Identity uses the canonical door of §4.1 verbatim — single-textarea flow, three phases, the `wasActive` guard in the session callback, passkeys gated on the RP ID; mandatory or dismissible per the table, never a × button, no standing Sign-in button, re-entry via contextual CTAs.
 4. ☐ Session sits top-right in the `abbrAddr [role]` format (mono address, quiet tag, no filled pills); signed-out leaves that spot empty.
 5. ☐ Examples use the canonical demo identities (§4.5) — `superAdmins` points at `SUPERADMIN.address`, never a placeholder, and each identity in the file has a one-click login button.
 6. ☐ Role badges follow the gray → green → blue → orange → violet trust ramp.
