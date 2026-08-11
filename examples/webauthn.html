@@ -235,9 +235,12 @@
         .empty svg { width: 50px; height: 50px; margin-bottom: var(--space-4); }
         .empty p { margin: 0; }
 
-        /* ── Buttons ────────────────────────────────────────────── */
+        /* ── Buttons (four weights, one vocabulary) ─────────────── */
+        /* Default = secondary: filled quietly, bordered. */
         button {
-            font: inherit;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
             padding: var(--space-2) var(--space-3);
             border: 1px solid var(--border-strong);
             border-radius: var(--radius-sm);
@@ -249,9 +252,16 @@
         button:hover:not(:disabled) { border-color: var(--text-tertiary); }
         button:disabled { opacity: .5; cursor: not-allowed; }
 
-        .primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
-        .primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
-        .ghost { background: none; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+        /* Tertiary: no fill, no border until you reach for it. */
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        /* Destructive: outlined, never filled — weight comes from the colour. */
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); }
 
         /* ── Identity modal (the canonical door, §4.1) ──────────── */
         dialog {
@@ -282,6 +292,7 @@
             background: none;
             border: 1px solid var(--border-strong);
             border-radius: var(--radius-sm);
+            outline: none; /* the border carries focus — see the field rule below */
             color: var(--text-primary);
             font-family: var(--mono);
             font-size: 13px;

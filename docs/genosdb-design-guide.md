@@ -987,7 +987,41 @@ Two rules for the wording: **the title asks, the body says what is lost**, and *
 
 **Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 
-**Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent` (no outlines, no glows). Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
+### Buttons — four weights, one vocabulary
+
+Every button in a GenosDB app is one of four, and the weight says how much the app wants you to press it. Copy the four rules; do not invent a fifth.
+
+```css
+/* Secondary — the default. Quietly filled, bordered. */
+button {
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--text-tertiary); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Primary — the one thing this screen is for. At most one per view. */
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* Tertiary — no fill and no border until you reach for it. */
+button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+/* Destructive — outlined, never filled: the weight comes from the colour. */
+button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+button.danger:hover:not(:disabled) { border-color: var(--danger); }
+```
+
+- **`danger` is outlined, not filled.** A red block reads as *the* action of the screen. Delete is available, not encouraged — the exception is the confirm dialog above, where destroying is the whole point of the button you just opened.
+- **`ghost` has no border at rest.** It is for the escape hatch and the aside: a demo shortcut, a *cancel*. Give it a border and it becomes a second secondary button competing with the real one.
+- In the identity door this maps exactly: `Generate` and `Login with mnemonic` are `primary`, `Login with passkey` is the default secondary, and the demo shortcut is `ghost`. If the demo button grows a border, it starts reading as a third way in.
+
+**Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent`. Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
+
+**The border carries focus, so the browser's ring has to go.** `outline: none` on inputs, textareas and selects, with `:focus { border-color: var(--accent) }` in its place. Leave the outline on and every field wears two focus indicators at once, one of them a colour no token controls and no theme can follow. Removing an outline is only acceptable *because* something visible replaces it in the same instant — never drop it without the border rule, or keyboard users lose their position entirely.
 
 **Content fields are not form fields.** A field the user *asks something of* — a search box, an address to grant, a filter — is drawn: border, background, focus ring, because they must find it and know where to click. A field that **is the content** — the body of an editor, a document's title — is not drawn at all: no border, no background, transparent onto the page, sized like the text it holds. The reader is looking at their own writing, and a box around it only competes with it.
 
