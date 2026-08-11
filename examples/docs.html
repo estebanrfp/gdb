@@ -59,6 +59,33 @@
             --sidebar-width: 350px;
         }
 
+        /* The light palette redefines VALUES ONLY — not one component rule
+           changes below. If a theme toggle forced you to touch a component,
+           the token system would be broken. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
+
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
+
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+
+            --backdrop: rgba(26, 29, 36, .45);
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+        }
+
         * { box-sizing: border-box; }
 
         body {
@@ -158,6 +185,22 @@
         .session-addr:empty { display: none; }
 
         .presence { color: var(--text-tertiary); font-size: 12px; }
+
+        /* Shows the mode you will switch TO, so the icon is the action. */
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        .icon-moon { display: none; }
+        [data-theme="light"] .icon-sun { display: none; }
+        [data-theme="light"] .icon-moon { display: block; }
 
         /* A field that asks for something, so it is drawn — unlike the document
            body, which is content and carries no frame. */
@@ -609,6 +652,17 @@
                     aria-label="Search documents">
                 <span id="presence" class="presence">0 peers</span>
                 <button id="session-addr" class="session-addr" title="Copy your full address"></button>
+                <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                </button>
                 <button id="logout-btn" class="ghost hidden">Logout</button>
             </div>
         </header>
@@ -721,6 +775,7 @@
             permission: $("permission-select"),
             share: $("share-btn"),
             collaborators: $("collaborators-list"),
+            themeBtn: $("theme-btn"),
             toasts: $("toasts")
         }
 
@@ -783,6 +838,18 @@
         }
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
+
+        /**
+         * Theme: values only. `data-theme` on <html> swaps the token block and
+         * nothing else — the CSS below never mentions a theme. First visit
+         * follows the operating system; after that the choice is remembered.
+         */
+        const applyTheme = (theme) => {
+            document.documentElement.dataset.theme = theme
+            localStorage.docsTheme = theme
+        }
+
+        applyTheme(localStorage.docsTheme ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
 
         /**
          * Passkeys need two things, and only the first is obvious.
@@ -1294,6 +1361,8 @@
         el.shareModal.addEventListener("click", (e) => { if (e.target === el.shareModal) el.shareModal.close() })
         el.shareOpen.addEventListener("click", () => el.shareModal.showModal())
         el.previewBtn.addEventListener("click", togglePreview)
+        el.themeBtn.addEventListener("click", () =>
+            applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light"))
         el.search.addEventListener("input", scheduleSearch)
         el.generate.addEventListener("click", generateIdentity)
         el.clip.addEventListener("click", copyPhrase)
