@@ -263,7 +263,7 @@
     // Import GDB
     import { gdb } from "../dist/index.js";
 
-    const db = await gdb("testGraph", { rtc: true });
+    const db = await gdb("testGraph", { rtc: true, debug: true });
 
     // Initialize Cytoscape with 'cose' layout settings
     let cy = cytoscape({

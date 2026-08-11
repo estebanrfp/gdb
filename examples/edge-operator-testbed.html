@@ -128,7 +128,7 @@
     <script type="module">
         import { gdb } from "../dist/index.js";
 
-        const db = await gdb('final-edge-test-db-v3', { rtc: true });
+        const db = await gdb('final-edge-test-db-v3', { rtc: true, debug: true });
 
         const logEl = document.getElementById('log');
         const logMessage = (message) => {

@@ -110,7 +110,7 @@
         import { gdb } from "../dist/index.js";
 
         // 2. Initialize the database
-        const db = await gdb('new-edge-test-db', { rtc: true });
+        const db = await gdb('new-edge-test-db', { rtc: true, debug: true });
 
         // DOM Elements
         const logEl = document.getElementById('log');

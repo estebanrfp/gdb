@@ -133,6 +133,9 @@ An interactive playground for the **Geo module**: pick or edit `$near` / `$bbox`
 ### [Edge Operator Testbed](https://estebanrfp.github.io/gdb/examples/edge-operator-testbed.html)
 `$edge` Operator Testbed environment to experiment with GenosDB Operators
 
+### [Graph Traversal Depth Demo](https://estebanrfp.github.io/gdb/examples/edges-max_depth_demo.html)
+How deep `$edge` really goes: seeds a 50-link chain of nodes, then resolves the descendants matching a filter in a **single** query — no manual hop-by-hop walking, no depth ceiling to configure. Useful before modelling anything recursive (folder trees, threaded replies, org charts), because it answers the first question everyone asks: does the traversal reach the far end?
+
 ### [Interactive Graph Playground](https://estebanrfp.github.io/gdb/examples/edges.html)
 A hands-on tour of the graph itself: add nodes, link them with `db.link(source, target)`, and traverse the result with the **`$edge` operator** — "posts written by Ana", "who commented on this post". Ships a seeded example graph (users → posts → comments) so the traversal queries have something to walk before you type anything.
 
