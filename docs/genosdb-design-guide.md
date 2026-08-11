@@ -494,6 +494,20 @@ Two implementation rules:
 - **Disable gated controls, don't hide them** (`disabled` + an explanatory `title` such as *"Sign in to share your camera"*): a visible-but-locked control teaches the trust model; a missing one just looks broken.
 - Ephemeral channel traffic (GenosRTC) does **not** pass through the graph's RBAC — the role gate on the UI keeps honest peers silent, and the **signed graph remains the source of truth** that corrects any transient view.
 
+**Moderation over node-level ACLs is granted, never inherited.** This one surprises people, and the surprise costs an afternoon. With `acls: true`, a node carries its own `owner` and `collaborators`, and every peer enforces *that* list — not the role ramp. A superadmin is the root of trust for **roles**; it is not an owner of other people's nodes, so it cannot delete them however high its tier sits. (`deleteAny` can be declared in `customRoles` and reads like the answer, but nothing in the engine evaluates it.)
+
+The pattern that works is to grant the moderator at creation time, so the authority is written into the node itself:
+
+```javascript
+const id = await db.put({ type: "document", title, content, owner: currentUser })
+// The moderator is a collaborator from the first moment, by the owner's own act.
+if (!isSuperadmin(currentUser)) await db.sm.acls.grant(id, SUPERADMIN.address, "delete")
+```
+
+This is the zero-trust model being consistent, not a gap in it: authority over a node comes from the node, and a peer that never agreed to be moderated is not moderated. Design the UI accordingly — moderation powers are real only where the content granted them.
+
+One asymmetry to expect in the same area: `acls.set` gates its local guard on `write` alone, so a collaborator holding `delete` — the *wider* permission — is refused by it and has to write through `db.put`. Split the save path on the permission rather than widening anyone's access.
+
 ### 4.5 Demo identities: one canonical set for every example
 
 Examples and testbeds share **one fixed set of public, throwaway identities** so that any two windows of any demo can log in with a single click and already know each other — a device to show the trust model working, never part of a production app, which has no mnemonic in its source. Copy this block verbatim; never invent new addresses.
@@ -736,12 +750,19 @@ Copy these three blocks verbatim. They are the whole component; there is nothing
     transition: opacity .4s, transform .4s;
 }
 
-.toast-icon { font-size: 18px; line-height: 1; }
+/* Monochrome glyphs, not emoji: they inherit a token colour like every other
+   mark in the interface, and echo the left border instead of introducing a
+   palette of their own. */
+.toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
 .toast-text { flex: 1; min-width: 0; }
 
 .toast.success { border-left-color: var(--ok); }
 .toast.error   { border-left-color: var(--danger); }
 .toast.warning { border-left-color: var(--warn); }
+
+.toast.success .toast-icon { color: var(--ok); }
+.toast.error   .toast-icon { color: var(--danger); }
+.toast.warning .toast-icon { color: var(--warn); }
 
 /* The newest message sits at the bottom and reads at full strength; every
    older one steps back by the same amount to send the eye there. */
@@ -762,7 +783,7 @@ Copy these three blocks verbatim. They are the whole component; there is nothing
 
 ```javascript
 const MAX_TOASTS = 3
-const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" }
+const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕", warning: "!" }
 
 const dropToast = (node) => {
     node.classList.add("out")

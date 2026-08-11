@@ -93,4 +93,4 @@ Security in GDB is multi-layered and integrated directly into the P2P fabric via
 
 You can see GDB with its security features in action at our live testbed environment:
 [GenosDB - SM + RBAC (WebAuthn Example)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
-*(Please note: WebAuthn features require an HTTPS connection or localhost/127.0.0.1 for testing).*
+*(Please note: WebAuthn requires HTTPS or `localhost`. **`127.0.0.1` does not work**: a secure context is not enough — WebAuthn derives its Relying Party ID from the hostname and requires a domain, and an IP address is never one. Every feature check passes and registration then fails with `SecurityError: This is an invalid domain`.)*

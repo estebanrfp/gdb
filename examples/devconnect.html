@@ -727,7 +727,10 @@
       transition: opacity .4s, transform .4s;
     }
 
-    .toast-icon { font-size: 18px; line-height: 1; }
+    .toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
+    .toast.success .toast-icon { color: var(--ok); }
+    .toast.error   .toast-icon { color: var(--danger); }
+    .toast.warning .toast-icon { color: var(--warn); }
     .toast-text { flex: 1; min-width: 0; }
 
     .toast.success { border-left-color: var(--ok); }
@@ -904,7 +907,7 @@
        it blocks the thread, freezing the very sync this app demonstrates. */
     const toastsEl = document.getElementById("toasts")
     const MAX_TOASTS = 3
-    const TOAST_ICONS = { info: "ℹ️", success: "✓", error: "⚠️", warning: "⚠️" }
+    const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕", warning: "!" }
 
     const dropToast = (node) => {
       node.classList.add("out")
