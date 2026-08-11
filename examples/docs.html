@@ -451,6 +451,11 @@
            empty, and a 24-word phrase is fully visible — you must be able to
            check a recovery phrase without scrolling it. */
         #mnemonic-input {
+            /* Floor at the height of the action buttons below, so an empty field
+               matches them instead of collapsing to a single line when autoGrow
+               measures nothing (which is what a logout leaves behind). */
+            min-height: 45px; /* the exact height of an action button */
+            border-color: var(--border-subtle);
             background: none;
             padding-right: 32px; /* the copy icon never sits on the last word */
             overflow: hidden;
@@ -473,6 +478,11 @@
             border: none;
             color: var(--text-tertiary);
         }
+
+        /* The dialog focuses this field on open, and an accent border would put
+           a spotlight on the one thing here that should stay quiet. The caret
+           already says where you are. */
+        #mnemonic-input:focus { border-color: var(--border-subtle); }
 
         .field-action svg { width: 15px; height: 15px; }
         .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
@@ -1396,6 +1406,7 @@
         db.room?.on("peer:leave", updatePresence)
         updatePresence()
 
+        autoGrow() // the browser may restore field content across reloads
         db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
         // Read-only guests still see whatever peers replicated.
         subscribeToDocuments()
