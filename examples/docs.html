@@ -143,7 +143,27 @@
             min-height: 0;
         }
 
-        .sidebar > button { margin: var(--space-4); }
+        /* Search and "new" share one band, aligned with the top bar's height so
+           the two chrome rows read as one line across the app. */
+        .sidebar-head {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-3);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        /* No box: the band already delimits it, and a framed field competing with
+           the list below would make the search look like the page's subject.
+           Needs to outrank `input[type="text"]`, which it ties with on specificity
+           and would otherwise win by being declared later. */
+        .sidebar-head input.search {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            background: none;
+            font-size: 13px;
+        }
 
         /* One surface for the whole app: bar, list and document share a tone and
            the borders do the dividing. A darker well under the document reads
@@ -204,10 +224,6 @@
         .icon-moon { display: none; }
         [data-theme="light"] .icon-sun { display: none; }
         [data-theme="light"] .icon-moon { display: block; }
-
-        /* A field that asks for something, so it is drawn — unlike the document
-           body, which is content and carries no frame. */
-        .search { width: 260px; font-size: 13px; }
 
         .list-empty {
             padding: 15px 20px;
@@ -331,7 +347,8 @@
             border-radius: 0;
         }
 
-        #doc-title { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+        /* Takes the band; the actions hold the right edge. */
+        #doc-title { flex: 1; min-width: 0; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
         #doc-title::placeholder, #doc-content::placeholder { color: var(--text-tertiary); }
 
         /* No border means no frame to grey out: state has to come from the text. */
@@ -378,8 +395,21 @@
         .preview a { color: var(--accent); }
         .preview img { max-width: 100%; }
 
-        /* The permission line is the lesson of this example, so it sits inside
-           the header band rather than floating over the body. */
+        /* ── Status bar ─────────────────────────────────────────── */
+        /* Under the content column only: the list runs the full height beside it,
+           unbroken, and the bar stays with the document it describes. */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-5);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* The permission line is the lesson of this example, so it gets the
+           status bar's left half — steady, and never in the way of the text. */
         .editor-meta {
             display: flex;
             align-items: center;
@@ -388,6 +418,8 @@
             color: var(--text-tertiary);
             font-family: var(--mono);
             white-space: nowrap;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .doc-status { color: var(--text-tertiary); }
@@ -613,7 +645,7 @@
             .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
             .doc-list { max-height: 40vh; }
             .doc-header { flex-wrap: wrap; }
-            .editor-meta { order: 3; width: 100%; }
+            .statusbar { flex-wrap: wrap; gap: var(--space-2); }
             .share-row { grid-template-columns: 1fr; }
         }
     </style>
@@ -683,9 +715,6 @@
         <header class="topbar">
             <h1 class="brand">Collaborative Docs <span>· ACLs</span></h1>
             <div class="session">
-                <input type="text" id="search-input" class="search" placeholder="Search documents…"
-                    aria-label="Search documents">
-                <span id="presence" class="presence">0 peers</span>
                 <button id="session-addr" class="session-addr" title="Copy your full address"></button>
                 <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme">
                     <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -698,13 +727,30 @@
                         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
                     </svg>
                 </button>
-                <button id="logout-btn" class="ghost hidden">Logout</button>
+                <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
             </div>
         </header>
 
         <div class="body">
             <nav class="sidebar">
-                <button id="new-doc-btn" class="primary" disabled title="Sign in to create documents">New document</button>
+                <div class="sidebar-head">
+                    <input type="text" id="search-input" class="search" placeholder="Search documents…"
+                        aria-label="Search documents">
+                    <button id="new-doc-btn" class="icon-btn" disabled title="Sign in to create documents"
+                        aria-label="New document">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </button>
+                </div>
                 <ul id="doc-list" class="doc-list"></ul>
                 <p id="list-empty" class="list-empty hidden">No document matches that search.</p>
             </nav>
@@ -723,12 +769,6 @@
                     <article id="editor-view" class="editor hidden">
                         <div class="doc-header">
                             <input type="text" id="doc-title" placeholder="Document title…" aria-label="Document title">
-                            <div class="editor-meta">
-                                <span id="doc-perm" class="perm-tag"></span>
-                                <span id="doc-owner"></span>
-                                <span id="doc-modified"></span>
-                                <span id="doc-status" class="doc-status"></span>
-                            </div>
                             <div class="doc-actions">
                                 <button id="preview-btn">Preview</button>
                                 <button id="share-open-btn" class="hidden">Share</button>
@@ -741,6 +781,16 @@
                         <div id="doc-preview" class="preview hidden"></div>
                     </article>
                 </main>
+
+                <footer class="statusbar">
+                    <div class="editor-meta">
+                        <span id="doc-perm" class="perm-tag"></span>
+                        <span id="doc-owner"></span>
+                        <span id="doc-modified"></span>
+                        <span id="doc-status" class="doc-status"></span>
+                    </div>
+                    <span id="presence" class="presence">0 peers</span>
+                </footer>
             </div>
         </div>
     </div>
@@ -1160,7 +1210,10 @@
 
             el.perm.textContent = permission
             el.perm.className = `perm-tag perm-${permission}`
-            el.owner.textContent = value.owner ? `owner ${db.sm.abbrAddr(value.owner)}` : "unowned"
+            // "OWNER owner 0x…" says it twice: when the tag already reads owner,
+            // the address is your own and naming it adds nothing.
+            el.owner.textContent = permission === "owner" ? ""
+                : value.owner ? `owner ${db.sm.abbrAddr(value.owner)}` : "unowned"
             el.modified.textContent = localTime(timestamp)
 
             // Never overwrite the field you are typing in. Autosave means our own
