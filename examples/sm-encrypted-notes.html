@@ -941,6 +941,24 @@
         }
 
         /**
+         * Envelopes we have already failed to open, so a genuinely foreign node
+         * costs exactly one decrypt attempt rather than one per notification.
+         */
+        const knownUnopenable = new Set()
+
+        const tryToOpenNewcomers = () => {
+            if (!currentUser) return
+            const newcomers = envelopes.filter(({ id }) => !openableFor(id) && !knownUnopenable.has(id))
+            if (!newcomers.length) return
+
+            newcomers.forEach(({ id }) => knownUnopenable.add(id))
+            refreshOpenable().then(() => {
+                // Whatever we can now read is ours after all; forget the verdict.
+                envelopes.forEach(({ id }) => { if (openableFor(id)) knownUnopenable.delete(id) })
+            })
+        }
+
+        /**
          * The room's contents, live and keyless. The envelope is recognised by
          * its shape rather than by the id prefix — the wrapper type is the
          * contract, the prefix is an implementation detail.
@@ -957,6 +975,14 @@
                         const envelope = envelopes.find(n => n.id === selectedRawId)
                         if (envelope) el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
                     }
+
+                    // A node arriving from another tab or peer is only ever an
+                    // envelope: `db.map` is reactive, `db.sm.map` is not. Without
+                    // this, your own note written elsewhere would show up here as
+                    // `Sealed` — the graph told us it exists, and nothing told us
+                    // we can read it. So an unknown envelope prompts one more
+                    // decrypt pass, and stops prompting once it stays unknown.
+                    tryToOpenNewcomers()
                 })
             })
 
@@ -1001,6 +1027,7 @@
             el.noteBody.disabled = !isActive
 
             renderIdentityModal(state)
+            knownUnopenable.clear() // a different key may open what the last one could not
             refreshOpenable() // the same nodes read by a different key — or by none
 
             if (isActive) return el.modal.close()
