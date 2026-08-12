@@ -202,6 +202,23 @@
         .list-hint { font-size: 13px; }
 
         .detail-plain { margin: 0; font-size: 16px; color: var(--text-primary); white-space: pre-wrap; }
+
+        /* The note IS the content, so its fields carry no frame — §6. The only
+           thing that says "editable" is the caret. */
+        .detail-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+
+        .detail-editor input, .detail-editor textarea {
+            padding: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+        }
+
+        .detail-editor input { font-size: 16px; font-weight: 600; }
+        .detail-editor textarea { font-size: 16px; }
+        .detail-editor input:focus, .detail-editor textarea:focus { border-color: transparent; }
+
+        .save-status { min-height: 18px; font-size: 12px; color: var(--text-tertiary); }
         .detail-plain.sealed { color: var(--text-tertiary); font-style: italic; font-size: 14px; }
 
         /* The ciphertext in full: its opacity is the point, so it wraps rather
@@ -519,8 +536,13 @@
                 </div>
 
                 <div id="detail" class="detail hidden">
-                    <h2>What your key opens <small>· db.sm.map</small></h2>
-                    <p id="detail-plain" class="detail-plain"></p>
+                    <h2>What your key opens <small id="detail-mode">· db.sm.map</small></h2>
+                    <p id="detail-sealed" class="detail-plain sealed hidden"></p>
+                    <div id="detail-editor" class="detail-editor hidden">
+                        <input type="text" id="detail-title" aria-label="Note title">
+                        <textarea id="detail-body" rows="4" aria-label="Note content"></textarea>
+                        <span id="detail-status" class="save-status"></span>
+                    </div>
 
                     <h2>What every peer stores <small>· db.map, no key needed</small></h2>
                     <p id="detail-id" class="cipher-id"></p>
@@ -586,7 +608,12 @@
             notesCount: $("notes-count"),
             detailEmpty: $("detail-empty"),
             detail: $("detail"),
-            detailPlain: $("detail-plain"),
+            detailSealed: $("detail-sealed"),
+            detailEditor: $("detail-editor"),
+            detailTitle: $("detail-title"),
+            detailBody: $("detail-body"),
+            detailStatus: $("detail-status"),
+            detailMode: $("detail-mode"),
             detailId: $("detail-id"),
             detailCipher: $("detail-cipher"),
             toasts: $("toasts")
@@ -829,6 +856,45 @@
             }))
         }
 
+        let selectedLogicalId = null
+
+        /**
+         * Autosave, no Save button — §5.3 of the design guide. A button would be
+         * a lie about how the data travels: the graph has already accepted the
+         * write and told the peers by the time you could reach for one.
+         *
+         * Here it doubles as the demonstration: the ciphertext below is fed by a
+         * reactive `db.map()`, so a keystroke rewrites the whole envelope in
+         * front of you.
+         */
+        const AUTOSAVE_MS = 600
+        let saveTimer
+
+        const saveEdit = async () => {
+            if (!selectedLogicalId) return
+            const current = openable.get(selectedLogicalId) ?? {}
+            try {
+                await db.sm.put({
+                    ...current,
+                    title: el.detailTitle.value,
+                    content: el.detailBody.value
+                }, selectedLogicalId)
+                el.detailStatus.textContent = "saved"
+                setTimeout(() => { if (el.detailStatus.textContent === "saved") el.detailStatus.textContent = "" }, 2000)
+                await refreshOpenable()
+            } catch (error) {
+                el.detailStatus.textContent = ""
+                toast(error.message, "error")
+            }
+        }
+
+        const scheduleSave = () => {
+            if (!selectedLogicalId) return
+            el.detailStatus.textContent = "saving…"
+            clearTimeout(saveTimer)
+            saveTimer = setTimeout(saveEdit, AUTOSAVE_MS)
+        }
+
         /** The detail: the same node as you read it, and as the graph stores it. */
         const selectNode = (rawId) => {
             selectedRawId = rawId
@@ -836,11 +902,21 @@
             if (!envelope) return
 
             const open = openableFor(rawId)
+            selectedLogicalId = open?.id ?? null
 
-            el.detailPlain.textContent = open
-                ? `${open.value.title || "Untitled"}\n${open.value.content || ""}`
-                : "This identity holds no key for this node. The bytes below are all it can see."
-            el.detailPlain.classList.toggle("sealed", !open)
+            show(el.detailEditor, !!open)
+            show(el.detailSealed, !open)
+            el.detailMode.textContent = open ? "· yours to edit" : "· db.sm.map"
+
+            if (open) {
+                // Never overwrite the field being typed in: autosave means our own
+                // write comes back through this same path, and reassigning .value
+                // would jump the caret to the end on every keystroke.
+                if (document.activeElement !== el.detailTitle) el.detailTitle.value = open.value.title ?? ""
+                if (document.activeElement !== el.detailBody) el.detailBody.value = open.value.content ?? ""
+            } else {
+                el.detailSealed.textContent = "This identity holds no key for this node. The bytes below are all it can see."
+            }
 
             el.detailId.textContent = rawId
             el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
@@ -874,6 +950,13 @@
                 db.map({}).then(({ results = [] }) => {
                     envelopes = results.filter(n => n.value?._gdbWrapperType === "_gdbSecurePayloadV1")
                     renderList()
+
+                    // The envelope of the open node changes on every write — that
+                    // is the whole show, so repaint just that, never the fields.
+                    if (selectedRawId) {
+                        const envelope = envelopes.find(n => n.id === selectedRawId)
+                        if (envelope) el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
+                    }
                 })
             })
 
@@ -942,6 +1025,8 @@
         el.clip.addEventListener("click", copyPhrase)
         el.mnemonic.addEventListener("input", () => { syncClipAffordance(); autoGrow() })
         el.save.addEventListener("click", saveNote)
+        el.detailTitle.addEventListener("input", scheduleSave)
+        el.detailBody.addEventListener("input", scheduleSave)
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
         el.themeBtn.addEventListener("click", () => {
             const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
