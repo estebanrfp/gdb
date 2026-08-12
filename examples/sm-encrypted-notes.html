@@ -40,6 +40,8 @@
             --space-5: 24px;
             --space-6: 32px;
 
+            --sidebar-width: 320px;
+
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
             --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
         }
@@ -129,116 +131,136 @@
         .session-addr:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
         .session-addr:empty { display: none; }
 
-        /* ── A bench with two outputs ───────────────────────────── */
-        /* Plaintext left, ciphertext right, both on screen at once. The lesson
-           is the difference between the panels — what you read against what
-           every peer actually stores — and a scroll between them would hide it. */
-        .bench { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); min-height: 0; }
+        /* ── Layout (the shape of docs.html) ────────────────────── */
+        .body { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: 0; }
 
-        .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: var(--space-5); }
-        .input-panel { border-right: 1px solid var(--border-subtle); }
-
-        /* A rule under the label divides the sections. Nothing gets a tinted
-           box: separation is the line and the space around it. */
-        /* Scoped to the panels on purpose: the modal title is an `h2` as well,
-           and a bare `h2` rule would hand it this one's grey and its rule. */
-        .panel h2 {
-            margin: var(--space-5) 0 var(--space-3);
-            padding-bottom: var(--space-2);
-            border-bottom: 1px solid var(--border-subtle);
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .panel h2:first-child { margin-top: 0; }
-        .panel h2 small { font-weight: 400; color: var(--text-tertiary); }
-
-        p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
-
-        .composer { display: flex; flex-direction: column; gap: var(--space-2); }
-
-        ul { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
-
-        li {
+        .sidebar {
             display: flex;
-            gap: var(--space-3);
-            padding: var(--space-3) 0;
+            flex-direction: column;
+            min-width: 0; /* truncation in the list needs a floor to truncate against */
+            min-height: 0;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        /* Search and "new" share one band, the same height as the top bar. */
+        .sidebar-head {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-3);
             border-bottom: 1px solid var(--border-subtle);
         }
 
-        li.empty { display: block; color: var(--text-tertiary); border-bottom: none; }
+        .sidebar-head .icon-btn { margin-right: -6px; } /* the icon lands on the edge, not its hit area */
 
-        /* Title over content, the same two-line shape the envelope opposite
-           uses for id over payload — so a row on the left and its row on the
-           right read as the same node twice, not as two kinds of list. */
-        .note-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .note-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-        .note-title { font-weight: 600; }
+        /* Marks the field as a search without a box around it — the one job the
+           missing border used to do. A label, not an action. */
+        .search-icon { flex: 0 0 15px; width: 15px; height: 15px; color: var(--text-tertiary); }
 
-        /* Same treatment as the envelope's id opposite, so the eye pairs them. */
-        .note-id {
-            flex: 0 0 auto;
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--text-tertiary);
-        }
-        .note-body.sealed { color: var(--text-tertiary); font-style: italic; }
-        .note-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
-
-        /* The envelope as the graph holds it. Mono and clipped: it is meant to
-           be recognised as opaque, not read. */
-        .cipher-id { font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
-        .cipher-payload {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--violet);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .cipher-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: stretch; }
-        .list-hint { font-size: 13px; }
-
-        .detail-plain { margin: 0; font-size: 16px; color: var(--text-primary); white-space: pre-wrap; }
-
-        /* The note IS the content, so its fields carry no frame — §6. The only
-           thing that says "editable" is the caret. */
-        .detail-editor { display: flex; flex-direction: column; gap: var(--space-2); }
-
-        .detail-editor input, .detail-editor textarea {
-            padding: 0;
-            background: none;
+        /* No box: the band already delimits it. Needs to outrank
+           `input[type="text"]`, which it ties with and which comes later. */
+        .sidebar-head input.search {
+            flex: 1;
+            min-width: 0;
             border: none;
+            background: none;
+            font-size: 13px;
+        }
+
+        .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+        .content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; padding: var(--space-5); }
+
+        .doc-list { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
+
+        .doc-list li {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .doc-list li:hover { background: var(--bg-tertiary); }
+        .doc-list li.selected { background: var(--bg-tertiary); border-left-color: var(--accent); }
+        .doc-list li.sealed-row { border-left-color: var(--violet); }
+
+        .note-title { font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .note-body { margin-top: 2px; font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .note-body.sealed { color: var(--text-tertiary); font-style: italic; }
+
+        .list-empty { padding: var(--space-4) 20px; margin: 0; color: var(--text-tertiary); font-size: 13px; }
+
+        /* Centred on the canvas: an empty editor should read as waiting for you,
+           not as a page that failed to load. */
+        .empty {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .empty svg { width: 50px; height: 50px; margin-bottom: var(--space-4); }
+        .empty p { margin: 0; }
+
+        /* ── Editor ─────────────────────────────────────────────── */
+        .editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+        .doc-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: var(--space-4);
+        }
+
+        /* The note IS the content, so title and body carry no frame — §6. */
+        #detail-title, #detail-body {
+            border: none;
+            background: none;
+            padding: 0;
             border-radius: 0;
         }
 
-        .detail-editor input { font-size: 16px; font-weight: 600; }
-        .detail-editor textarea { font-size: 16px; }
-        .detail-editor input:focus, .detail-editor textarea:focus { border-color: transparent; }
+        #detail-title { flex: 1; min-width: 0; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+        #detail-body { flex: 1; min-height: 120px; font-size: 15px; line-height: 1.7; resize: none; }
+        #detail-title:focus, #detail-body:focus { border-color: transparent; }
+        #detail-title::placeholder, #detail-body::placeholder { color: var(--text-tertiary); }
 
-        .save-status { min-height: 18px; font-size: 12px; color: var(--text-tertiary); }
-        .detail-plain.sealed { color: var(--text-tertiary); font-style: italic; font-size: 14px; }
+        .detail-plain.sealed { margin: 0 0 var(--space-4); color: var(--text-secondary); }
 
-        /* The ciphertext in full: its opacity is the point, so it wraps rather
-           than being clipped — you should see how much of it there is. */
-        .detail-cipher {
-            margin: 0;
-            font-family: var(--mono);
-            font-size: 12px;
-            line-height: 1.6;
-            color: var(--violet);
-            word-break: break-all;
+        /* The ciphertext closes the page: below the words, where a footnote goes. */
+        .cipher { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
+        .cipher h2 { margin: 0 0 var(--space-2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); }
+        .cipher h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+        .cipher-id { margin: 0 0 var(--space-2); font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
+        .detail-cipher { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--violet); word-break: break-all; }
+
+        /* ── Status bar ─────────────────────────────────────────── */
+        /* Under the content column only: the list runs its full height beside it. */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
         }
 
-        #detail-id { margin: 0 0 var(--space-2); }
-        .empty-detail { color: var(--text-tertiary); }
+        .editor-meta { display: flex; align-items: center; gap: var(--space-3); min-width: 0; overflow: hidden;
+                       font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
 
-        /* Rows are the input of this bench, so they behave like controls. */
-        li[data-raw] { cursor: pointer; margin-inline: calc(var(--space-3) * -1); padding-inline: var(--space-3); }
-        li[data-raw]:hover { background: var(--bg-tertiary); }
-        li.selected { background: var(--bg-tertiary); }
+        .perm-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+        .perm-tag.mine { color: var(--ok); }
+        .perm-tag.sealed { color: var(--violet); }
+
+        .presence { color: var(--text-tertiary); font-size: 12px; }
+        .save-status { color: var(--text-tertiary); }
 
         /* ── Buttons: the four weights of the guide ─────────────── */
         /* Secondary is the default. A blue default would make `button:hover`
@@ -264,6 +286,9 @@
             border-color: var(--accent-hover);
             color: var(--text-on-accent);
         }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
         button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
         button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
@@ -314,6 +339,7 @@
         dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 
         .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        #confirm-modal .modal-title { font-size: 20px; }
         .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
 
         .mnemonic-field { position: relative; }
@@ -436,10 +462,11 @@
         /* Stacked, and still one screen: each panel keeps scrolling in its own
            row rather than handing the scrolling back to the page. */
         @media (max-width: 820px) {
-            .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 55%) minmax(0, 45%); }
-            .input-panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 38vh) minmax(0, 1fr); }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
             .brand span { display: none; } /* the subtitle is decoration; the width is not */
         }
+
     </style>
 </head>
 
@@ -479,6 +506,18 @@
              body. Sign in with a second identity to watch exactly that. -->
     </dialog>
 
+    <!-- Confirmation before anything irreversible. Never window.confirm: it
+         blocks the thread, which in a P2P app freezes the very sync being
+         demonstrated — rAF included, so the interface stops updating too. -->
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog" class="modal-actions">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
+
     <div class="layout">
         <header class="topbar">
             <h1 class="brand">Encrypted notes <span>· public titles, private bodies</span></h1>
@@ -511,43 +550,66 @@
             </div>
         </header>
 
-        <div class="bench">
-            <section class="panel input-panel">
-                <h2>Write a note <small>· same title updates it</small></h2>
-                <div class="composer">
-                    <input type="text" id="note-title" placeholder="Title…" aria-label="Note title">
-                    <textarea id="note-body" rows="3" placeholder="Something only you should read…"
-                        aria-label="Note content"></textarea>
-                    <button id="save-btn" class="primary">Save encrypted</button>
+        <div class="body">
+            <nav class="sidebar">
+                <div class="sidebar-head">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.7-3.7" />
+                    </svg>
+                    <input type="text" id="search-input" class="search" placeholder="Search titles…"
+                        aria-label="Search titles">
+                    <button id="new-note-btn" class="icon-btn" disabled title="Sign in to write a note"
+                        aria-label="New note">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </button>
                 </div>
+                <ul id="notes-list" class="doc-list"></ul>
+                <p id="list-empty" class="list-empty hidden">No title matches that search.</p>
+            </nav>
 
-                <h2>Everything in this room <small id="notes-count"></small></h2>
-                <p class="list-hint">
-                    Every encrypted node the graph holds — yours and everyone else's.
-                    Pick one to see both readings of it.
-                </p>
-                <ul id="notes-list"></ul>
-            </section>
-
-            <section class="panel">
-                <div id="detail-empty" class="empty-detail">
-                    <p>Select a node on the left.</p>
-                </div>
-
-                <div id="detail" class="detail hidden">
-                    <h2>What your key opens <small id="detail-mode"></small></h2>
-                    <p id="detail-sealed" class="detail-plain sealed hidden"></p>
-                    <div id="detail-editor" class="detail-editor hidden">
-                        <input type="text" id="detail-title" aria-label="Note title">
-                        <textarea id="detail-body" rows="4" aria-label="Note content"></textarea>
-                        <span id="detail-status" class="save-status"></span>
+            <div class="main">
+                <main class="content">
+                    <div id="detail-empty" class="empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <p>Select a note, or write one — the title is public, the body is not.</p>
                     </div>
 
-                    <h2>What every peer stores <small>· db.map, no key needed</small></h2>
-                    <p id="detail-id" class="cipher-id"></p>
-                    <p id="detail-cipher" class="detail-cipher"></p>
-                </div>
-            </section>
+                    <article id="detail" class="editor hidden">
+                        <div class="doc-header">
+                            <input type="text" id="detail-title" placeholder="Title…" aria-label="Note title">
+                            <button id="delete-btn" class="danger">Delete</button>
+                        </div>
+
+                        <p id="detail-sealed" class="detail-plain sealed hidden"></p>
+                        <textarea id="detail-body" placeholder="Something only you should read…"
+                            aria-label="Note content"></textarea>
+
+                        <section class="cipher">
+                            <h2>What every peer stores <small>· db.map, no key needed</small></h2>
+                            <p id="detail-id" class="cipher-id"></p>
+                            <p id="detail-cipher" class="detail-cipher"></p>
+                        </section>
+                    </article>
+                </main>
+
+                <footer class="statusbar">
+                    <div class="editor-meta">
+                        <span id="detail-mode" class="perm-tag"></span>
+                        <span id="detail-owner"></span>
+                        <span id="detail-status" class="save-status"></span>
+                    </div>
+                    <span id="presence" class="presence">0 peers</span>
+                </footer>
+            </div>
         </div>
     </div>
 
@@ -607,11 +669,17 @@
             sessionAddr: $("session-addr"),
             themeBtn: $("theme-btn"),
             logout: $("logout-btn"),
-            noteTitle: $("note-title"),
-            noteBody: $("note-body"),
-            save: $("save-btn"),
+            confirmModal: $("confirm-modal"),
+            confirmTitle: $("confirm-title"),
+            confirmText: $("confirm-text"),
+            confirmOk: $("confirm-ok"),
+            deleteBtn: $("delete-btn"),
+            search: $("search-input"),
+            newNote: $("new-note-btn"),
             notes: $("notes-list"),
-            notesCount: $("notes-count"),
+            listEmpty: $("list-empty"),
+            owner: $("detail-owner"),
+            presence: $("presence"),
             detailEmpty: $("detail-empty"),
             detail: $("detail"),
             detailSealed: $("detail-sealed"),
@@ -667,6 +735,27 @@
         }
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
+
+        /**
+         * Ask before anything irreversible — the one thing a toast cannot do,
+         * because it reports what already happened. Replaces `window.confirm`,
+         * which blocks the main thread: peer messages queue and rAF never runs,
+         * so the live interface freezes behind it. `method="dialog"` puts each
+         * button's value in `returnValue`, and Esc already means no.
+         *
+         * @returns {Promise<boolean>} whether the destructive action was accepted
+         */
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            el.confirmTitle.textContent = title
+            el.confirmText.textContent = body
+            el.confirmOk.textContent = confirmLabel
+            el.confirmModal.addEventListener(
+                "close",
+                () => resolve(el.confirmModal.returnValue === "ok"),
+                { once: true } // Esc and the backdrop both land here, as a "no"
+            )
+            el.confirmModal.showModal()
+        })
 
         /**
          * Theme: values only. `data-theme` is the palette in force, which the CSS
@@ -803,13 +892,7 @@
          */
         const notes = new Map() // id → { title, secret, owner }
         let selectedId = null
-
-        const emptyRow = (list, message) => {
-            const li = document.createElement("li")
-            li.className = "empty"
-            li.textContent = message
-            list.replaceChildren(li)
-        }
+        let pendingFocusId = null // a note just created here, waiting to be opened
 
         /**
          * COSMETIC ONLY — never an access check.
@@ -824,40 +907,39 @@
 
         /**
          * Rebuilds the whole list. Acceptable at this size and no further: §7 of
-         * the design guide asks for a DOM gesture per action (`added` prepends,
-         * `updated` replaces that row, `removed` drops it), and a list of
+         * the design guide asks for a DOM gesture per action, and a list of
          * hundreds should do exactly that — see docs.html. The subscription
-         * below already reports which node changed, so the upgrade is local.
+         * already reports which node changed, so the upgrade is local.
+         *
+         * The search filters on the title, which it can only do because the
+         * title is stored in the clear. A body-text search would be impossible
+         * here by construction — you cannot query what the graph cannot read.
          */
         const renderList = () => {
-            el.notesCount.textContent = notes.size ? `· ${notes.size}` : ""
-            if (!notes.size) return emptyRow(el.notes, "No notes yet.")
+            const term = el.search.value.trim().toLowerCase()
+            const matches = [...notes].filter(([, n]) => !term || (n.title ?? "").toLowerCase().includes(term))
 
-            el.notes.replaceChildren(...[...notes].map(([id, note]) => {
+            show(el.listEmpty, !!term && !matches.length)
+            if (!matches.length) return el.notes.replaceChildren()
+
+            el.notes.replaceChildren(...matches.map(([id, note]) => {
                 const li = document.createElement("li")
                 li.dataset.id = id
                 li.classList.toggle("selected", id === selectedId)
+                li.classList.toggle("sealed-row", !isMine(note))
 
-                const title = document.createElement("span")
+                const title = document.createElement("div")
                 title.className = "note-title"
                 title.textContent = note.title || "Untitled"
 
-                // Everyone reads the title and everyone reads the owner. What
-                // nobody but the owner reads is what the note says.
-                const owner = document.createElement("span")
+                // Everyone reads the title and the owner. What nobody but the
+                // owner reads is what the note says.
+                const owner = document.createElement("div")
                 owner.className = "note-body"
                 owner.textContent = isMine(note) ? "yours" : `by ${db.sm.abbrAddr(note.owner ?? "")}`
                 owner.classList.toggle("sealed", !isMine(note))
 
-                const head = document.createElement("div")
-                head.className = "note-head"
-                head.append(title)
-
-                const row = document.createElement("div")
-                row.className = "note-row"
-                row.append(head, owner)
-
-                li.append(row)
+                li.append(title, owner)
                 li.addEventListener("click", () => selectNote(id))
                 return li
             }))
@@ -883,21 +965,22 @@
             let plain = null
             try { plain = await db.sm.decryptDataForCurrentUser(note.secret) } catch { plain = null }
 
-            show(el.detailEditor, !!plain)
-            show(el.detailSealed, !plain)
-            el.detailMode.textContent = plain ? "· yours to edit" : "· not your key"
+            // Never overwrite the field being typed in: autosave means our own
+            // write comes back through this same path, and reassigning .value
+            // would jump the caret to the end on every keystroke.
+            if (document.activeElement !== el.detailTitle) el.detailTitle.value = note.title ?? ""
+            if (document.activeElement !== el.detailBody) el.detailBody.value = plain?.content ?? ""
 
-            if (plain) {
-                // Never overwrite the field being typed in: autosave means our own
-                // write comes back through this same path, and reassigning .value
-                // would jump the caret to the end on every keystroke.
-                if (document.activeElement !== el.detailTitle) el.detailTitle.value = note.title ?? ""
-                if (document.activeElement !== el.detailBody) el.detailBody.value = plain.content ?? ""
-            } else {
-                el.detailSealed.textContent = note.owner === undefined
-                    ? "This note has no owner."
-                    : `Written by ${db.sm.abbrAddr(note.owner)}. You can read its title, its owner and its bytes — not its words.`
-            }
+            el.detailTitle.disabled = !plain
+            el.detailBody.disabled = !plain
+            show(el.deleteBtn, !!plain)
+            show(el.detailBody, !!plain)
+            show(el.detailSealed, !plain)
+            if (!plain) el.detailSealed.textContent = "You can read this note's title, its owner and its bytes — not its words."
+
+            el.detailMode.textContent = plain ? "yours" : "sealed"
+            el.detailMode.className = `perm-tag ${plain ? "mine" : "sealed"}`
+            el.owner.textContent = note.owner ? db.sm.abbrAddr(note.owner) : ""
 
             el.detailId.textContent = id
             el.detailCipher.textContent = note.secret ?? "(no payload)"
@@ -905,6 +988,14 @@
             show(el.detailEmpty, false)
             show(el.detail, true)
             renderList() // repaint so the selected row is marked
+
+            // A note created in this tab opens with its title selected, ready to
+            // be replaced. One that arrived from a peer must not steal focus.
+            if (id === pendingFocusId) {
+                pendingFocusId = null
+                el.detailTitle.focus()
+                el.detailTitle.select()
+            }
         }
 
         /**
@@ -925,35 +1016,31 @@
             })
 
         /**
-         * A new note: public title, encrypted body, owner stated in the clear.
-         *
-         * Creating takes a button and editing does not, on purpose: creation is
-         * a deliberate act with nothing to autosave onto yet, while an existing
-         * note is edited in place (§5.3). Same reason docs.html has one "new"
-         * button and no Save.
+         * `+` creates and opens, as in docs.html — no form and no Save button.
+         * Creation is the one deliberate act; everything after it is autosaved.
          */
-        const saveNote = async () => {
-            const title = el.noteTitle.value.trim()
-            const content = el.noteBody.value.trim()
-            if (!content) return el.noteBody.focus()
+        const createNote = async () => {
+            const id = await db.put({
+                type: "note",
+                title: "Untitled",
+                owner: currentUser,
+                created: Date.now(),
+                // The only part nobody else can read. A string, so it travels in
+                // an ordinary node like any other field.
+                secret: await db.sm.encryptDataForCurrentUser({ content: "" })
+            })
+            // Do NOT select it here: `notes` is filled by the subscription, and
+            // the node has not landed yet. Naming it as pending lets the
+            // subscription open it the moment it arrives — the same path a
+            // peer's note takes, so there is one way in rather than two.
+            selectedId = id
+            pendingFocusId = id
 
-            try {
-                await db.put({
-                    type: "note",
-                    title: title || "Untitled",
-                    owner: currentUser,
-                    created: Date.now(),
-                    // The only part nobody else can read. A string, so it travels
-                    // in an ordinary node like any other field.
-                    secret: await db.sm.encryptDataForCurrentUser({ content })
-                })
-                el.noteTitle.value = ""
-                el.noteBody.value = ""
-                el.noteTitle.focus()
-                toast("Saved — the title is public, the body is not", "success")
-            } catch (error) {
-                toast(error.message, "error")
-            }
+            // …unless it landed already: the subscription can fire before
+            // `db.put` returns the id, and then its own check found nothing to
+            // match. Covering both orders is two lines; guessing which one wins
+            // is a bug that only shows up on a fast machine, or a slow one.
+            if (notes.has(id)) selectNote(id)
         }
 
         /** Editing in place: same node, re-encrypted body. */
@@ -963,13 +1050,40 @@
             try {
                 await db.put({
                     ...note,
-                    title: el.detailTitle.value,
+                    title: el.detailTitle.value || "Untitled",
                     secret: await db.sm.encryptDataForCurrentUser({ content: el.detailBody.value })
                 }, selectedId)
                 el.detailStatus.textContent = "saved"
                 setTimeout(() => { if (el.detailStatus.textContent === "saved") el.detailStatus.textContent = "" }, 2000)
             } catch (error) {
                 el.detailStatus.textContent = ""
+                toast(error.message, "error")
+            }
+        }
+
+        /**
+         * Deleting is the owner's alone — and enforced by nothing here. Any peer
+         * with a write role can remove any node; what stops them in a real app
+         * is node-level ACLs (see acls.html), not this button being hidden.
+         */
+        const deleteNote = async () => {
+            const note = notes.get(selectedId)
+            if (!note) return
+
+            const confirmed = await confirmAction({
+                title: "Delete this note?",
+                body: "It disappears for every peer, and there is no undo.",
+                confirmLabel: "Delete"
+            })
+            if (!confirmed) return
+
+            try {
+                await db.remove(selectedId)
+                selectedId = null
+                show(el.detail, false)
+                show(el.detailEmpty, true)
+                toast("Deleted", "success")
+            } catch (error) {
                 toast(error.message, "error")
             }
         }
@@ -996,9 +1110,8 @@
 
             el.sessionAddr.textContent = isActive ? abbrAddr : ""
             show(el.logout, isActive)
-            el.save.disabled = !isActive
-            el.noteTitle.disabled = !isActive
-            el.noteBody.disabled = !isActive
+            el.newNote.disabled = !isActive
+            el.newNote.title = isActive ? "New note" : "Sign in to write a note"
 
             renderIdentityModal(state)
             renderList()                        // ownership labels change with the session
@@ -1031,7 +1144,9 @@
         el.passkeyLogin.addEventListener("click", loginWithPasskey)
         el.clip.addEventListener("click", copyPhrase)
         el.mnemonic.addEventListener("input", () => { syncClipAffordance(); autoGrow() })
-        el.save.addEventListener("click", saveNote)
+        el.newNote.addEventListener("click", createNote)
+        el.deleteBtn.addEventListener("click", deleteNote)
+        el.search.addEventListener("input", renderList)
         el.detailTitle.addEventListener("input", scheduleSave)
         el.detailBody.addEventListener("input", scheduleSave)
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
@@ -1048,6 +1163,14 @@
                 toast(currentUser, "info") // the clipboard can be refused; show it instead
             }
         })
+
+        const updatePresence = () => {
+            const count = Object.keys(db.room?.getPeers() ?? {}).length
+            el.presence.textContent = `${count} ${count === 1 ? "peer" : "peers"}`
+        }
+        db.room?.on("peer:join", updatePresence)
+        db.room?.on("peer:leave", updatePresence)
+        updatePresence()
 
         autoGrow() // the browser may restore field content across reloads
         db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
