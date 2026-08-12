@@ -4,257 +4,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>gdb-p2p: Active & Inactive Lists</title>
+    <title>GenosDB — Two live queries over one graph</title>
+
     <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light is this page's base — it reads
+           next to the documentation it illustrates — so dark is the override. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f2f5;
-            color: #333;
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            /* One surface: the panels do not float on it, they are it. */
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
-        .container {
+        /* ── A bench with two outputs ───────────────────────────── */
+        /* The lesson is that moving a node makes it leave one query and enter
+           the other, so both lists must be on screen at the same time — that is
+           the whole demonstration, and a scroll between them would hide it.
+           Each column scrolls inside itself; the page never does. */
+        .bench {
+            position: relative; /* anchors the theme button */
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
+
+        .head {
             display: flex;
-            justify-content: space-around;
-            gap: 20px;
+            align-items: center;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
         }
 
-        .list-column {
-            flex: 1;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        .head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+        .head h1 span { color: var(--text-tertiary); font-weight: 400; }
+
+        /* The composer sits in the head, next to the title: adding a task is the
+           only input this page has, and it belongs above both outputs rather
+           than inside either one. */
+        .composer { display: flex; gap: var(--space-2); margin-left: auto; margin-right: 34px; }
+
+        .lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 0; }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            padding: var(--space-5);
         }
 
-        h1 {
-            text-align: center;
-            color: #1c1e21;
-            margin-bottom: 30px;
-        }
+        .column + .column { border-left: 1px solid var(--border-subtle); }
 
+        /* A rule under the label divides the sections. Nothing gets a tinted
+           box: separation is the line and the space around it. */
         h2 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-            margin-top: 0;
+            margin: 0 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
         }
 
-        #controls {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+        h2 code { font-family: var(--mono); font-weight: 400; color: var(--text-tertiary); }
 
-        #controls button {
-            background-color: #42b72a;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 1em;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.2s;
-        }
-
-        #controls button:hover {
-            background-color: #36a420;
-        }
-
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
+        ul { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
 
         li {
-            background-color: #f9f9f9;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            border-radius: 6px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            transition: background-color 0.2s;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-subtle);
         }
 
-        li:hover {
-            background-color: #e9ebee;
-        }
+        li.empty { color: var(--text-tertiary); border-bottom: none; }
 
-        li span {
-            flex-grow: 1;
-            color: #1c1e21;
-        }
+        .task-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        li button {
-            color: white;
-            border: none;
-            padding: 8px 12px;
+        /* ── Buttons: the four weights of the guide ─────────────── */
+        /* Secondary is the default. A blue default would make `button:hover`
+           paint a background, and that rule outranks any `.icon-btn:hover` — so
+           every icon button on the page would light up as a blue square. */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
             cursor: pointer;
-            border-radius: 4px;
-            font-size: 0.9em;
-            transition: background-color 0.2s;
         }
 
-        .btn-set-inactive {
-            background-color: #ffc107;
-            color: #212529;
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--text-on-accent);
         }
 
-        /* Yellow */
-        .btn-set-inactive:hover {
-            background-color: #e0a800;
+        input[type="text"] {
+            width: 220px;
+            font: inherit;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none; /* the border carries focus */
+            color: var(--text-primary);
         }
 
-        .btn-set-active {
-            background-color: #28a745;
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        /* No chrome band to put it in, so it takes the corner one would have
+           owned — the same place as in every other GenosDB app. */
+        .theme-btn {
+            position: absolute;
+            top: var(--space-3);
+            right: calc(var(--space-5) - 6px);
+            width: auto;
+            margin: 0;
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
         }
 
-        /* Green */
-        .btn-set-active:hover {
-            background-color: #218838;
-        }
+        .theme-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .theme-btn svg { width: 16px; height: 16px; }
 
-        .empty-list {
-            color: #777;
-            font-style: italic;
-            padding: 10px;
-            text-align: center;
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* Stacked, and still one screen: each list keeps scrolling in its own
+           row rather than handing the scrolling back to the page. */
+        @media (max-width: 820px) {
+            .lists { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+            .column + .column { border-left: none; border-top: 1px solid var(--border-subtle); }
+            .head { flex-wrap: wrap; }
+            .composer { margin-left: 0; width: 100%; }
+            .composer input[type="text"] { flex: 1; width: auto; }
         }
     </style>
 </head>
 
 <body>
-    <h1>Task Manager (Active & Inactive)</h1>
 
-    <div id="controls">
-        <button id="addActiveItemBtn">Add New Task (Active)</button>
-    </div>
+    <div class="bench">
+        <button id="theme-btn" class="theme-btn" title="Theme" aria-label="Theme">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+            <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="13" rx="2" />
+                <path d="M9 21h6" />
+            </svg>
+        </button>
 
-    <div class="container">
-        <div class="list-column">
-            <h2>Active Tasks</h2>
-            <ul id="activeItemsList"></ul>
-        </div>
-        <div class="list-column">
-            <h2>Inactive Tasks</h2>
-            <ul id="inactiveItemsList"></ul>
+        <header class="head">
+            <h1>Two live queries <span>· one graph</span></h1>
+            <div class="composer">
+                <input type="text" id="task-name" placeholder="New task…" aria-label="Task name">
+                <button id="add-btn" class="primary">Add</button>
+            </div>
+        </header>
+
+        <div class="lists">
+            <section class="column">
+                <h2>Active <code>{ status: "active" }</code></h2>
+                <ul id="active-list"></ul>
+            </section>
+
+            <section class="column">
+                <h2>Inactive <code>{ status: "inactive" }</code></h2>
+                <ul id="inactive-list"></ul>
+            </section>
         </div>
     </div>
 
     <script type="module">
+        /**
+         * Two live queries over one graph.
+         *
+         * Each `db.map()` watches a different filter, and a node belongs to
+         * whichever one it currently matches. Flip `status` and the engine works
+         * both subscriptions out for you: the node is `removed` from one and
+         * `added` to the other, in the same write. No routing code, no moving
+         * items between arrays — the queries are the routing.
+         *
+         * What to read here, and where:
+         *   · db.map({ query }, cb)  — a subscription per filter, live for the page
+         *   · db.put(value, id)      — writing over an id updates that node
+         *
+         * Both callbacks handle the four actions with DOM gestures (§7 of the
+         * design guide): the DOM is the state, so there is no local cache to
+         * keep in sync with it — and no full redraw on every notification.
+         */
+        import { gdb } from "../dist/index.js"
 
-        import { gdb } from "../dist/index.js";
-
-        // Initialize GenosDB using async factory
-        const db = await gdb("my-tasks-db-v2", { rtc: true });
-
-        const activeItemsListElement = document.getElementById('activeItemsList');
-        const inactiveItemsListElement = document.getElementById('inactiveItemsList');
-        const addActiveItemBtn = document.getElementById('addActiveItemBtn');
-
-        // Local caches for each list's data
-        let displayedActiveItems = {};
-        let displayedInactiveItems = {};
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            name: $("task-name"),
+            add: $("add-btn"),
+            active: $("active-list"),
+            inactive: $("inactive-list")
+        }
 
         /**
-         * Generic function to render a list of items in the HTML.
-         * @param {HTMLElement} listElement - The UL element where the list will be rendered.
-         * @param {Object} itemsCache - The object containing items to display (e.g., displayedActiveItems).
-         * @param {string} actionButtonText - Text for the item's action button (e.g., "Set Inactive").
-         * @param {string} actionButtonClass - CSS class for the action button.
-         * @param {string} targetStatusOnClick - The new 'status' the item will have upon button click.
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
          */
-        function renderList(listElement, itemsCache, actionButtonText, actionButtonClass, targetStatusOnClick) {
-            listElement.innerHTML = ''; // Clear current list
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
 
-            const itemsToDisplay = Object.entries(itemsCache);
-
-            if (itemsToDisplay.length === 0) {
-                listElement.innerHTML = `<li class="empty-list">No tasks in this category.</li>`;
-                return;
-            }
-
-            itemsToDisplay.sort(([, a], [, b]) => (a.name || "").localeCompare(b.name || "")).forEach(([id, itemData]) => {
-                const listItem = document.createElement('li');
-
-                const itemNameSpan = document.createElement('span');
-                itemNameSpan.textContent = itemData.name || `Task (ID: ${id})`;
-                listItem.appendChild(itemNameSpan);
-
-                const actionButton = document.createElement('button');
-                actionButton.textContent = actionButtonText;
-                actionButton.className = actionButtonClass;
-                actionButton.dataset.id = id;
-                actionButton.dataset.name = itemData.name; // Store name for update
-
-                actionButton.addEventListener('click', async (event) => {
-                    const itemIdToUpdate = event.target.dataset.id;
-                    const itemName = event.target.dataset.name;
-                    console.log(`Changing task ${itemIdToUpdate} status to '${targetStatusOnClick}'...`);
-                    // We update the node. The 'map' listeners will handle moving it between lists.
-                    await db.put({ status: targetStatusOnClick, name: itemName }, itemIdToUpdate);
-                });
-
-                listItem.appendChild(actionButton);
-                listElement.appendChild(listItem);
-            });
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.statusListsTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
         }
 
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
 
-        // Main function to set up the app
-        async function initializeApp() {
-            // await db.clear(); // Start clean for the demo
-            // console.log("Database cleared.");
+        applyTheme(localStorage.statusListsTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
 
-            // // Initial sample data
-            // await db.put({ name: "Plan team meeting", status: "active", created: Date.now() });
-            // await db.put({ name: "Draft monthly report", status: "active", created: Date.now() - 1000 });
-            // await db.put({ name: "Archive old documents", status: "inactive", created: Date.now() - 2000 });
-            // await db.put({ name: "Buy office supplies", status: "active", created: Date.now() - 500 });
-            // await db.put({ name: "Update software (completed)", status: "inactive", created: Date.now() - 1500 });
+        const db = await gdb("genosdb-status-lists", { rtc: true })
 
-            console.log("Setting up listener for ACTIVE tasks...");
-            await db.map(
-                { query: { status: 'active' } },
-                ({ id, value, action }) => {
-                    console.log(`[ACTIVE MAP] ${action.toUpperCase()}: ${id}`, value);
-                    if (action === 'initial' || action === 'added' || action === 'updated') {
-                        displayedActiveItems[id] = value;
-                    } else if (action === 'removed') {
-                        delete displayedActiveItems[id];
-                    }
-                    renderList(activeItemsListElement, displayedActiveItems, "Set Inactive", "btn-set-inactive", "inactive");
-                }
-            );
-
-            console.log("Setting up listener for INACTIVE tasks...");
-            await db.map(
-                { query: { status: 'inactive' } },
-                ({ id, value, action }) => {
-                    console.log(`[INACTIVE MAP] ${action.toUpperCase()}: ${id}`, value);
-                    if (action === 'initial' || action === 'added' || action === 'updated') {
-                        displayedInactiveItems[id] = value;
-                    } else if (action === 'removed') {
-                        delete displayedInactiveItems[id];
-                    }
-                    renderList(inactiveItemsListElement, displayedInactiveItems, "Set Active", "btn-set-active", "active");
-                }
-            );
-
-            addActiveItemBtn.addEventListener('click', async () => {
-                const newItemName = prompt("Name for the new active task:", `Quick Task ${Date.now() % 1000}`);
-                if (newItemName && newItemName.trim() !== "") {
-                    console.log(`Adding new active task: ${newItemName}`);
-                    await db.put({ name: newItemName.trim(), status: "active", created: Date.now() });
-                }
-            });
-
-            console.log("Application initialized. Lists show active and inactive tasks.");
+        /** An empty column says so, and stops saying it as soon as it is not. */
+        const syncEmptyNote = (list, label) => {
+            const hasTasks = list.querySelector("li:not(.empty)")
+            const note = list.querySelector("li.empty")
+            if (hasTasks) return note?.remove()
+            if (note) return
+            const li = document.createElement("li")
+            li.className = "empty"
+            li.textContent = `No ${label} tasks.`
+            list.append(li)
         }
 
-        initializeApp();
+        /**
+         * One row. The button writes the *other* status over the same id — the
+         * node is not deleted and recreated, it simply stops matching one query
+         * and starts matching the other.
+         */
+        const buildRow = (id, value, targetStatus) => {
+            const li = document.createElement("li")
+            li.id = `task-${id}`
+
+            const name = document.createElement("span")
+            name.className = "task-name"
+            name.textContent = value.name || `Task ${id.slice(0, 6)}`
+
+            const move = document.createElement("button")
+            move.textContent = targetStatus === "inactive" ? "Set inactive" : "Set active"
+            move.addEventListener("click", () => db.put({ ...value, status: targetStatus }, id))
+
+            li.append(name, move)
+            return li
+        }
+
+        /**
+         * One subscription per column, each handling the four actions with a DOM
+         * gesture. `updated` rebuilds that row in place rather than redrawing the
+         * list — a wholesale `innerHTML = ""` would also throw away the row the
+         * user is about to click.
+         */
+        const watch = (list, status, targetStatus, label) =>
+            db.map({ query: { status } }, ({ id, value, action }) => {
+                const existing = $(`task-${id}`)
+
+                if (action === "removed") existing?.remove()
+                else if (action === "updated") existing?.replaceWith(buildRow(id, value, targetStatus))
+                else if (action === "added") list.prepend(buildRow(id, value, targetStatus))
+                else if (!existing) list.append(buildRow(id, value, targetStatus)) // initial: already ordered
+
+                syncEmptyNote(list, label)
+            })
+
+        await watch(el.active, "active", "inactive", "active")
+        await watch(el.inactive, "inactive", "active", "inactive")
+
+        // An empty graph produces no notifications at all, so the note has to be
+        // placed once here — inside the callback it would never run.
+        syncEmptyNote(el.active, "active")
+        syncEmptyNote(el.inactive, "inactive")
+
+        /** A field on the page, never `prompt()`: it blocks the thread, and this
+            page exists to show two lists updating while you work. */
+        const addTask = async () => {
+            const name = el.name.value.trim()
+            if (!name) return el.name.focus()
+            await db.put({ name, status: "active", created: Date.now() })
+            el.name.value = ""
+            el.name.focus()
+        }
+
+        el.add.addEventListener("click", addTask)
+        el.name.addEventListener("keydown", (e) => { if (e.key === "Enter") addTask() })
     </script>
 </body>
 

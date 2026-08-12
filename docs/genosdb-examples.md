@@ -17,8 +17,8 @@ A simple real-time app to manage pending tasks. Ideal as a minimal example.
 ### [Advanced To-Do List](https://estebanrfp.github.io/gdb/examples/advanced-todolist.html)
 A complete task management app, featuring real-time syncing, task filtering (all/active/completed), inline editing, persistent storage, and a clean responsive UI. Ideal for showcasing reactive CRUD operations.
 
-### [Status List](https://estebanrfp.github.io/gdb/examples/status-lists.html)
-This example demonstrates running Multiple, query-filtered db.map() listeners in real-time.
+### [Two Live Queries Over One Graph](https://estebanrfp.github.io/gdb/examples/status-lists.html)
+Two `db.map()` subscriptions watching different filters, side by side. A node belongs to whichever query it currently matches, so flipping one field makes the engine work both out for you — `removed` from one list, `added` to the other, in the same write. Press a button in one column and watch the row appear in the other: no routing code, because the queries **are** the routing.
 
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.

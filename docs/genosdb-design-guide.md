@@ -828,6 +828,8 @@ Legibility is not the trade-off people expect, because **the panels stay narrow*
 }
 ```
 
+**Two outputs instead of an input and an output.** Some benches compare rather than transform — two live queries, two peers, before and after. The shape is the same and the reason is the same: the lesson is what the *difference* between the panels does, so both have to be on screen at once. Give the columns equal width (`repeat(2, minmax(0, 1fr))`), the same treatment, and put whatever input exists in a band above both, since it belongs to neither. `status-lists.html` is the worked example: press a button in one column and watch the row appear in the other.
+
 **Split the output when there are two kinds of it.** A bench usually produces both an *answer* and a *trace* — the result of the run, and the log of what got the graph into that state. Stacked in one scrolling panel they fight: a long result buries the log, a long log pushes the result off screen. Two halves, each scrolling in its own box, and neither can hide the other:
 
 ```css
@@ -1033,7 +1035,7 @@ Why each decision, so nobody re-litigates them:
 
 ### Confirm — the other half of feedback
 
-A toast reports what already happened; **`confirm()` is the same mistake as `alert()`, for the same reason.** It blocks the main thread for as long as the dialog is up: incoming peer messages queue, and `requestAnimationFrame` never runs — so the live interface a GenosDB demo exists to show freezes behind a browser chrome box that says `127.0.0.1:5503 says`. It also cannot be styled, themed or translated.
+A toast reports what already happened; **`confirm()` and `prompt()` are the same mistake as `alert()`, for the same reason.** It blocks the main thread for as long as the dialog is up: incoming peer messages queue, and `requestAnimationFrame` never runs — so the live interface a GenosDB demo exists to show freezes behind a browser chrome box that says `127.0.0.1:5503 says`. It also cannot be styled, themed or translated.
 
 Ask with a `<dialog>` instead. `method="dialog"` puts each button's value into `returnValue`, so there is no click wiring and `Esc` already means *no*:
 
@@ -1071,6 +1073,8 @@ if (!await confirmAction({
 ```
 
 Two rules for the wording: **the title asks, the body says what is lost**, and **the button names the act** (`Delete`, `Revoke`) rather than `OK` — a button labelled OK tells you nothing about what you are agreeing to. It carries `danger`; `Cancel` stays `ghost`, because the safe path should not compete.
+
+**`prompt()` has no dialog equivalent — it has a field.** Asking for a value is not a confirmation, and a modal for one line of text is a modal too many: put the input on the page, next to what it creates. In a P2P demo the blocking cost is worse than elsewhere, because the seconds the box is open are seconds the page stops showing the sync it exists to demonstrate.
 
 **Modal:** native `<dialog>` + `::backdrop` dim with slight blur; `--bg-elevated`, `--radius-lg`; backdrop-click / `Esc` to dismiss — no close ×.
 
