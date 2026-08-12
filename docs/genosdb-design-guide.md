@@ -792,31 +792,44 @@ Single centered column (max-width ~680px) for the feed; composer pinned at the n
 
 ### 5.6 Instruments & testbeds
 
-Two shapes live here, and picking the wrong one is the most common mistake in this chapter. Ask what the reader does with the page:
+Three shapes live here, and picking the wrong one is the most common mistake in this chapter. Ask what the reader *does* with the page:
 
-| | **A page you read** | **An instrument you watch** |
-| --- | --- | --- |
-| What it does | Answers one question when you ask it — a query and its result, an operator demonstrated | Reports a process that changes on its own — a live topology, a load bench, a stream of events |
-| Shape | **Centred column**, page scrolls | **Full-bleed**, page does not scroll |
-| Width | Set by the widest thing that must be read without scrolling sideways: ~640px for prose, ~720px when a code block or JSON is part of the lesson, ~440px when it is only stat cards | The viewport |
-| Examples | `edges-max_depth_demo` · `nlquery` · `sandbox` | `mesh-cells-monitor-d3` · `perf-stress-test` · `graph-p2p` |
+| | **Reads it** | **Works at it** | **Watches it** |
+| --- | --- | --- | --- |
+| What it is | A lesson: explanation, one call, its result | A bench: you run something, look, adjust, run again | An instrument: it reports a process that changes on its own |
+| Shape | **Centred column**, page scrolls | **Two panels**, input left / output right, each scrolling on its own | **Full-bleed**, page does not scroll |
+| Width | The widest block that must be read intact: ~640px for prose, ~720px with code, ~440px for stat cards alone | ~380–440px for the input panel; the output takes the rest | The viewport |
+| Examples | `todolist` · `paste` · `singleNode` | `edges-max_depth_demo` · `nlquery` · `sandbox` | `mesh-cells-monitor-d3` · `perf-stress-test` · `graph-p2p` |
 
-**Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a page that scrolls needs no breakpoint at all.
+**The bench is the default for anything that tests.** Its point is not extra space, it is **simultaneity**: the lesson of a testbed is *"this input produces this output"*, and a single column puts the two halves of that sentence a scroll apart — you run the query, scroll down to read the answer, scroll back up to change something, and never see both at once. Side by side, the comparison is free and a long result never pushes the controls out of reach.
 
-**Do not box an instrument.** A live graph or a metric that moves belongs edge to edge, with the bands of §5.0 around it and the scrolling inside the panels, not on the page. Boxing it wastes the space the data was going to occupy.
-
-Both share the rest: an uppercase eyebrow label where one helps, a large title, a one-line hint, **stat cards in a row** with mono values, and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
+Legibility is not the trade-off people expect, because **the panels stay narrow**: 420px of prose reads exactly as well inside a split as it does centred. What full-bleed costs, a bench does not.
 
 ```css
-/* A page you read. No breakpoint needed: max-width and a scrolling page
-   already handle every width below it. */
-body {
-    margin: 0 auto;
-    padding: var(--space-5);
-    max-width: 720px;   /* the widest block that must be read intact */
-    background: var(--bg-primary);
+.bench {
+    display: grid;
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+    height: 100%;
+}
+
+/* Each panel scrolls itself; the page never does. */
+.panel { min-width: 0; min-height: 0; overflow-y: auto; padding: var(--space-5); }
+.input-panel { border-right: 1px solid var(--border-subtle); }
+
+@media (max-width: 820px) {
+    .bench { grid-template-columns: minmax(0, 1fr);
+             grid-template-rows: minmax(0, 55%) minmax(0, 45%); }
+    .input-panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
 }
 ```
+
+**The output panel is never blank.** Before the first run it says what will appear there — an icon and one line, centred — or the split reads as a page that failed to load rather than one waiting for you.
+
+**Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The centred column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a scrolling page needs no breakpoint at all.
+
+**Do not box an instrument.** A live graph or a moving metric belongs edge to edge, with the bands of §5.0 around it and the scrolling inside its panels. Boxing it wastes the space the data was going to occupy.
+
+All three share the rest: an uppercase eyebrow label where one helps, a large title, a one-line hint, **stat cards in a row** with mono values, and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
 
 ### Hard layout rules (learned the hard way)
 
