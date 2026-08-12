@@ -281,19 +281,37 @@
 
         .mnemonic-field { position: relative; }
 
-        #mnemonic-input {
-            min-height: 45px; /* the exact height of an action button */
-            display: block;   /* an inline-block textarea leaves 6px of descender below it */
+        /* Every field on the page, so a specific one only has to say what makes
+           it different. */
+        input[type="text"], textarea, select {
             width: 100%;
-            padding: var(--space-3);
-            padding-right: 32px; /* the copy icon never sits on the last word */
-            overflow: hidden;
-            resize: none;
-            background: none;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-strong);
             border-radius: var(--radius-sm);
-            outline: none; /* the border carries focus — see the field rule below */
-            color: var(--text-primary);
+            outline: none;
+            resize: none;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+        input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+
+        /* A field you cannot edit says so by stepping back — which is what the
+           mnemonic does the moment it is generated and turned read-only. */
+        input:disabled, textarea[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
+
+        #mnemonic-input {
+            /* Eight declarations, and no more: everything else — width, padding,
+               border, radius, colour — comes from the field rule above, which is
+               how this field stays identical to the one in docs.html. */
+            min-height: 45px; /* the exact height of an action button */
+            display: block;   /* an inline-block textarea leaves 6px of descender below it */
+            background: none; /* it sits on the modal's own surface */
+            padding-right: 32px; /* the copy icon never sits on the last word */
+            overflow: hidden;
             font-family: var(--mono);
             font-size: 13px;
             text-align: left;
@@ -302,7 +320,6 @@
         /* The dialog focuses it on open, and an accent ring would spotlight the
            one element here that should stay quiet. The caret says where you are. */
         #mnemonic-input:focus { border-color: var(--border-strong); }
-        #mnemonic-input::placeholder { color: var(--text-tertiary); }
 
         /* One contextual control instead of another button in the stack: it
            appears only once the field holds a phrase. */

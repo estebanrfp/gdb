@@ -226,20 +226,27 @@
         [data-pref="system"] .icon-sun { display: none; }
         [data-pref="system"] .icon-system { display: block; }
 
-        input, textarea {
+        /* Every field on the page, so a specific one only has to say what makes
+           it different. */
+        input[type="text"], textarea, select {
             width: 100%;
-            font: inherit;
             padding: var(--space-2) var(--space-3);
-            background: var(--bg-tertiary);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-strong);
             border-radius: var(--radius-sm);
-            outline: none; /* the border carries focus */
-            color: var(--text-primary);
+            outline: none;
             resize: none;
         }
 
-        input:focus, textarea:focus { border-color: var(--accent); }
+        input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
         input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+
+        /* A field you cannot edit says so by stepping back — which is what the
+           mnemonic does the moment it is generated and turned read-only. */
+        input:disabled, textarea[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
 
         /* ── Identity modal (the canonical door, §4.1) ──────────── */
         dialog {
@@ -260,11 +267,14 @@
         .mnemonic-field { position: relative; }
 
         #mnemonic-input {
+            /* Eight declarations, and no more: everything else — width, padding,
+               border, radius, colour — comes from the field rule above, which is
+               how this field stays identical to the one in docs.html. */
             min-height: 45px; /* the exact height of an action button */
             display: block;   /* an inline-block textarea leaves 6px of descender below it */
+            background: none; /* it sits on the modal's own surface */
             padding-right: 32px; /* the copy icon never sits on the last word */
             overflow: hidden;
-            background: none;
             font-family: var(--mono);
             font-size: 13px;
             text-align: left;
