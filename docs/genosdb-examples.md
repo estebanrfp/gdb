@@ -83,9 +83,9 @@ A decentralized developer-networking app and full GenosDB showcase: passwordless
 ## Security Manager (SM) Examples
 
 ### [Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)
-Per-user **encrypted storage** in a graph every peer replicates, shown as the two readings it really is. `db.sm.put()` encrypts a note before storing it; the left panel decrypts it back with `db.sm.map()`, and the right one reads the very same nodes with a plain `db.map()` — no key, no session — displaying the `_gdbSecurePayloadV1` envelopes as they travel.
+Per-user **encrypted storage** in a graph every peer replicates. The list is every encrypted node in the room — `db.map()`, no key needed — and picking one shows it read twice: what `db.sm.map()` decrypts for you, and the `_gdbSecurePayloadV1` ciphertext the graph actually stores.
 
-**Sign in as a second identity and the left panel empties while the right stays exactly as full.** That is the lesson: in a P2P database every peer already holds the bytes, so privacy comes from encrypting the value, never from the graph withholding it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
+**Nodes belonging to other identities are in that list too, marked `Sealed`** — select one and you still see its bytes, just not its meaning. That is the lesson without having to take anyone's word for it: in a P2P database every peer already holds everything, so privacy comes from `db.sm.put` encrypting the value, never from the graph withholding it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
 
 One API asymmetry worth knowing before you build on it: `db.sm.map()` decrypts and queries but is **not** reactive — a fresh pass per call — while `db.sm.get(id, callback)` *is* a live subscription over encrypted data.
 

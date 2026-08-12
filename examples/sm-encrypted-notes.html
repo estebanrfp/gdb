@@ -199,7 +199,29 @@
         }
 
         .cipher-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: stretch; }
-        .pair-hint { margin: calc(var(--space-4) * -1 + 2px) 0 var(--space-4); font-size: 13px; color: var(--text-tertiary); }
+        .list-hint { font-size: 13px; }
+
+        .detail-plain { margin: 0; font-size: 16px; color: var(--text-primary); white-space: pre-wrap; }
+        .detail-plain.sealed { color: var(--text-tertiary); font-style: italic; font-size: 14px; }
+
+        /* The ciphertext in full: its opacity is the point, so it wraps rather
+           than being clipped — you should see how much of it there is. */
+        .detail-cipher {
+            margin: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--violet);
+            word-break: break-all;
+        }
+
+        #detail-id { margin: 0 0 var(--space-2); }
+        .empty-detail { color: var(--text-tertiary); }
+
+        /* Rows are the input of this bench, so they behave like controls. */
+        li[data-raw] { cursor: pointer; margin-inline: calc(var(--space-3) * -1); padding-inline: var(--space-3); }
+        li[data-raw]:hover { background: var(--bg-tertiary); }
+        li.selected { background: var(--bg-tertiary); }
 
         /* ── Buttons: the four weights of the guide ─────────────── */
         /* Secondary is the default. A blue default would make `button:hover`
@@ -483,18 +505,27 @@
                     <button id="save-btn" class="primary">Save encrypted</button>
                 </div>
 
-                <h2>Your notes <small id="notes-count"></small></h2>
+                <h2>Everything in this room <small id="notes-count"></small></h2>
+                <p class="list-hint">
+                    Every encrypted node the graph holds — yours and everyone else's.
+                    Pick one to see both readings of it.
+                </p>
                 <ul id="notes-list"></ul>
             </section>
 
             <section class="panel">
-                <h2>What every peer stores <small>· db.map, no key needed</small></h2>
-                <p class="pair-hint">Each id below is one of yours behind the SM's prefix — match them.</p>
-                <p>
-                    The same nodes, read straight from the graph. Anyone replicating this room
-                    holds exactly this — the bytes are public, the meaning is not.
-                </p>
-                <ul id="cipher-list"></ul>
+                <div id="detail-empty" class="empty-detail">
+                    <p>Select a node on the left.</p>
+                </div>
+
+                <div id="detail" class="detail hidden">
+                    <h2>What your key opens <small>· db.sm.map</small></h2>
+                    <p id="detail-plain" class="detail-plain"></p>
+
+                    <h2>What every peer stores <small>· db.map, no key needed</small></h2>
+                    <p id="detail-id" class="cipher-id"></p>
+                    <p id="detail-cipher" class="detail-cipher"></p>
+                </div>
             </section>
         </div>
     </div>
@@ -553,7 +584,11 @@
             save: $("save-btn"),
             notes: $("notes-list"),
             notesCount: $("notes-count"),
-            ciphers: $("cipher-list"),
+            detailEmpty: $("detail-empty"),
+            detail: $("detail"),
+            detailPlain: $("detail-plain"),
+            detailId: $("detail-id"),
+            detailCipher: $("detail-cipher"),
             toasts: $("toasts")
         }
 
@@ -727,103 +762,118 @@
         }
 
         /**
-         * Left panel: what your key opens.
+         * The list is every encrypted node in the room; the detail is one of
+         * them, read twice.
          *
-         * `db.sm.map()` decrypts every node it can and then queries them — and
-         * it is NOT reactive: no callback, and each call is a fresh
-         * decrypt-and-query pass. So it is re-read after a write and after a
-         * session change, which is exactly when the answer can differ.
+         * Two reads, and neither replaces the other:
+         *
+         *   · `db.map()` sees every node and needs no key, so it is what knows
+         *     the room's full contents. It is reactive — the list keeps itself
+         *     current as peers write.
+         *   · `db.sm.map()` decrypts what this identity can open, so it is what
+         *     supplies meaning. It is NOT reactive: no callback, and each call
+         *     is a fresh decrypt-and-query pass, so it is re-read on write and
+         *     on session change.
+         *
+         * A node in the first and not the second is someone else's — and that
+         * is not an error to hide, it is the demonstration.
          *
          * (`db.sm.get(id, callback)` is documented as a live subscription over
-         * encrypted data and returns an `unsubscribe`. Measured here, the
-         * callback fired once with the initial value and did not fire again
-         * when the node was rewritten — so this panel does not lean on it. If
-         * you need per-node reactivity over encrypted data, verify it first.)
+         * encrypted data, returning `unsubscribe`. Measured here, the callback
+         * fired once with the initial value and not again when the node was
+         * rewritten, so nothing below leans on it. Verify before you do.)
          */
+        let envelopes = []              // every encrypted node, raw
+        let openable = new Map()        // logical id → decrypted value
         let noteIdByTitle = new Map()
+        let selectedRawId = null
 
-        /** One row. `decrypted` is the SM saying whether this identity opened it. */
-        const renderNoteRow = (li, node, id) => {
-            const value = node?.value ?? {}
-
-            const title = document.createElement("span")
-            title.className = "note-title"
-            title.textContent = value.title || "Untitled"
-
-            // The id, so the row can be matched against its envelope on the
-            // right — which is the claim this page makes and could not other-
-            // wise be checked. The raw node is this id behind an SM prefix.
-            const nodeId = document.createElement("span")
-            nodeId.className = "note-id"
-            nodeId.textContent = id ?? ""
-
-            const body = document.createElement("span")
-            body.className = "note-body"
-            // A row that arrives sealed is worth showing as such rather than
-            // hiding: it is the same fact the right-hand panel is making.
-            body.textContent = node?.decrypted === false ? "(sealed — not for this identity)" : value.content || ""
-            body.classList.toggle("sealed", node?.decrypted === false)
-
-            const head = document.createElement("div")
-            head.className = "note-head"
-            head.append(title, nodeId)
-
-            const row = document.createElement("div")
-            row.className = "note-row"
-            row.append(head, body)
-            li.replaceChildren(row)
+        /** The raw node is the logical id behind an SM prefix, so it ends with it. */
+        const openableFor = (rawId) => {
+            for (const [id, value] of openable) if (rawId.endsWith(id)) return { id, value }
+            return null
         }
 
-        const renderMyNotes = async () => {
-            if (!currentUser) return emptyRow(el.notes, "Sign in to read your notes.")
+        const renderList = () => {
+            el.notesCount.textContent = envelopes.length ? `· ${envelopes.length}` : ""
 
-            const { results = [] } = await db.sm.map({ query: { type: "note" } })
-            el.notesCount.textContent = results.length ? `· ${results.length}` : ""
+            if (!envelopes.length) return emptyRow(el.notes, "Nothing stored yet.")
 
-            if (!results.length) {
-                return emptyRow(el.notes, "No notes yet — or none that this identity can open.")
-            }
+            el.notes.replaceChildren(...envelopes.map(({ id: rawId }) => {
+                const open = openableFor(rawId)
 
-            noteIdByTitle = new Map(results.map(({ id, value }) => [value.title || "Untitled", id]))
-
-            el.notes.replaceChildren(...results.map(({ id, value }) => {
                 const li = document.createElement("li")
-                renderNoteRow(li, { value, decrypted: true }, id)
+                li.dataset.raw = rawId
+                li.classList.toggle("selected", rawId === selectedRawId)
+
+                const title = document.createElement("span")
+                title.className = "note-title"
+                title.textContent = open ? (open.value.title || "Untitled") : "Sealed"
+
+                const body = document.createElement("span")
+                body.className = "note-body"
+                body.textContent = open ? (open.value.content || "") : "not for this identity"
+                body.classList.toggle("sealed", !open)
+
+                const head = document.createElement("div")
+                head.className = "note-head"
+                head.append(title)
+
+                const row = document.createElement("div")
+                row.className = "note-row"
+                row.append(head, body)
+
+                li.append(row)
+                li.addEventListener("click", () => selectNode(rawId))
                 return li
             }))
         }
 
+        /** The detail: the same node as you read it, and as the graph stores it. */
+        const selectNode = (rawId) => {
+            selectedRawId = rawId
+            const envelope = envelopes.find(n => n.id === rawId)
+            if (!envelope) return
+
+            const open = openableFor(rawId)
+
+            el.detailPlain.textContent = open
+                ? `${open.value.title || "Untitled"}\n${open.value.content || ""}`
+                : "This identity holds no key for this node. The bytes below are all it can see."
+            el.detailPlain.classList.toggle("sealed", !open)
+
+            el.detailId.textContent = rawId
+            el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
+
+            show(el.detailEmpty, false)
+            show(el.detail, true)
+            renderList() // repaint so the selected row is marked
+        }
+
+        /** What this identity can decrypt. Re-read on write and on session change. */
+        const refreshOpenable = async () => {
+            if (!currentUser) {
+                openable = new Map()
+                noteIdByTitle = new Map()
+            } else {
+                const { results = [] } = await db.sm.map({ query: { type: "note" } })
+                openable = new Map(results.map(({ id, value }) => [id, value]))
+                noteIdByTitle = new Map(results.map(({ id, value }) => [value.title || "Untitled", id]))
+            }
+            renderList()
+            if (selectedRawId) selectNode(selectedRawId) // the same node, possibly readable now
+        }
+
         /**
-         * Right panel: what the graph holds, live.
-         *
-         * A plain `db.map()` with no security context at all. The envelope is
-         * recognised by its shape rather than by the id prefix — the wrapper
-         * type is the contract, the prefix is an implementation detail.
+         * The room's contents, live and keyless. The envelope is recognised by
+         * its shape rather than by the id prefix — the wrapper type is the
+         * contract, the prefix is an implementation detail.
          */
         const watchRawGraph = () =>
             db.map({}, () => {
                 db.map({}).then(({ results = [] }) => {
-                    const envelopes = results.filter(n => n.value?._gdbWrapperType === "_gdbSecurePayloadV1")
-
-                    if (!envelopes.length) return emptyRow(el.ciphers, "Nothing stored yet.")
-
-                    el.ciphers.replaceChildren(...envelopes.map(({ id, value }) => {
-                        const li = document.createElement("li")
-                        const row = document.createElement("div")
-                        row.className = "cipher-row"
-
-                        const nodeId = document.createElement("span")
-                        nodeId.className = "cipher-id"
-                        nodeId.textContent = id
-
-                        const payload = document.createElement("span")
-                        payload.className = "cipher-payload"
-                        payload.textContent = value._payload ?? "(payload)"
-
-                        row.append(nodeId, payload)
-                        li.append(row)
-                        return li
-                    }))
+                    envelopes = results.filter(n => n.value?._gdbWrapperType === "_gdbSecurePayloadV1")
+                    renderList()
                 })
             })
 
@@ -843,7 +893,7 @@
                 el.noteBody.value = ""
                 el.noteTitle.focus()
 
-                await renderMyNotes() // db.sm.map() is not reactive; re-read it deliberately
+                await refreshOpenable() // db.sm.map() is not reactive; re-read it deliberately
 
                 toast(existingId ? "Updated in place — same node, new ciphertext" : "Saved — encrypted before it left this tab", "success")
             } catch (error) {
@@ -868,7 +918,7 @@
             el.noteBody.disabled = !isActive
 
             renderIdentityModal(state)
-            renderMyNotes() // the same nodes read by a different key — or by none
+            refreshOpenable() // the same nodes read by a different key — or by none
 
             if (isActive) return el.modal.close()
             if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
