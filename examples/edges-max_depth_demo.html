@@ -4,192 +4,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenosDB - Graph Traversal Query Test ($edge)</title>
+    <title>GenosDB — Graph traversal with $edge</title>
+
     <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light palette — this is an interface
+           built to be read, next to the documentation it illustrates. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0 auto;
+            padding: var(--space-5);
+            max-width: 720px;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        h1 { margin: 0 0 var(--space-2); font-size: 20px; letter-spacing: -.01em; }
+        h2 { margin: var(--space-5) 0 var(--space-2); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
+        code { font-family: var(--mono); font-size: 13px; color: var(--text-primary); }
+
+        pre {
             margin: 0;
-            background-color: #1d1f21;
-            color: #c5c8c6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .panel {
-            background-color: #282a2e;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            max-width: 800px;
-            width: 100%;
-            border: 1px solid #373b41;
-        }
-
-        h1,
-        h2 {
-            color: #8abeb7;
-            border-bottom: 2px solid #373b41;
-            padding-bottom: 10px;
-        }
-
-        h1 {
-            text-align: center;
+            padding: var(--space-4);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            font-family: var(--mono);
+            font-size: 13px;
+            overflow-x: auto;
         }
 
         button {
             width: 100%;
-            padding: 15px;
-            border-radius: 5px;
-            border: none;
-            background: linear-gradient(45deg, #b5bd68, #8abeb7);
-            color: #1d1f21;
-            font-weight: bold;
-            font-size: 18px;
+            margin-top: var(--space-4);
+            padding: 13px var(--space-4);
+            font: 600 14px var(--font);
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            color: var(--text-on-accent);
             cursor: pointer;
-            transition: all 0.2s;
         }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(138, 190, 183, 0.4);
+        button:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* The answer, stated on the page. A demo whose result lives in the
+           browser console teaches nothing to whoever is looking at it. */
+        .result {
+            display: flex;
+            gap: var(--space-5);
+            padding: var(--space-4);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
         }
 
-        pre {
-            background-color: #1d1f21;
-            border: 1px solid #373b41;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: "SF Mono", "Consolas", "Courier New", monospace;
-            line-height: 1.5;
-            color: #b294bb;
+        .stat { display: flex; flex-direction: column; }
+        .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+        .stat span { font-size: 12px; color: var(--text-tertiary); }
+        .stat.matched b { color: var(--ok); }
+
+        ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-family: var(--mono);
+            font-size: 13px;
         }
 
-        #log {
-            max-height: 250px;
-            overflow-y: auto;
-            font-size: 0.9em;
-        }
-
-        .explanation {
-            background-color: #373b41;
-            border-left: 4px solid #8abeb7;
-            padding: 10px 15px;
-            margin-bottom: 20px;
-        }
+        li span { color: var(--text-tertiary); }
+        .hidden { display: none; }
     </style>
 </head>
 
 <body>
 
-    <div class="panel">
-        <h1>✅ GenosDB - Graph Traversal Query Test ($edge)</h1>
-        <p>This demo tests the <strong>new `$edge` operator</strong>, which explores all descendants from a starting
-            point and returns those that match a filter.</p>
+    <h1>Graph traversal with <code>$edge</code></h1>
+    <p>
+        One query walks an entire descendant tree and returns only the nodes that match.
+        The setup below links two chains of 50 nodes each; the query starts at one of them,
+        so depth is followed and the other chain is never visited.
+    </p>
 
-        <div class="explanation">
-            <strong>The Test:</strong> We start from the node <code>{ chain: "SuccessChain", level: 0 }</code>. The
-            <code>$edge</code> operator will then traverse its entire descendant tree and return all nodes where
-            <code>level > 45</code>.
+    <h2>The query</h2>
+    <pre id="query-display"></pre>
+
+    <button id="run-query" disabled>Building the chains…</button>
+
+    <section id="result-view" class="hidden">
+        <h2>Result</h2>
+        <div class="result">
+            <p class="stat matched"><b id="stat-count">0</b><span>nodes matched</span></p>
+            <p class="stat"><b id="stat-time">0</b><span>milliseconds</span></p>
+            <p class="stat"><b id="stat-scanned">0</b><span>nodes in the graph</span></p>
         </div>
+        <ul id="result-list"></ul>
+    </section>
 
-        <h2>The New Query:</h2>
-        <pre id="query-display"></pre>
-
-        <button id="run-query">Run Graph Query & Check Console (F12)</button>
-
-        <h2>Setup Log:</h2>
-        <pre id="log"></pre>
-    </div>
+    <h2>Setup log</h2>
+    <pre id="log"></pre>
 
     <script type="module">
-        // 1. Import gdb from your local build file.
-        import { gdb } from "../dist/index.js";
+        /**
+         * `$edge` — one query, a whole subtree.
+         *
+         * Without it, walking a hierarchy means fetching a node, reading its
+         * links, fetching those, and repeating until you run out — round trips
+         * proportional to depth, written by hand. `$edge` takes the filter you
+         * would have applied at each step and pushes it into the traversal.
+         *
+         * What to read here, and where:
+         *   · db.put(value)          — a node; its id comes back
+         *   · db.link(from, to)      — a directed edge between two nodes
+         *   · db.map({ query })      — the traversal, as a plain query object
+         *
+         * The starting point is matched like any other node (`type`, `chain`);
+         * `$edge` then applies its own filter to every descendant of it.
+         */
+        import { gdb } from "../dist/index.js"
 
-        // 2. Initialize the database
-        const db = await gdb('new-edge-test-db', { rtc: true, debug: true });
+        const DEPTH = 50
+        const MIN_LEVEL = 45
 
-        // DOM Elements
-        const logEl = document.getElementById('log');
-        const queryDisplayEl = document.getElementById('query-display');
-        const runBtn = document.getElementById('run-query');
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            query: $("query-display"),
+            run: $("run-query"),
+            resultView: $("result-view"),
+            count: $("stat-count"),
+            time: $("stat-time"),
+            scanned: $("stat-scanned"),
+            list: $("result-list"),
+            log: $("log")
+        }
 
-        const logMessage = (message) => {
-            const time = new Date().toLocaleTimeString();
-            logEl.innerHTML = `[${time}] ${message}\n` + logEl.innerHTML;
-        };
+        const log = (message) =>
+            el.log.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n${el.log.textContent}`
 
-        // 3. Define the new, simpler query using the powerful $edge
+        const db = await gdb("genosdb-edge-traversal", { rtc: true })
+
+        // The starting point is found by an ordinary match; $edge filters its
+        // descendants. Both halves are one plain object — no traversal code.
         const deepQuery = {
-            // Find our starting point
-            type: 'ChainStart',
-            chain: 'SuccessChain',
+            type: "ChainStart",
+            chain: "SuccessChain",
+            $edge: { level: { $gt: MIN_LEVEL } }
+        }
 
-            // From here, explore all descendants...
-            $edge: {
-                // ...and return the ones that match this filter.
-                level: { $gt: 45 }
+        el.query.textContent = JSON.stringify(deepQuery, null, 2)
+
+        /** Two chains: one to walk, one that must be left alone. */
+        const buildChain = async (chainName) => {
+            const ids = []
+            for (let level = 0; level <= DEPTH; level++) {
+                ids.push(await db.put({
+                    type: level === 0 ? "ChainStart" : "ChainNode",
+                    level,
+                    chain: chainName
+                }))
             }
-        };
-        queryDisplayEl.textContent = JSON.stringify(deepQuery, null, 2);
+            for (let i = 0; i < DEPTH; i++) await db.link(ids[i], ids[i + 1])
+            log(`Linked ${DEPTH} nodes into '${chainName}'.`)
+        }
 
-        // 4. Seeding function to create the deep hierarchy
-        const setupScenario = async (depth) => {
-            await db.clear();
-            logMessage(`Database cleared. Setting up deep hierarchy...`);
-            const createChain = async (chainName) => {
-                const nodeIds = [];
-                // Create all nodes for the chain
-                for (let i = 0; i <= depth; i++) {
-                    // The first node is special, so we can find it easily
-                    const isStartNode = i === 0;
-                    const nodeData = {
-                        type: isStartNode ? 'ChainStart' : 'ChainNode',
-                        level: i,
-                        chain: chainName
-                    };
-                    const id = await db.put(nodeData);
-                    nodeIds.push(id);
-                }
-                // Link them up sequentially
-                for (let i = 0; i < depth; i++) {
-                    await db.link(nodeIds[i], nodeIds[i + 1]);
-                }
-                logMessage(`Created ${depth}-link chain for '${chainName}'.`);
-            };
-            await createChain("SuccessChain");
-            await createChain("FailureChain"); // This one won't be used as a starting point
-            logMessage(`Scenario setup complete. Ready to run the new $edge query.`);
-        };
+        const runQuery = async () => {
+            const started = performance.now()
+            const { results } = await db.map({ query: deepQuery })
+            const elapsed = (performance.now() - started).toFixed(2)
 
-        // 5. Run query logic with performance measurement
-        runBtn.addEventListener('click', async () => {
-            logMessage(`Running graph traversal query...`);
+            el.count.textContent = results.length
+            el.time.textContent = elapsed
+            el.scanned.textContent = (DEPTH + 1) * 2
 
-            const startTime = performance.now();
-            const { results } = await db.map({ query: deepQuery });
-            const endTime = performance.now();
+            // Sorted by depth so the traversal itself is legible in the output.
+            el.list.replaceChildren(...results
+                .sort((a, b) => a.value.level - b.value.level)
+                .map(({ value }) => {
+                    const li = document.createElement("li")
+                    const level = document.createElement("b")
+                    level.textContent = `level ${value.level}`
+                    const chain = document.createElement("span")
+                    chain.textContent = value.chain
+                    li.append(level, chain)
+                    return li
+                }))
 
-            const duration = (endTime - startTime).toFixed(2);
+            el.resultView.classList.remove("hidden")
+            log(`Traversed in ${elapsed} ms — ${results.length} descendants past level ${MIN_LEVEL}.`)
+        }
 
-            // The definitive proof
-            console.clear(); // Clear console for clean output
-            console.log(`%c--- NEW $edge QUERY RESULTS ---`, 'color: #8abeb7; font-size: 1.2em; font-weight: bold;');
-            console.log(`Execution Time: ${duration} ms`);
-            console.log(`Found ${results.length} descendant nodes where level > 45.`);
-            console.log('These nodes are from the "SuccessChain" only.');
-            console.log(results);
+        await db.clear()
+        log("Database cleared.")
+        await buildChain("SuccessChain")
+        await buildChain("FailureChain") // never a starting point: it must not appear
+        log(`Ready. ${(DEPTH + 1) * 2} nodes in the graph.`)
 
-            logMessage(`Query finished in ${duration} ms. Found ${results.length} item(s). CHECK THE DEVELOPER CONSOLE (F12).`);
-        });
-
-        // Initialize the app
-        const DEPTH = 50;
-        await setupScenario(DEPTH);
-
+        el.run.disabled = false
+        el.run.textContent = `Find descendants past level ${MIN_LEVEL}`
+        el.run.addEventListener("click", runQuery)
     </script>
 </body>
 

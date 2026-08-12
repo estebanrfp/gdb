@@ -136,6 +136,9 @@ An interactive playground for the **Geo module**: pick or edit `$near` / `$bbox`
 ### [Graph Traversal Depth Demo](https://estebanrfp.github.io/gdb/examples/edges-max_depth_demo.html)
 How deep `$edge` really goes: seeds a 50-link chain of nodes, then resolves the descendants matching a filter in a **single** query — no manual hop-by-hop walking, no depth ceiling to configure. Useful before modelling anything recursive (folder trees, threaded replies, org charts), because it answers the first question everyone asks: does the traversal reach the far end?
 
+### [$edge Traversal — Depth in One Query](https://estebanrfp.github.io/gdb/examples/edges-max_depth_demo.html)
+Two chains of 50 linked nodes, and a single `db.map()` that walks one of them end to end: `$edge` takes the filter you would have applied at each hop and pushes it into the traversal, so depth costs one query instead of one round trip per level. The second chain is never a starting point and never appears in the result — which is the part worth watching.
+
 ### [Interactive Graph Playground](https://estebanrfp.github.io/gdb/examples/edges.html)
 A hands-on tour of the graph itself: add nodes, link them with `db.link(source, target)`, and traverse the result with the **`$edge` operator** — the query it opens with returns every tag on the posts Ana wrote, two hops away. Ships a seeded example graph (users → posts → tags) so the traversal queries have something to walk before you type anything.
 
