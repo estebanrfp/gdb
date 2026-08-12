@@ -810,7 +810,7 @@
          * fired once with the initial value and not again when the node was
          * rewritten, so nothing below leans on it. Verify before you do.)
          */
-        let envelopes = []              // every encrypted node, raw
+        const envelopeById = new Map()  // raw id → envelope value, kept by the subscription
         let openable = new Map()        // logical id → decrypted value
         let noteIdByTitle = new Map()
         let selectedRawId = null
@@ -822,11 +822,12 @@
         }
 
         const renderList = () => {
-            el.notesCount.textContent = envelopes.length ? `· ${envelopes.length}` : ""
+            const rawIds = [...envelopeById.keys()]
+            el.notesCount.textContent = rawIds.length ? `· ${rawIds.length}` : ""
 
-            if (!envelopes.length) return emptyRow(el.notes, "Nothing stored yet.")
+            if (!rawIds.length) return emptyRow(el.notes, "Nothing stored yet.")
 
-            el.notes.replaceChildren(...envelopes.map(({ id: rawId }) => {
+            el.notes.replaceChildren(...rawIds.map((rawId) => {
                 const open = openableFor(rawId)
 
                 const li = document.createElement("li")
@@ -898,7 +899,7 @@
         /** The detail: the same node as you read it, and as the graph stores it. */
         const selectNode = (rawId) => {
             selectedRawId = rawId
-            const envelope = envelopes.find(n => n.id === rawId)
+            const envelope = envelopeById.get(rawId)
             if (!envelope) return
 
             const open = openableFor(rawId)
@@ -919,7 +920,7 @@
             }
 
             el.detailId.textContent = rawId
-            el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
+            el.detailCipher.textContent = envelope._payload ?? "(payload)"
 
             show(el.detailEmpty, false)
             show(el.detail, true)
@@ -948,13 +949,13 @@
 
         const tryToOpenNewcomers = () => {
             if (!currentUser) return
-            const newcomers = envelopes.filter(({ id }) => !openableFor(id) && !knownUnopenable.has(id))
+            const newcomers = [...envelopeById.keys()].filter(id => !openableFor(id) && !knownUnopenable.has(id))
             if (!newcomers.length) return
 
-            newcomers.forEach(({ id }) => knownUnopenable.add(id))
+            newcomers.forEach(id => knownUnopenable.add(id))
             refreshOpenable().then(() => {
                 // Whatever we can now read is ours after all; forget the verdict.
-                envelopes.forEach(({ id }) => { if (openableFor(id)) knownUnopenable.delete(id) })
+                for (const id of envelopeById.keys()) if (openableFor(id)) knownUnopenable.delete(id)
             })
         }
 
@@ -964,26 +965,29 @@
          * contract, the prefix is an implementation detail.
          */
         const watchRawGraph = () =>
-            db.map({}, () => {
-                db.map({}).then(({ results = [] }) => {
-                    envelopes = results.filter(n => n.value?._gdbWrapperType === "_gdbSecurePayloadV1")
-                    renderList()
+            db.map({}, ({ id, value, action }) => {
+                // One subscription, four actions, no re-querying — §7. The
+                // callback already says what changed; asking the graph again
+                // for everything would throw that away and do the work twice.
+                if (action === "removed") envelopeById.delete(id)
+                else if (value?._gdbWrapperType === "_gdbSecurePayloadV1") envelopeById.set(id, value)
+                else return // some other node — this panel has nothing to say about it
 
-                    // The envelope of the open node changes on every write — that
-                    // is the whole show, so repaint just that, never the fields.
-                    if (selectedRawId) {
-                        const envelope = envelopes.find(n => n.id === selectedRawId)
-                        if (envelope) el.detailCipher.textContent = envelope.value?._payload ?? "(payload)"
-                    }
+                renderList()
 
-                    // A node arriving from another tab or peer is only ever an
-                    // envelope: `db.map` is reactive, `db.sm.map` is not. Without
-                    // this, your own note written elsewhere would show up here as
-                    // `Sealed` — the graph told us it exists, and nothing told us
-                    // we can read it. So an unknown envelope prompts one more
-                    // decrypt pass, and stops prompting once it stays unknown.
-                    tryToOpenNewcomers()
-                })
+                // The envelope of the open node changes on every write — that is
+                // the whole show, so repaint just that, never the fields.
+                if (id === selectedRawId) {
+                    el.detailCipher.textContent = envelopeById.get(id)?._payload ?? "(payload)"
+                }
+
+                // A node arriving from another tab or peer is only ever an
+                // envelope: `db.map` is reactive, `db.sm.map` is not. Without
+                // this, your own note written elsewhere would show up here as
+                // `Sealed` — the graph told us it exists, and nothing told us we
+                // can read it. So an unknown envelope prompts one more decrypt
+                // pass, and stops prompting once it stays unknown.
+                tryToOpenNewcomers()
             })
 
         const saveNote = async () => {
@@ -1036,6 +1040,7 @@
 
         // ── Boot ────────────────────────────────────────────────────
         db = await gdb("genosdb-encrypted-notes", {
+            debug: true,
             rtc: true,
             sm: { superAdmins: [SUPERADMIN.address] }
         })
