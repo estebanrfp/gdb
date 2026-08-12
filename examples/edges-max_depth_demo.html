@@ -98,18 +98,25 @@
         #log { max-height: 180px; overflow-y: auto; color: var(--text-secondary); }
 
         h1 { margin: 0 0 var(--space-2); font-size: 20px; letter-spacing: -.01em; }
-        h2 { margin: var(--space-5) 0 var(--space-2); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        /* A rule under the label divides the sections. Nothing gets a tinted
+           box: separation is the line and the space around it. */
+        h2 {
+            margin: var(--space-5) 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
         h2:first-child { margin-top: 0; }
         p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
         code { font-family: var(--mono); font-size: 13px; color: var(--text-primary); }
 
-        /* Code reads as code through the typeface and a barely-there ground —
-           not through a bordered white box sitting on top of the page. */
+        /* Code reads as code through the typeface alone. A tinted panel behind
+           it is one more surface on a page that should have exactly one. */
         pre {
             margin: 0;
-            padding: var(--space-4);
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-md);
             font-family: var(--mono);
             font-size: 13px;
             overflow-x: auto;
