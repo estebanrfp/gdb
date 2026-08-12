@@ -285,6 +285,40 @@ try {
 
 ---
 
+### `db.sm.encryptDataForCurrentUser(data)` / `db.sm.decryptDataForCurrentUser(string)`
+
+- **Signatures**: `(data: any): Promise<string>` · `(encryptedString: string): Promise<any>`
+
+Encrypt a **value** rather than a record. The key is derived from the active user's private key (PBKDF2 → AES-256-GCM), so this is encryption *for yourself*: there is no recipient, and it cannot be used to share data with another user.
+
+`encryptDataForCurrentUser` returns a **string** — `{"iv":…,"encrypted":…,"type":"aes-gcm-self-ssm-v2"}` — which makes it storable as an ordinary field. That is the point of these two: **`db.sm.put` encrypts the whole record and forces reads through the non-reactive `db.sm.map`, while an encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it.** Use them when part of a record must stay public, or when the record must stay live.
+
+Both require an active session. `decryptDataForCurrentUser` throws rather than returning `null`, with a distinguishable message per cause:
+
+| Cause | Message |
+| --- | --- |
+| No session | `User session (signer) required` |
+| Not JSON | `encryptedString is not valid JSON` |
+| Different format version | `Unsupported encryption type or incorrect version` |
+| Missing `iv` / `encrypted` | `Invalid encrypted data format` |
+| **Not this user's data** | `Failed to decrypt personal data` |
+
+That last one is the only trustworthy test of ownership — an `owner` field is plain data any peer with a write role can set, while the key cannot be faked.
+
+```javascript
+// Public title, private body, in one ordinary node.
+await db.put({
+  type: 'note', title, owner: db.sm.getActiveEthAddress(),
+  secret: await db.sm.encryptDataForCurrentUser({ content })
+})
+
+// Reading it: the throw IS the check.
+let content = null
+try { ({ content } = await db.sm.decryptDataForCurrentUser(node.value.secret)) } catch { /* not ours */ }
+```
+
+> Values are MessagePack-encoded and deflate-compressed before encryption, so the stored string is smaller than the plaintext for anything sizeable. The `type` field is a format version and is verified on read — payloads from a future version fail loudly rather than silently.
+
 ### `db.sm.protectCurrentIdentityWithWebAuthn(ethPrivateKeyForProtection?)`
 
 Initiates the WebAuthn registration process to protect an Ethereum private key. The private key is encrypted using a WebAuthn-derived secret and stored in localStorage.
@@ -692,7 +726,7 @@ Once a user clicks `[Generate New Identity]`, the application enters a temporary
 - **Never Store the Mnemonic:** Your application logic should never persist the mnemonic phrase. It is ephemeral and should only exist in the UI temporarily during the onboarding process.
 - **Distinguish Storage vs. Utility:**
   - Use `db.sm.put()` and `db.sm.get()` for seamless, encrypted storage **within GDB nodes**.
-  - Use `db.sm.encryptDataForCurrentUser()` and `db.sm.decryptDataForCurrentUser()` for flexible, ad-hoc encryption tasks.
+  - Use `db.sm.encryptDataForCurrentUser()` and `db.sm.decryptDataForCurrentUser()` to encrypt a **field** rather than a record — the only way to keep part of a node public, or to keep it reactive. See their entry above.
 
 ---
 
