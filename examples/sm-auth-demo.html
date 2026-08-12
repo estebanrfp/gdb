@@ -4,172 +4,311 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDB Secure Notes (Improved UX)</title>
+    <title>GenosDB — Encrypted storage (what peers actually hold)</title>
+
     <style>
         :root {
-            --bg-color: #f8f9fa;
-            --text-color: #212529;
-            --primary-color: #007bff;
-            --primary-hover: #0056b3;
-            --border-color: #dee2e6;
-            --warning-bg: #fff3cd;
-            --warning-text: #856404;
-            --success-bg: #d4edda;
-            --success-text: #155724;
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
+
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+
+            --text-on-accent: #ffffff;
+            --backdrop: rgba(0, 0, 0, .6);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            text-align: center;
-        }
-
-        main {
-            width: 100%;
-            max-width: 420px;
-            padding: 2rem;
-            box-sizing: border-box;
-        }
-
-        .view {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            width: 100%;
-        }
-
-        h1 {
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Login View */
-        textarea {
-            width: 100%;
-            height: 80px;
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            font-family: monospace;
-            resize: none;
-            box-sizing: border-box;
-            line-height: 1.5;
-            background-color: #fff;
-        }
-
-        textarea:read-only {
-            background-color: #e9ecef;
-            /* Visual cue that it's read-only */
-        }
-
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        button {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            font-size: 1rem;
-            font-weight: 500;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button.secondary {
-            background-color: #6c757d;
-        }
-
-        button.secondary:hover {
-            background-color: #5a6268;
-        }
-
-        .warning-message {
-            background-color: var(--warning-bg);
-            color: var(--warning-text);
-            padding: 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            border: 1px solid #ffeeba;
-        }
-
-        /* App View */
-        .status-bar {
-            font-size: 0.9rem;
-            color: #6c757d;
-            word-break: break-all;
-            margin-bottom: 1rem;
-        }
-
-        .note-container {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .note-container input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-
-        .note-display {
-            min-height: 50px;
-            padding: 1rem;
-            background-color: white;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            text-align: left;
-            word-wrap: break-word;
-        }
-
-        .note-display.success {
-            background-color: var(--success-bg);
-            color: var(--success-text);
-        }
-
-        /* ── Toasts (canonical component — see docs/genosdb-design-guide.md §6) ── */
-        /* Canonical token names, light values. */
-        :root {
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
             --bg-elevated: #ffffff;
+
             --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
             --text-tertiary: #9aa1ad;
-            --border-subtle: #e4e7ee;
+
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
             --ok: #16a34a;
             --warn: #b45309;
             --danger: #dc2626;
+            --violet: #7c3aed;
+
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+
+            --backdrop: rgba(26, 29, 36, .45);
             --shadow: 0 6px 24px rgba(26, 29, 36, .07);
-            --radius-md: 10px;
-            --space-3: 12px;
-            --space-5: 24px;
         }
 
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font-family: var(--font);
+            font-size: 14px;
+            line-height: 1.5;
+            /* One surface: the panels do not float on it, they are it. */
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .hidden { display: none !important; }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        .layout { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
+
+        /* Every chrome band is 48px tall. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
+
+        .brand span { color: var(--text-tertiary); font-weight: 400; }
+
+        /* Icon buttons pad their own hit area, so the row is pulled back by that
+           much: what lines up with the brand is the icon, not the box. */
+        .session { display: flex; align-items: center; gap: var(--space-3); margin-right: -6px; font-size: 13px; }
+
+        .session-addr {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .session-addr:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .session-addr:empty { display: none; }
+
+        /* ── A bench with two outputs ───────────────────────────── */
+        /* Plaintext left, ciphertext right, both on screen at once. The lesson
+           is the difference between the panels — what you read against what
+           every peer actually stores — and a scroll between them would hide it. */
+        .bench { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); min-height: 0; }
+
+        .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: var(--space-5); }
+        .input-panel { border-right: 1px solid var(--border-subtle); }
+
+        /* A rule under the label divides the sections. Nothing gets a tinted
+           box: separation is the line and the space around it. */
+        h2 {
+            margin: var(--space-5) 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        h2:first-child { margin-top: 0; }
+        h2 small { font-weight: 400; color: var(--text-tertiary); }
+
+        p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
+
+        .composer { display: flex; flex-direction: column; gap: var(--space-2); }
+
+        ul { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
+
+        li {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        li.empty { display: block; color: var(--text-tertiary); border-bottom: none; }
+
+        .note-title { font-weight: 600; }
+        .note-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+
+        /* The envelope as the graph holds it. Mono and clipped: it is meant to
+           be recognised as opaque, not read. */
+        .cipher-id { font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
+        .cipher-payload {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--violet);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cipher-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: stretch; }
+
+        /* ── Buttons: the four weights of the guide ─────────────── */
+        /* Secondary is the default. A blue default would make `button:hover`
+           paint a background, and that rule outranks any `.icon-btn:hover`. */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--text-on-accent);
+        }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        .icon-btn { display: flex; padding: 6px; background: none; border: none; color: var(--text-secondary); }
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        input, textarea {
+            width: 100%;
+            font: inherit;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none; /* the border carries focus */
+            color: var(--text-primary);
+            resize: none;
+        }
+
+        input:focus, textarea:focus { border-color: var(--accent); }
+        input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+
+        /* ── Identity modal (the canonical door, §4.1) ──────────── */
+        dialog {
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+
+        .mnemonic-field { position: relative; }
+
+        #mnemonic-input {
+            min-height: 45px; /* the exact height of an action button */
+            display: block;   /* an inline-block textarea leaves 6px of descender below it */
+            padding-right: 32px; /* the copy icon never sits on the last word */
+            overflow: hidden;
+            background: none;
+            font-family: var(--mono);
+            font-size: 13px;
+            text-align: left;
+        }
+
+        /* The dialog focuses it on open, and an accent ring would spotlight the
+           one element here that should stay quiet. The caret says where you are. */
+        #mnemonic-input:focus { border-color: var(--border-strong); }
+
+        /* One contextual control instead of another button in the stack: it
+           appears only once the field holds a phrase. */
+        .field-action {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            display: flex;
+            padding: 5px;
+            width: auto;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+        }
+
+        .field-action svg { width: 15px; height: 15px; }
+        .field-action:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+
+        /* The gap above matches the gap between the buttons: the field is the
+           first step of the same stack, not a separate block. */
+        .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+        /* Takes the slot the demo shortcut leaves when a phrase is generated, so
+           the modal keeps its height across both phases. */
+        .modal-warn {
+            display: grid;
+            place-items: center;
+            min-height: 45px;
+            margin: var(--space-2) 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--warn);
+        }
+
+        /* ── Toasts (canonical component — §6) ──────────────────── */
         /* The stack itself is the popover, so it joins the top layer and paints
-           above any modal backdrop — which no z-index can beat. */
+           above the dialog's ::backdrop — which no z-index can beat. */
         .toast-stack {
             position: fixed;
             inset: auto;
@@ -218,257 +357,492 @@
 
         /* The newest reads at full strength; every older one steps back equally. */
         .toast:not(:last-child) { opacity: .6; }
-
         .toast.out { opacity: 0; transform: translateX(20px); }
 
         @keyframes toast-in {
             from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
+            to   { opacity: 1; transform: translateX(0); }
         }
 
         @media (prefers-reduced-motion: reduce) {
             .toast { animation: none; }
             .toast.out { transform: none; }
         }
+
+        /* Stacked, and still one screen: each panel keeps scrolling in its own
+           row rather than handing the scrolling back to the page. */
+        @media (max-width: 820px) {
+            .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 55%) minmax(0, 45%); }
+            .input-panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .brand span { display: none; } /* the subtitle is decoration; the width is not */
+        }
     </style>
 </head>
 
 <body>
 
-    <main>
-        <!-- LOGIN / REGISTRATION VIEW -->
-        <div id="login-view" class="view">
-            <h1>Secure Notes</h1>
-            <p>Generate an identity or log in with your mnemonic phrase.</p>
+    <!-- A mandatory door: every note on this page belongs to an identity, so
+         there is nothing to show before there is one. -->
+    <dialog id="identity-modal">
+        <h2 class="modal-title">Encrypted notes</h2>
+        <p class="modal-hint">Stored in a graph every peer replicates. Readable only by you.</p>
 
-            <textarea id="mnemonic-area"
-                placeholder="Enter your 12-word recovery phrase here to log in, or generate a new one."></textarea>
-
-            <div id="warning-message" class="warning-message hidden">
-                <strong>SAVE THIS PHRASE!</strong> This is your only way to recover your account. Store it securely in a
-                password manager.
-            </div>
-
-            <div class="button-group">
-                <button id="copy-phrase-btn" class="secondary hidden">Copy Phrase</button>
-                <button id="generate-btn">Generate New Identity</button>
-                <button id="mnemonic-login-btn">Login with Mnemonic</button>
-                <button id="webauthn-login-btn" class="secondary hidden">Login with Passkey</button>
-                <button id="protect-passkey-btn" class="hidden">Protect with Passkey (Recommended)</button>
-            </div>
+        <div class="mnemonic-field">
+            <textarea id="mnemonic-input"
+                placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+            <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </button>
         </div>
 
-        <!-- LOGGED-IN APPLICATION VIEW -->
-        <div id="app-view" class="view hidden">
-            <h1>Your Secure Note</h1>
-            <div class="status-bar">
-                Logged in as: <span id="user-address"></span>
-            </div>
-
-            <div class="note-container">
-                <input type="text" id="note-id-input" placeholder="Note title (ID)...">
-                <input type="text" id="note-input" placeholder="Type your secret note content...">
-                <button id="save-note-btn">Save Encrypted Note</button>
-                <button id="load-note-btn" class="secondary">Load Encrypted Note</button>
-            </div>
-
-            <div id="note-display" class="note-display">
-                Your decrypted note will appear here.
-            </div>
-
-            <button id="logout-btn" class="secondary">Logout</button>
+        <div class="modal-actions">
+            <button id="generate-btn" class="primary">Generate new identity</button>
+            <button id="login-btn" class="primary">Login with mnemonic</button>
+            <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
+            <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+            <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
         </div>
-    </main>
+
+        <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
+
+        <!-- Guidance for whoever reads this file, deliberately not on screen:
+             `db.sm.put` wraps the value in a payload only the writer's key
+             opens, and stores it as an ordinary node — which is why the right
+             panel can show it while the left one cannot read someone else's.
+             Sign in with a second identity to watch exactly that happen. -->
+    </dialog>
+
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Encrypted notes <span>· db.sm.put</span></h1>
+            <div class="session">
+                <button id="session-addr" class="session-addr" title="Copy your full address"></button>
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+                <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="bench">
+            <section class="panel input-panel">
+                <h2>Write a note</h2>
+                <div class="composer">
+                    <input type="text" id="note-title" placeholder="Title…" aria-label="Note title">
+                    <textarea id="note-body" rows="3" placeholder="Something only you should read…"
+                        aria-label="Note content"></textarea>
+                    <button id="save-btn" class="primary">Save encrypted</button>
+                </div>
+
+                <h2>Your notes <small id="notes-count"></small></h2>
+                <ul id="notes-list"></ul>
+            </section>
+
+            <section class="panel">
+                <h2>What every peer stores <small>· db.map, no key needed</small></h2>
+                <p>
+                    The same nodes, read straight from the graph. Anyone replicating this room
+                    holds exactly this — the bytes are public, the meaning is not.
+                </p>
+                <ul id="cipher-list"></ul>
+            </section>
+        </div>
+    </div>
 
     <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
     <script type="module">
-        import { gdb } from "../dist/index.js";
+        /**
+         * Encrypted storage — what a peer holds versus what you read.
+         *
+         * `db.sm.put(value, id)` does not store your value. It wraps it in a
+         * payload that only the writer's key opens, and stores *that* as an
+         * ordinary node — so it replicates like any other, and every peer ends
+         * up holding it. Confidentiality comes from the encryption, never from
+         * the graph: in a P2P database everyone already has the bytes.
+         *
+         * The two panels are the same nodes read two ways. Left, `db.sm.map()`
+         * decrypts what your key opens. Right, `db.map()` reads the raw graph
+         * and needs no key at all. Sign in as a second identity and the left
+         * panel empties while the right one stays exactly as full.
+         *
+         * What to read here, and where:
+         *   · db.sm.put(value, id)  — encrypt for the current user, then store
+         *   · db.sm.map(options)    — query encrypted nodes (decrypts, NOT realtime)
+         *   · db.map(options, cb)   — the raw graph, live, no key involved
+         *   · db.sm.setSecurityStateChangeCallback — the single source of truth for the UI
+         */
+        import { gdb } from "../dist/index.js"
 
-        /* ── Toasts — canonical component, docs/genosdb-design-guide.md §6 ──
-           Never alert(): it blocks the thread, freezing the very sync a P2P
-           app is demonstrating, and a screen reader never hears it. */
-        const toastsEl = document.getElementById("toasts");
-        const MAX_TOASTS = 3;
-        const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕", warning: "!" };
+        // Canonical demo superadmin shared by every GenosDB example — a public,
+        // throwaway identity that protects nothing, so any window can log in with
+        // one click. TESTING ONLY: never ship a known mnemonic in a real app.
+        const SUPERADMIN = {
+            name: "Superadmin", emoji: "🛡️",
+            mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper",
+            address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
+        }
+
+        const $ = (id) => document.getElementById(id)
+
+        const el = {
+            modal: $("identity-modal"),
+            mnemonic: $("mnemonic-input"),
+            clip: $("mnemonic-clip"),
+            phraseWarning: $("phrase-warning"),
+            generate: $("generate-btn"),
+            login: $("login-btn"),
+            passkeyProtect: $("passkey-protect-btn"),
+            passkeyLogin: $("passkey-login-btn"),
+            demoLogin: $("demo-login-btn"),
+            sessionAddr: $("session-addr"),
+            themeBtn: $("theme-btn"),
+            logout: $("logout-btn"),
+            noteTitle: $("note-title"),
+            noteBody: $("note-body"),
+            save: $("save-btn"),
+            notes: $("notes-list"),
+            notesCount: $("notes-count"),
+            ciphers: $("cipher-list"),
+            toasts: $("toasts")
+        }
+
+        let db
+        let currentUser = null
+
+        // ── Feedback ────────────────────────────────────────────────
+        // Three, rotating: the oldest drops as newer ones arrive. Never alert(),
+        // which blocks the thread and freezes the very sync being demonstrated.
+        const MAX_TOASTS = 3
+        const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕", warning: "!" }
 
         const dropToast = (node) => {
-            node.classList.add("out");
+            node.classList.add("out")
             setTimeout(() => {
-                node.remove();
-                if (!toastsEl.children.length && toastsEl.matches(":popover-open")) toastsEl.hidePopover();
-            }, 400);
-        };
+                node.remove()
+                if (!el.toasts.children.length && el.toasts.matches(":popover-open")) el.toasts.hidePopover()
+            }, 400)
+        }
 
         /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
         const toast = (message, kind = "info") => {
-            const node = document.createElement("div");
-            node.className = `toast ${kind}`;
+            const node = document.createElement("div")
+            node.className = `toast ${kind}`
 
-            const icon = document.createElement("span");
-            icon.className = "toast-icon";
-            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info;
-            icon.setAttribute("aria-hidden", "true");
+            const icon = document.createElement("span")
+            icon.className = "toast-icon"
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+            icon.setAttribute("aria-hidden", "true") // the text alone is the message
 
-            const text = document.createElement("span");
-            text.className = "toast-text";
-            text.textContent = message;
+            const text = document.createElement("span")
+            text.className = "toast-text"
+            text.textContent = message
 
-            node.append(icon, text);
-            node.addEventListener("click", () => dropToast(node));
-            // Show the stack first: a node appended while the container is
-            // still display:none starts its animation frozen at translateX(100%).
-            if (!toastsEl.matches(":popover-open")) toastsEl.showPopover();
-            toastsEl.append(node);
-            while (toastsEl.children.length > MAX_TOASTS) toastsEl.firstElementChild.remove();
+            node.append(icon, text)
+            node.addEventListener("click", () => dropToast(node))
 
-            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000);
-        };
+            if (!el.toasts.matches(":popover-open")) el.toasts.showPopover()
+            el.toasts.append(node)
+            while (el.toasts.children.length > MAX_TOASTS) el.toasts.firstElementChild.remove()
 
-        // --- DOM Elements ---
-        const loginView = document.getElementById('login-view');
-        const appView = document.getElementById('app-view');
-        const mnemonicArea = document.getElementById('mnemonic-area');
-        const warningMessage = document.getElementById('warning-message');
-        const generateBtn = document.getElementById('generate-btn');
-        const mnemonicLoginBtn = document.getElementById('mnemonic-login-btn');
-        const webauthnLoginBtn = document.getElementById('webauthn-login-btn');
-        const protectPasskeyBtn = document.getElementById('protect-passkey-btn');
-        const copyPhraseBtn = document.getElementById('copy-phrase-btn'); // NEW
-        const userAddressSpan = document.getElementById('user-address');
-        const noteIdInput = document.getElementById('note-id-input');
-        const noteInput = document.getElementById('note-input');
-        const saveNoteBtn = document.getElementById('save-note-btn');
-        const loadNoteBtn = document.getElementById('load-note-btn');
-        const noteDisplay = document.getElementById('note-display');
-        const logoutBtn = document.getElementById('logout-btn');
-
-        // Note ID is provided by the user via the UI (note title)
-
-        async function main() {
-            const db = await gdb("secure-notes-db-v2", {
-                rtc: true,
-                sm: {
-                    superAdmins: ["0x0000000000000000000000000000000000000000"]
-                }
-            });
-            window.db = db;
-
-            function updateUI(state) {
-                loginView.classList.toggle('hidden', state.isActive);
-                appView.classList.toggle('hidden', !state.isActive);
-
-                if (state.isActive) {
-                    userAddressSpan.textContent = state.abbrAddr;
-                    noteIdInput.value = '';
-                    noteInput.value = '';
-                    noteDisplay.textContent = 'Load your note to see its content.';
-                    noteDisplay.classList.remove('success');
-                }
-                else {
-                    const inRegistrationFlow = state.hasVolatileIdentity;
-
-                    // --- NEW UX LOGIC ---
-                    // Make textarea read-only during registration to prevent accidental edits.
-                    mnemonicArea.readOnly = inRegistrationFlow;
-                    // Hide the generate button during registration to avoid confusion.
-                    generateBtn.classList.toggle('hidden', inRegistrationFlow);
-                    // Show the dedicated copy button only during registration.
-                    copyPhraseBtn.classList.toggle('hidden', !inRegistrationFlow);
-
-                    // --- EXISTING UX LOGIC ---
-                    webauthnLoginBtn.classList.toggle('hidden', !state.hasWebAuthnHardwareRegistration);
-                    warningMessage.classList.toggle('hidden', !inRegistrationFlow);
-                    protectPasskeyBtn.classList.toggle('hidden', !inRegistrationFlow);
-                    mnemonicLoginBtn.classList.toggle('hidden', false); // Always visible when logged out.
-
-                    if (!inRegistrationFlow) {
-                        mnemonicArea.value = '';
-                        mnemonicArea.placeholder = "Enter your 12-word recovery phrase here..."
-                    }
-                }
-            }
-
-            generateBtn.addEventListener('click', async () => {
-                try {
-                    const newIdentity = await db.sm.startNewUserRegistration();
-                    if (newIdentity) {
-                        mnemonicArea.value = newIdentity.mnemonic;
-                    }
-                } catch (e) { toast(`Error generating identity: ${e.message}`, "error"); }
-            });
-
-            // NEW: One-click copy listener
-            copyPhraseBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(mnemonicArea.value).then(() => {
-                    copyPhraseBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyPhraseBtn.textContent = 'Copy Phrase'; }, 2000);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    toast('Could not copy phrase. Please copy it manually.', 'error');
-                });
-            });
-
-            mnemonicLoginBtn.addEventListener('click', async () => {
-                const mnemonic = mnemonicArea.value.trim();
-                if (mnemonic.split(' ').length !== 12) {
-                    toast('Please enter a valid 12-word mnemonic phrase.', 'error');
-                    return;
-                }
-                try { await db.sm.loginOrRecoverUserWithMnemonic(mnemonic); }
-                catch (e) { toast(`Login failed: ${e.message}`, "error"); }
-            });
-
-            webauthnLoginBtn.addEventListener('click', async () => {
-                try { await db.sm.loginCurrentUserWithWebAuthn(); }
-                catch (e) { if (e.name !== 'NotAllowedError') { toast(`Passkey login failed: ${e.message}`, "error"); } }
-            });
-
-            protectPasskeyBtn.addEventListener('click', async () => {
-                try {
-                    const address = await db.sm.protectCurrentIdentityWithWebAuthn();
-                    if (address) { toast(`Account protected with Passkey for address: ${address}`, "success"); }
-                } catch (e) { if (e.name !== 'NotAllowedError') { toast(`Could not protect with Passkey: ${e.message}`, "error"); } }
-            });
-
-            logoutBtn.addEventListener('click', async () => {
-                await db.sm.clearSecurity();
-            });
-
-            saveNoteBtn.addEventListener('click', async () => {
-                const id = noteIdInput.value.trim();
-                const noteContent = noteInput.value.trim();
-                if (!id) { toast('Please enter a note title (ID).', 'warning'); return; }
-                if (!noteContent) { toast('Please enter note content.', 'warning'); return; }
-                try {
-                    await db.sm.put({ content: noteContent }, id);
-                    noteDisplay.textContent = 'Note saved and encrypted successfully!';
-                    noteDisplay.classList.add('success');
-                } catch (e) { toast(`Error saving note: ${e.message}`, "error"); }
-            });
-
-            loadNoteBtn.addEventListener('click', async () => {
-                const id = noteIdInput.value.trim();
-                if (!id) { toast('Please enter a note title (ID) to load.', 'warning'); return; }
-                try {
-                    const { result: node } = await db.sm.get(id);
-                    if (node && node.decrypted) {
-                        noteDisplay.textContent = `Decrypted Note: ${node.value.content}`;
-                        noteDisplay.classList.add('success');
-                    } else if (node) {
-                        noteDisplay.textContent = 'Could not decrypt note. You might not be the owner.';
-                        noteDisplay.classList.remove('success');
-                    } else {
-                        noteDisplay.textContent = 'No note found. Save one first!';
-                        noteDisplay.classList.remove('success');
-                    }
-                } catch (e) { toast(`Error loading note: ${e.message}`, "error"); }
-            });
-
-            db.sm.setSecurityStateChangeCallback(updateUI);
+            setTimeout(() => node.isConnected && dropToast(node), kind === "error" ? 5000 : 3000)
         }
 
-        main().catch(console.error);
+        const show = (node, visible) => node.classList.toggle("hidden", !visible)
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.smAuthTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.smAuthTheme ?? "system")
+
+        /**
+         * Passkeys need two things, and only the first is obvious.
+         *
+         * A secure context — `https:`, `localhost` or `127.0.0.1` — which is why
+         * `PublicKeyCredential` exists on all of them. And a valid RP ID, which
+         * WebAuthn takes from the hostname and requires to be a *domain*. An IP
+         * is not, so `127.0.0.1` passes every check you would think to make and
+         * then fails at registration with "This is an invalid domain".
+         */
+        const PASSKEYS_AVAILABLE =
+            window.isSecureContext &&
+            !!window.PublicKeyCredential &&
+            !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname) // an IP is never an RP ID
+
+        // ── The door ────────────────────────────────────────────────
+        /**
+         * Drawn from the security state, never from local flags. The SM already
+         * publishes the phase: `hasVolatileIdentity` is true exactly while a
+         * freshly generated phrase sits in memory unsaved, and
+         * `hasWebAuthnHardwareRegistration` says whether this browser holds a
+         * credential — synchronously, unlike `hasExistingWebAuthnRegistration()`,
+         * which may return a Promise (and a Promise is always truthy).
+         */
+        const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+            const onboarding = hasVolatileIdentity && !isActive
+
+            show(el.generate, !onboarding)
+            show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
+            show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+            show(el.demoLogin, !onboarding) // hidden while a fresh phrase is unsaved
+            show(el.phraseWarning, onboarding) // only a fresh phrase can still be lost
+            el.mnemonic.readOnly = onboarding
+
+            // The phrase is the SM's to hand over — the app never keeps a copy.
+            if (onboarding) {
+                el.mnemonic.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? el.mnemonic.value
+            } else if (isActive || document.activeElement !== el.mnemonic) {
+                el.mnemonic.value = ""
+            }
+
+            syncClipAffordance()
+            autoGrow()
+        }
+
+        /** Copy only: `readText` raises a permission prompt, `writeText` does not. */
+        const syncClipAffordance = () => show(el.clip, !!el.mnemonic.value.trim())
+
+        /** Grow to fit: compact when empty, whole phrase visible when filled. */
+        const autoGrow = () => {
+            const field = el.mnemonic
+            field.style.height = "auto"
+            // scrollHeight excludes borders, and box-sizing counts them in height.
+            const borders = field.offsetHeight - field.clientHeight
+            field.style.height = `${field.scrollHeight + borders}px`
+        }
+
+        const copyPhrase = async () => {
+            try {
+                await navigator.clipboard.writeText(el.mnemonic.value)
+                toast("Phrase copied to clipboard", "success")
+            } catch {
+                toast("Clipboard unavailable — select the phrase and copy it", "warning")
+            }
+        }
+
+        const generateIdentity = async () => {
+            if (!await db.sm.startNewUserRegistration()) return toast("Could not generate an identity", "error")
+            // No UI here: the state change fires and renderIdentityModal draws it.
+            toast("Identity generated — save the phrase before you leave", "success")
+        }
+
+        /** One method for both: a phrase this device has never seen recovers it. */
+        const loginWithMnemonic = async () => {
+            const mnemonic = el.mnemonic.value.trim()
+            if (!mnemonic) return toast("Paste a mnemonic phrase first", "error")
+            try { await db.sm.loginOrRecoverUserWithMnemonic(mnemonic) }
+            catch { toast("That mnemonic is not valid", "error") }
+        }
+
+        const loginAsDemoSuperadmin = async () => {
+            try { await db.sm.loginOrRecoverUserWithMnemonic(SUPERADMIN.mnemonic) }
+            catch { toast("Could not sign in as the demo superadmin", "error") }
+        }
+
+        const protectWithPasskey = async () => {
+            try {
+                if (!await db.sm.protectCurrentIdentityWithWebAuthn()) toast("Passkey registration cancelled", "error")
+            } catch { toast("Could not register the passkey", "error") }
+        }
+
+        const loginWithPasskey = async () => {
+            try {
+                if (!await db.sm.loginCurrentUserWithWebAuthn()) toast("Passkey login cancelled", "error")
+            } catch { toast("Could not sign in with the passkey", "error") }
+        }
+
+        // ── The two readings of the same nodes ──────────────────────
+        const emptyRow = (list, message) => {
+            const li = document.createElement("li")
+            li.className = "empty"
+            li.textContent = message
+            list.replaceChildren(li)
+        }
+
+        /**
+         * Left panel: what your key opens.
+         *
+         * `db.sm.map()` decrypts every encrypted node it can and then queries
+         * them — and it is NOT reactive: there is no callback, and each call is
+         * a fresh decrypt-and-query pass. So it is re-read after a write and
+         * after a session change, which is exactly when it can differ.
+         */
+        const renderMyNotes = async () => {
+            if (!currentUser) return emptyRow(el.notes, "Sign in to read your notes.")
+
+            const { results = [] } = await db.sm.map({ query: { type: "note" } })
+            el.notesCount.textContent = results.length ? `· ${results.length}` : ""
+
+            if (!results.length) {
+                return emptyRow(el.notes, "No notes yet — or none that this identity can open.")
+            }
+
+            el.notes.replaceChildren(...results.map(({ value }) => {
+                const li = document.createElement("li")
+                const title = document.createElement("span")
+                title.className = "note-title"
+                title.textContent = value.title || "Untitled"
+                const body = document.createElement("span")
+                body.className = "note-body"
+                body.textContent = value.content || ""
+                li.append(title, body)
+                return li
+            }))
+        }
+
+        /**
+         * Right panel: what the graph holds, live.
+         *
+         * A plain `db.map()` with no security context at all. The envelope is
+         * recognised by its shape rather than by the id prefix — the wrapper
+         * type is the contract, the prefix is an implementation detail.
+         */
+        const watchRawGraph = () =>
+            db.map({}, () => {
+                db.map({}).then(({ results = [] }) => {
+                    const envelopes = results.filter(n => n.value?._gdbWrapperType === "_gdbSecurePayloadV1")
+
+                    if (!envelopes.length) return emptyRow(el.ciphers, "Nothing stored yet.")
+
+                    el.ciphers.replaceChildren(...envelopes.map(({ id, value }) => {
+                        const li = document.createElement("li")
+                        const row = document.createElement("div")
+                        row.className = "cipher-row"
+
+                        const nodeId = document.createElement("span")
+                        nodeId.className = "cipher-id"
+                        nodeId.textContent = id
+
+                        const payload = document.createElement("span")
+                        payload.className = "cipher-payload"
+                        payload.textContent = value._payload ?? "(payload)"
+
+                        row.append(nodeId, payload)
+                        li.append(row)
+                        return li
+                    }))
+                })
+            })
+
+        const saveNote = async () => {
+            const title = el.noteTitle.value.trim()
+            const content = el.noteBody.value.trim()
+            if (!content) return el.noteBody.focus()
+
+            try {
+                await db.sm.put({ type: "note", title, content, created: Date.now() })
+                el.noteTitle.value = ""
+                el.noteBody.value = ""
+                el.noteTitle.focus()
+                await renderMyNotes()
+                toast("Saved — encrypted before it left this tab", "success")
+            } catch (error) {
+                toast(error.message, "error")
+            }
+        }
+
+        // ── Session ─────────────────────────────────────────────────
+        /**
+         * One callback draws everything, and every branch reads the state it was
+         * given. The SM fires it several times while an identity is generated,
+         * which is harmless precisely because nothing here remembers anything.
+         */
+        const onSecurityStateChange = (state) => {
+            const { isActive, activeAddress, abbrAddr } = state
+            currentUser = isActive ? activeAddress : null
+
+            el.sessionAddr.textContent = isActive ? abbrAddr : ""
+            show(el.logout, isActive)
+            el.save.disabled = !isActive
+            el.noteTitle.disabled = !isActive
+            el.noteBody.disabled = !isActive
+
+            renderIdentityModal(state)
+            renderMyNotes() // the same nodes read by a different key — or by none
+
+            if (isActive) return el.modal.close()
+            if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
+        }
+
+        // ── Boot ────────────────────────────────────────────────────
+        db = await gdb("genosdb-encrypted-notes", {
+            rtc: true,
+            sm: { superAdmins: [SUPERADMIN.address] }
+        })
+
+        // A mandatory door: Esc is native to <dialog> and must be refused
+        // explicitly, and there is no backdrop handler at all.
+        el.modal.addEventListener("cancel", (e) => { if (!currentUser) e.preventDefault() })
+
+        el.generate.addEventListener("click", generateIdentity)
+        el.login.addEventListener("click", loginWithMnemonic)
+        el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
+        el.passkeyProtect.addEventListener("click", protectWithPasskey)
+        el.passkeyLogin.addEventListener("click", loginWithPasskey)
+        el.clip.addEventListener("click", copyPhrase)
+        el.mnemonic.addEventListener("input", () => { syncClipAffordance(); autoGrow() })
+        el.save.addEventListener("click", saveNote)
+        el.logout.addEventListener("click", () => db.sm.clearSecurity())
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+        el.sessionAddr.addEventListener("click", async () => {
+            if (!currentUser) return
+            try {
+                await navigator.clipboard.writeText(currentUser)
+                toast("Address copied to clipboard", "success")
+            } catch {
+                toast(currentUser, "info") // the clipboard can be refused; show it instead
+            }
+        })
+
+        autoGrow() // the browser may restore field content across reloads
+        db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
+
+        // The raw view needs no session, and says so by being subscribed here.
+        watchRawGraph()
     </script>
 </body>
 
