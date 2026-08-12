@@ -942,21 +942,25 @@
         }
 
         /**
-         * Envelopes we have already failed to open, so a genuinely foreign node
-         * costs exactly one decrypt attempt rather than one per notification.
+         * Any change to any envelope means the plaintext may have changed too,
+         * and `db.sm.map()` is the only thing that can tell us — it is not
+         * reactive, so it has to be asked again.
+         *
+         * Asking only about *unknown* envelopes was the obvious optimisation
+         * and it was wrong: editing a note you already had left its row showing
+         * the old text beside the new ciphertext. A peer's second edit is not
+         * less of an edit than their first.
+         *
+         * Debounced, because a burst of peer writes is one decrypt pass, not one
+         * per node.
          */
-        const knownUnopenable = new Set()
+        const DECRYPT_DEBOUNCE_MS = 150
+        let decryptTimer
 
-        const tryToOpenNewcomers = () => {
+        const scheduleDecrypt = () => {
             if (!currentUser) return
-            const newcomers = [...envelopeById.keys()].filter(id => !openableFor(id) && !knownUnopenable.has(id))
-            if (!newcomers.length) return
-
-            newcomers.forEach(id => knownUnopenable.add(id))
-            refreshOpenable().then(() => {
-                // Whatever we can now read is ours after all; forget the verdict.
-                for (const id of envelopeById.keys()) if (openableFor(id)) knownUnopenable.delete(id)
-            })
+            clearTimeout(decryptTimer)
+            decryptTimer = setTimeout(refreshOpenable, DECRYPT_DEBOUNCE_MS)
         }
 
         /**
@@ -981,13 +985,9 @@
                     el.detailCipher.textContent = envelopeById.get(id)?._payload ?? "(payload)"
                 }
 
-                // A node arriving from another tab or peer is only ever an
-                // envelope: `db.map` is reactive, `db.sm.map` is not. Without
-                // this, your own note written elsewhere would show up here as
-                // `Sealed` — the graph told us it exists, and nothing told us we
-                // can read it. So an unknown envelope prompts one more decrypt
-                // pass, and stops prompting once it stays unknown.
-                tryToOpenNewcomers()
+                // The graph told us the bytes changed; only db.sm.map can say
+                // what they now mean. Every change, not just new nodes.
+                scheduleDecrypt()
             })
 
         const saveNote = async () => {
@@ -1031,7 +1031,6 @@
             el.noteBody.disabled = !isActive
 
             renderIdentityModal(state)
-            knownUnopenable.clear() // a different key may open what the last one could not
             refreshOpenable() // the same nodes read by a different key — or by none
 
             if (isActive) return el.modal.close()
