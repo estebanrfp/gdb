@@ -347,7 +347,10 @@
 
             el.emptyView.classList.add("hidden")
             el.resultView.classList.remove("hidden")
-            log(`Traversed in ${elapsed} ms — ${results.length} descendants past level ${MIN_LEVEL}.`)
+
+            // Deliberately not logged: the run already reports itself above, in
+            // larger type. Appending a line per click would push the setup out
+            // of a panel whose whole job is explaining where the graph came from.
 
             // The page states the answer; the console carries the whole nodes,
             // so their shape — id, value, edges, timestamp — can be inspected.
