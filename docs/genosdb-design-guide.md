@@ -840,6 +840,8 @@ The answer goes on top and the trace below, in reading order: you look at what c
 
 **The output panel is never blank.** Before the first run it says what will appear there — an icon and one line, centred — or the split reads as a page that failed to load rather than one waiting for you.
 
+**Nothing inside a panel is a card.** The one-surface rule of §5.0 does not stop at the layout: a bordered, rounded, white block sitting on the page is a second surface, and three of them turn a bench into a dashboard of floating tiles. Panels carry the tone, a 1px rule separates sections, and a code block earns its distinction from the typeface plus a barely-there `--bg-tertiary` ground — no border, no shadow. If a block needs a box to be found, the spacing around it is wrong.
+
 **Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The centred column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a scrolling page needs no breakpoint at all.
 
 **Do not box an instrument.** A live graph or a moving metric belongs edge to edge, with the bands of §5.0 around it and the scrolling inside its panels. Boxing it wastes the space the data was going to occupy.

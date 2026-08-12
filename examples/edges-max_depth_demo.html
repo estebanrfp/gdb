@@ -41,7 +41,9 @@
             height: 100dvh; /* the mobile address bar is not part of the viewport */
             overflow: hidden;
             font: 14px/1.5 var(--font);
-            background: var(--bg-primary);
+            /* One surface for the whole bench — the panels do not float on it,
+               they are it. Borders divide; nothing is a card. */
+            background: var(--bg-secondary);
             color: var(--text-primary);
         }
 
@@ -71,7 +73,13 @@
            each half scrolls in its own box. */
         .output-panel {
             display: grid;
-            grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+            /* Not 1fr 1fr: the answer can be fifty rows and the trace is five
+               lines. `auto` gives the log exactly its content, `1fr` hands the
+               rest to the result, and the cap below stops a runaway log from
+               owning the screen. (minmax(0,40%) would take the full 40%
+               whether the log needs it or not — a free row always claims its
+               maximum next to a 1fr.) */
+            grid-template-rows: minmax(0, 1fr) auto;
             padding: 0; /* each half carries its own */
             overflow: hidden;
         }
@@ -84,24 +92,28 @@
 
         .log-half { border-top: 1px solid var(--border-subtle); }
 
+        /* The cap lives on the log itself, in pixels: a percentage max-height on
+           an `auto` grid row resolves against a height the row does not have
+           yet, and collapses it. Nine lines is more trace than this demo makes. */
+        #log { max-height: 180px; overflow-y: auto; color: var(--text-secondary); }
+
         h1 { margin: 0 0 var(--space-2); font-size: 20px; letter-spacing: -.01em; }
         h2 { margin: var(--space-5) 0 var(--space-2); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
         h2:first-child { margin-top: 0; }
         p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
         code { font-family: var(--mono); font-size: 13px; color: var(--text-primary); }
 
+        /* Code reads as code through the typeface and a barely-there ground —
+           not through a bordered white box sitting on top of the page. */
         pre {
             margin: 0;
             padding: var(--space-4);
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
+            background: var(--bg-tertiary);
             border-radius: var(--radius-md);
             font-family: var(--mono);
             font-size: 13px;
             overflow-x: auto;
         }
-
-        #log { color: var(--text-secondary); }
 
         button {
             width: 100%;
@@ -123,10 +135,8 @@
         .result {
             display: flex;
             gap: var(--space-5);
-            padding: var(--space-4);
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .stat { display: flex; flex-direction: column; margin: 0; }
@@ -175,10 +185,17 @@
 
             .input-panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
 
-            /* Two halves side by side would be 200px tall each; stacked, the
-               result takes the room and the log keeps what it needs. */
-            .output-panel { grid-template-rows: minmax(0, 1fr) auto; }
-            .log-half { max-height: 40%; }
+            /* Splitting again here would leave ~150px per half, which fits
+               neither. The output side becomes one scrolling column with the
+               log after the result: still in reading order, and the answer gets
+               the whole viewport instead of a third of it. */
+            .output-panel {
+                display: block;
+                overflow-y: auto;
+            }
+
+            .output-half { overflow: visible; padding-bottom: 0; }
+            .log-half { padding-bottom: var(--space-5); }
         }
     </style>
 </head>
