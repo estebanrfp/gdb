@@ -173,7 +173,16 @@
            uses for id over payload — so a row on the left and its row on the
            right read as the same node twice, not as two kinds of list. */
         .note-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .note-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
         .note-title { font-weight: 600; }
+
+        /* Same treatment as the envelope's id opposite, so the eye pairs them. */
+        .note-id {
+            flex: 0 0 auto;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
         .note-body.sealed { color: var(--text-tertiary); font-style: italic; }
         .note-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
 
@@ -190,6 +199,7 @@
         }
 
         .cipher-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: stretch; }
+        .pair-hint { margin: calc(var(--space-4) * -1 + 2px) 0 var(--space-4); font-size: 13px; color: var(--text-tertiary); }
 
         /* ── Buttons: the four weights of the guide ─────────────── */
         /* Secondary is the default. A blue default would make `button:hover`
@@ -479,6 +489,7 @@
 
             <section class="panel">
                 <h2>What every peer stores <small>· db.map, no key needed</small></h2>
+                <p class="pair-hint">Each id below is one of yours behind the SM's prefix — match them.</p>
                 <p>
                     The same nodes, read straight from the graph. Anyone replicating this room
                     holds exactly this — the bytes are public, the meaning is not.
@@ -732,12 +743,19 @@
         let noteIdByTitle = new Map()
 
         /** One row. `decrypted` is the SM saying whether this identity opened it. */
-        const renderNoteRow = (li, node) => {
+        const renderNoteRow = (li, node, id) => {
             const value = node?.value ?? {}
 
             const title = document.createElement("span")
             title.className = "note-title"
             title.textContent = value.title || "Untitled"
+
+            // The id, so the row can be matched against its envelope on the
+            // right — which is the claim this page makes and could not other-
+            // wise be checked. The raw node is this id behind an SM prefix.
+            const nodeId = document.createElement("span")
+            nodeId.className = "note-id"
+            nodeId.textContent = id ?? ""
 
             const body = document.createElement("span")
             body.className = "note-body"
@@ -746,9 +764,13 @@
             body.textContent = node?.decrypted === false ? "(sealed — not for this identity)" : value.content || ""
             body.classList.toggle("sealed", node?.decrypted === false)
 
+            const head = document.createElement("div")
+            head.className = "note-head"
+            head.append(title, nodeId)
+
             const row = document.createElement("div")
             row.className = "note-row"
-            row.append(title, body)
+            row.append(head, body)
             li.replaceChildren(row)
         }
 
@@ -766,7 +788,7 @@
 
             el.notes.replaceChildren(...results.map(({ id, value }) => {
                 const li = document.createElement("li")
-                renderNoteRow(li, { value, decrypted: true })
+                renderNoteRow(li, { value, decrypted: true }, id)
                 return li
             }))
         }
