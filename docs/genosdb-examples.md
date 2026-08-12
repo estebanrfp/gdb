@@ -17,6 +17,9 @@ A simple real-time app to manage pending tasks. Ideal as a minimal example.
 ### [Advanced To-Do List](https://estebanrfp.github.io/gdb/examples/advanced-todolist.html)
 A complete task management app, featuring real-time syncing, task filtering (all/active/completed), inline editing, persistent storage, and a clean responsive UI. Ideal for showcasing reactive CRUD operations.
 
+### [One Node, Live in Every Tab](https://estebanrfp.github.io/gdb/examples/singleNode.html)
+The smallest thing GenosDB does, and the shape of everything else: `db.get(id, callback)` is a subscription rather than a fetch, so the callback fires again on every change to that node — from this tab, another tab, or a peer. The input never writes to the screen; it writes to the graph, and the screen is redrawn by the same path a remote change takes. Open it twice to watch it.
+
 ### [Two Live Queries Over One Graph](https://estebanrfp.github.io/gdb/examples/status-lists.html)
 Two `db.map()` subscriptions watching different filters, side by side. A node belongs to whichever query it currently matches, so flipping one field makes the engine work both out for you — `removed` from one list, `added` to the other, in the same write. Press a button in one column and watch the row appear in the other: no routing code, because the queries **are** the routing.
 

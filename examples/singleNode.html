@@ -1,104 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GDB - Real-Time Example</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    input {
-      padding: 10px;
-      width: 80%;
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .output {
-      margin-top: 20px;
-      font-size: 18px;
-      color: #333;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — One node, live in every tab</title>
+
+    <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. No theme button — it would be more
+           CSS and JS than the lesson itself; following the system is enough. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
+
+        /* Values only — not one rule below changes with the palette. */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0d0f12;
+                --bg-secondary: #14171c;
+                --text-primary: #e8eaed;
+                --text-secondary: #9aa3ad;
+                --text-tertiary: #5c6570;
+                --accent: #4c8dff;
+                --accent-hover: #6ba1ff;
+                --border-subtle: #262b33;
+                --border-strong: #333a44;
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        /* Centred both ways: the content is short and fixed, so pinning it to
+           the top leaves a screen of emptiness under it that reads as a page
+           still loading. `min-height` rather than `height`, so a short window
+           lets it grow and scroll instead of clipping. */
+        body {
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh; /* the mobile address bar is not part of the viewport */
+            display: grid;
+            /* place-ITEMS, not place-content: the latter centres the grid's
+               tracks, and the track sizes itself to the widest content — so the
+               460px block ends up left-aligned inside a wider track. */
+            place-items: center;
+            padding: var(--space-5);
+            font: 14px/1.5 var(--font);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        main { width: min(460px, 100%); }
+
+        h1 { margin: 0 0 var(--space-2); font-size: 20px; letter-spacing: -.01em; }
+        p { margin: 0 0 var(--space-5); color: var(--text-secondary); }
+
+        .composer { display: flex; gap: var(--space-2); }
+
+        input {
+            flex: 1;
+            min-width: 0;
+            font: inherit;
+            padding: var(--space-2) var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none; /* the border carries focus */
+            color: var(--text-primary);
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            font: 500 13px var(--font);
+            padding: var(--space-2) var(--space-3);
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            color: var(--text-on-accent);
+            cursor: pointer;
+        }
+
+        button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+        /* The value is what this page is about, so it is the largest thing on it
+           and it is stated bare — no box, no tint. A rule and the space around
+           it are the whole separation. */
+        .value {
+            margin-top: var(--space-5);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .value h2 { margin: 0 0 var(--space-2); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+        #current {
+            margin: 0;
+            font-family: var(--mono);
+            font-size: 22px;
+            word-break: break-word;
+        }
+
+        #current:empty::before { content: "(not set yet)"; color: var(--text-tertiary); }
+
+        .hint { margin: var(--space-5) 0 0; font-size: 13px; color: var(--text-tertiary); }
+    </style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>GDB - Real-Time Example</h1>
-    <p>Update the record value and observe the changes in real time.</p>
 
-    <!-- Text input -->
-    <input type="text" id="valueInput" placeholder="Enter a new value">
+    <main>
+    <h1>One node, live in every tab</h1>
+    <p>
+        Writing over an id updates that node, and every reader of it hears about the change.
+        No channel, no polling, no reload.
+    </p>
 
-    <!-- Update button -->
-    <button id="updateButton">Update Record</button>
-
-    <!-- Real-time output -->
-    <div class="output">
-      <strong>Current Value:</strong> <span id="currentValue">(No value)</span>
+    <div class="composer">
+        <input type="text" id="value-input" placeholder="New value…" aria-label="New value">
+        <button id="update-btn">Update</button>
     </div>
-  </div>
 
-  <!-- Import GDB -->
-  <script type="module">
-    // Import the async factory
-    import { gdb } from "../dist/index.js";
-    // import { withRadixIndex } from "../dist/radixIndex.min.js";
+    <section class="value">
+        <h2>Current value</h2>
+        <p id="current"></p>
+    </section>
 
-    // Create an instance of GDB (async)
-    const db = await gdb('singleNode-db', { rtc: true });
+    <p class="hint">Open this page in a second tab and type here — it changes there too.</p>
+    </main>
 
-    // Unique record ID
-    const recordId = 'unique-record-id';
+    <script type="module">
+        /**
+         * One node, read reactively.
+         *
+         * `db.get(id, callback)` is not a fetch: the callback stays subscribed
+         * and fires again on every change to that node, whoever made it — this
+         * tab, another tab, or a peer across the network. So the input never
+         * writes to the screen. It writes to the graph, and the screen is
+         * redrawn by the same path a remote change would take, which is the
+         * only way to be sure the two behave identically.
+         *
+         * What to read here, and where:
+         *   · db.get(id, cb)     — a live subscription to a single node
+         *   · db.put(value, id)  — writing over an id replaces that node's value
+         */
+        import { gdb } from "../dist/index.js"
 
-    // Function to load the initial value
-    async function loadInitialValue() {
-      await db.get(recordId, (node) => {
-        document.getElementById('currentValue').textContent = node ? node.value : '(No value)';
-      });
-    }
-    
-    // Load the initial value on startup
-    loadInitialValue();
+        const db = await gdb("genosdb-single-node", { rtc: true })
 
-    // Shared update logic
-    async function updateRecord() {
-      const inputEl = document.getElementById('valueInput');
-      const newValue = inputEl.value.trim();
-      if (!newValue) {
-        alert('Please, enter a value.');
-        return;
-      }
-      await db.put(newValue, recordId);
-      inputEl.value = '';
-    }
+        const NODE_ID = "shared-value"
+        const el = { input: document.getElementById("value-input"), current: document.getElementById("current"), update: document.getElementById("update-btn") }
 
-    // Handle click on the update button
-    document.getElementById('updateButton').addEventListener('click', async () => {
-      await updateRecord();
-    });
+        /** An empty field is not an error worth a dialog — it is a field to fill. */
+        const update = async () => {
+            const value = el.input.value.trim()
+            if (!value) return el.input.focus()
+            await db.put(value, NODE_ID)
+            el.input.value = ""
+            el.input.focus()
+        }
 
-    // Handle Enter key on the input
-    document.getElementById('valueInput').addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        await updateRecord();
-      }
-    });
-  </script>
+        // Listeners first, subscription last — the boot order of the design
+        // guide, and not a stylistic one: awaiting the subscription above these
+        // lines leaves the page unwired for as long as it takes to resolve.
+        el.update.addEventListener("click", update)
+        el.input.addEventListener("keydown", (e) => { if (e.key === "Enter") update() })
+
+        // Subscribed for the life of the page. `node` is null until something
+        // has been written, and the empty element says so through CSS.
+        db.get(NODE_ID, (node) => {
+            el.current.textContent = node?.value ?? ""
+        })
+    </script>
 </body>
+
 </html>
