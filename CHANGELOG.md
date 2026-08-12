@@ -434,7 +434,7 @@ const db = await gdb('mydb', {
 - **Removed Blocking Relay Fetch:** The previous architecture, which relied on a blocking `fetch` call to retrieve a list of relays at startup, has been eliminated. The new non-blocking approach ensures that the application's initialization is never delayed by slow or unavailable network resources.
 
 ### Fixed
-- **Security Manager Decryption Bug:** Fixed an issue in `sm.js` where the `get` function incorrectly referenced `ssm.signer` (a non-existent property), preventing decryption of user-owned data even when the session was active. This caused failures in applications like `sm-auth-demo.html` when loading encrypted notes. The fix updates the verification to use `ssm.localUserEthAddress`, ensuring proper session checks and maintaining zero-trust security without exposing sensitive internals.
+- **Security Manager Decryption Bug:** Fixed an issue in `sm.js` where the `get` function incorrectly referenced `ssm.signer` (a non-existent property), preventing decryption of user-owned data even when the session was active. This caused failures when loading encrypted notes. The fix updates the verification to use `ssm.localUserEthAddress`, ensuring proper session checks and maintaining zero-trust security without exposing sensitive internals.
 
 ## [0.9.7] - 2025-08-26
 

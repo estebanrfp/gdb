@@ -83,7 +83,11 @@ A decentralized developer-networking app and full GenosDB showcase: passwordless
 ## Security Manager (SM) Examples
 
 ### [Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)
-The same nodes, read two ways, side by side. On the left `db.sm.map()` decrypts what your key opens; on the right a plain `db.map()` reads the raw graph and needs no key at all — showing the `_gdbSecurePayloadV1` envelopes exactly as every peer replicates them. **Sign in as a second identity and the left panel empties while the right one stays as full as ever**: in a P2P database everyone already holds the bytes, and confidentiality comes from `db.sm.put` encrypting the value, never from the graph withholding it. Includes the canonical identity door (mnemonic + passkeys). Note the asymmetry it relies on: `db.sm.map()` decrypts and queries but is **not** reactive — one fresh pass per call — while `db.sm.get(id, callback)` *is* a live subscription over encrypted data.
+Per-user **encrypted storage** in a graph every peer replicates, shown as the two readings it really is. `db.sm.put()` encrypts a note before storing it; the left panel decrypts it back with `db.sm.map()`, and the right one reads the very same nodes with a plain `db.map()` — no key, no session — displaying the `_gdbSecurePayloadV1` envelopes as they travel.
+
+**Sign in as a second identity and the left panel empties while the right stays exactly as full.** That is the lesson: in a P2P database every peer already holds the bytes, so privacy comes from encrypting the value, never from the graph withholding it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
+
+One API asymmetry worth knowing before you build on it: `db.sm.map()` decrypts and queries but is **not** reactive — a fresh pass per call — while `db.sm.get(id, callback)` *is* a live subscription over encrypted data.
 
 ### [Security Manager (SM Testbed)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
 A hands-on tour of the Security Manager — one-click demo identities, per-user encryption and RBAC — built around a **guided scenario** that shows how a signed role grant propagates **P2P to an offline user via a relay peer, with the superadmin offline**. Open it in three separate browsers to watch authority survive the signer going away.
