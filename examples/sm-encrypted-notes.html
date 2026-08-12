@@ -162,8 +162,6 @@
 
         li {
             display: flex;
-            align-items: baseline;
-            justify-content: space-between;
             gap: var(--space-3);
             padding: var(--space-3) 0;
             border-bottom: 1px solid var(--border-subtle);
@@ -171,6 +169,10 @@
 
         li.empty { display: block; color: var(--text-tertiary); border-bottom: none; }
 
+        /* Title over content, the same two-line shape the envelope opposite
+           uses for id over payload — so a row on the left and its row on the
+           right read as the same node twice, not as two kinds of list. */
+        .note-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .note-title { font-weight: 600; }
         .note-body.sealed { color: var(--text-tertiary); font-style: italic; }
         .note-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
@@ -744,7 +746,10 @@
             body.textContent = node?.decrypted === false ? "(sealed — not for this identity)" : value.content || ""
             body.classList.toggle("sealed", node?.decrypted === false)
 
-            li.replaceChildren(title, body)
+            const row = document.createElement("div")
+            row.className = "note-row"
+            row.append(title, body)
+            li.replaceChildren(row)
         }
 
         const renderMyNotes = async () => {
