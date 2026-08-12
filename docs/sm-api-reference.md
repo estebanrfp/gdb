@@ -289,35 +289,29 @@ try {
 
 - **Signatures**: `(data: any): Promise<string>` · `(encryptedString: string): Promise<any>`
 
-Encrypt a **value** rather than a record. The key is derived from the active user's private key (PBKDF2 → AES-256-GCM), so this is encryption *for yourself*: there is no recipient, and it cannot be used to share data with another user.
+Encrypts a **value** instead of a whole record. The key derives from the active user's private key (PBKDF2 → AES-256-GCM), so it encrypts *for yourself*: there is no recipient and it cannot share data with another user.
 
-`encryptDataForCurrentUser` returns a **string** — `{"iv":…,"encrypted":…,"type":"aes-gcm-self-ssm-v2"}` — which makes it storable as an ordinary field. That is the point of these two: **`db.sm.put` encrypts the whole record and forces reads through the non-reactive `db.sm.map`, while an encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it.** Use them when part of a record must stay public, or when the record must stay live.
+- **Parameters**:
+  - `data` `{any}` – Any JSON-serializable value. MessagePack-encoded and compressed before encryption.
+  - `encryptedString` `{string}` – A string previously returned by `encryptDataForCurrentUser`.
+- **Returns**: `{Promise<string>}` – `{"iv":…,"encrypted":…,"type":"aes-gcm-self-ssm-v2"}`. Being a string, it stores as an ordinary node field. `decrypt` returns the original value.
+- **Throws** (decrypt, one message per cause): `User session (signer) required` · `encryptedString is not valid JSON` · `Unsupported encryption type or incorrect version` · `Invalid encrypted data format` · **`Failed to decrypt personal data`** when the data belongs to someone else.
 
-Both require an active session. `decryptDataForCurrentUser` throws rather than returning `null`, with a distinguishable message per cause:
+> **Why not `db.sm.put`?** That encrypts the whole record, hiding fields you may want public and forcing reads through `db.sm.map`, which is not reactive. An encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it. Reach for these whenever part of a record must stay public, or the record must stay live.
 
-| Cause | Message |
-| --- | --- |
-| No session | `User session (signer) required` |
-| Not JSON | `encryptedString is not valid JSON` |
-| Different format version | `Unsupported encryption type or incorrect version` |
-| Missing `iv` / `encrypted` | `Invalid encrypted data format` |
-| **Not this user's data** | `Failed to decrypt personal data` |
-
-That last one is the only trustworthy test of ownership — an `owner` field is plain data any peer with a write role can set, while the key cannot be faked.
+#### Example: A public title with a private body
 
 ```javascript
-// Public title, private body, in one ordinary node.
 await db.put({
   type: 'note', title, owner: db.sm.getActiveEthAddress(),
   secret: await db.sm.encryptDataForCurrentUser({ content })
 })
 
-// Reading it: the throw IS the check.
+// The throw IS the ownership test: an `owner` field is plain data any peer
+// with a write role can set, while the key cannot be faked.
 let content = null
 try { ({ content } = await db.sm.decryptDataForCurrentUser(node.value.secret)) } catch { /* not ours */ }
 ```
-
-> Values are MessagePack-encoded and deflate-compressed before encryption, so the stored string is smaller than the plaintext for anything sizeable. The `type` field is a format version and is verified on read — payloads from a future version fail loudly rather than silently.
 
 ### `db.sm.protectCurrentIdentityWithWebAuthn(ethPrivateKeyForProtection?)`
 
