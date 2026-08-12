@@ -172,6 +172,7 @@
         li.empty { display: block; color: var(--text-tertiary); border-bottom: none; }
 
         .note-title { font-weight: 600; }
+        .note-body.sealed { color: var(--text-tertiary); font-style: italic; }
         .note-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
 
         /* The envelope as the graph holds it. Mono and clipped: it is meant to
@@ -462,7 +463,7 @@
 
         <div class="bench">
             <section class="panel input-panel">
-                <h2>Write a note</h2>
+                <h2>Write a note <small>· same title updates it</small></h2>
                 <div class="composer">
                     <input type="text" id="note-title" placeholder="Title…" aria-label="Note title">
                     <textarea id="note-body" rows="3" placeholder="Something only you should read…"
@@ -715,11 +716,37 @@
         /**
          * Left panel: what your key opens.
          *
-         * `db.sm.map()` decrypts every encrypted node it can and then queries
-         * them — and it is NOT reactive: there is no callback, and each call is
-         * a fresh decrypt-and-query pass. So it is re-read after a write and
-         * after a session change, which is exactly when it can differ.
+         * `db.sm.map()` decrypts every node it can and then queries them — and
+         * it is NOT reactive: no callback, and each call is a fresh
+         * decrypt-and-query pass. So it is re-read after a write and after a
+         * session change, which is exactly when the answer can differ.
+         *
+         * (`db.sm.get(id, callback)` is documented as a live subscription over
+         * encrypted data and returns an `unsubscribe`. Measured here, the
+         * callback fired once with the initial value and did not fire again
+         * when the node was rewritten — so this panel does not lean on it. If
+         * you need per-node reactivity over encrypted data, verify it first.)
          */
+        let noteIdByTitle = new Map()
+
+        /** One row. `decrypted` is the SM saying whether this identity opened it. */
+        const renderNoteRow = (li, node) => {
+            const value = node?.value ?? {}
+
+            const title = document.createElement("span")
+            title.className = "note-title"
+            title.textContent = value.title || "Untitled"
+
+            const body = document.createElement("span")
+            body.className = "note-body"
+            // A row that arrives sealed is worth showing as such rather than
+            // hiding: it is the same fact the right-hand panel is making.
+            body.textContent = node?.decrypted === false ? "(sealed — not for this identity)" : value.content || ""
+            body.classList.toggle("sealed", node?.decrypted === false)
+
+            li.replaceChildren(title, body)
+        }
+
         const renderMyNotes = async () => {
             if (!currentUser) return emptyRow(el.notes, "Sign in to read your notes.")
 
@@ -730,15 +757,11 @@
                 return emptyRow(el.notes, "No notes yet — or none that this identity can open.")
             }
 
-            el.notes.replaceChildren(...results.map(({ value }) => {
+            noteIdByTitle = new Map(results.map(({ id, value }) => [value.title || "Untitled", id]))
+
+            el.notes.replaceChildren(...results.map(({ id, value }) => {
                 const li = document.createElement("li")
-                const title = document.createElement("span")
-                title.className = "note-title"
-                title.textContent = value.title || "Untitled"
-                const body = document.createElement("span")
-                body.className = "note-body"
-                body.textContent = value.content || ""
-                li.append(title, body)
+                renderNoteRow(li, { value, decrypted: true })
                 return li
             }))
         }
@@ -782,13 +805,20 @@
             const content = el.noteBody.value.trim()
             if (!content) return el.noteBody.focus()
 
+            // The title is the key. Saving over one you already have updates that
+            // node — which is what makes the per-row subscription visible: the
+            // list is never re-read, the row redraws itself.
+            const existingId = noteIdByTitle.get(title || "Untitled")
+
             try {
-                await db.sm.put({ type: "note", title, content, created: Date.now() })
+                await db.sm.put({ type: "note", title, content, created: Date.now() }, existingId)
                 el.noteTitle.value = ""
                 el.noteBody.value = ""
                 el.noteTitle.focus()
-                await renderMyNotes()
-                toast("Saved — encrypted before it left this tab", "success")
+
+                await renderMyNotes() // db.sm.map() is not reactive; re-read it deliberately
+
+                toast(existingId ? "Updated in place — same node, new ciphertext" : "Saved — encrypted before it left this tab", "success")
             } catch (error) {
                 toast(error.message, "error")
             }
