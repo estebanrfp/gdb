@@ -137,7 +137,7 @@ A testing environment to experiment with GDB Operators and Natural Language for 
 ### [GenosDB - Geo Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox-locations.html)
 An interactive playground for the **Geo module**: pick or edit `$near` / `$bbox` queries and watch the matching places render live on a Leaflet map of New York. Ideal for learning the documented geo query syntax.
 
-### [$edge Traversal — Depth in One Query](https://estebanrfp.github.io/gdb/examples/edge-traversal.html)
+### [$edge Traversal — Depth in One Query](https://estebanrfp.github.io/gdb/examples/traversal-depth.html)
 Two chains of 50 linked nodes, and a single `db.map()` that walks one of them end to end: `$edge` takes the filter you would have applied at each hop and pushes it into the traversal, so depth costs one query instead of one round trip per level. The second chain is never a starting point and never appears in the result — which is the part worth watching.
 
 ### [Interactive Graph Playground](https://estebanrfp.github.io/gdb/examples/edges.html)

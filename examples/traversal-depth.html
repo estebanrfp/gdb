@@ -413,7 +413,7 @@
         // one, a reload ago) replays the nodes it just deleted and every level
         // appears two and three times over. Nothing here needs syncing: the
         // lesson is a query operator, not the transport.
-        const db = await gdb("genosdb-edge-traversal")
+        const db = await gdb("genosdb-traversal-depth")
 
         // The starting point is found by an ordinary match; $edge filters its
         // descendants. Both halves are one plain object — no traversal code.
