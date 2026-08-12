@@ -83,11 +83,11 @@ A decentralized developer-networking app and full GenosDB showcase: passwordless
 ## Security Manager (SM) Examples
 
 ### [Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)
-Per-user **encrypted storage** in a graph every peer replicates. The list is every encrypted node in the room — `db.map()`, no key needed — and picking one shows it read twice: what `db.sm.map()` decrypts for you, and the `_gdbSecurePayloadV1` ciphertext the graph actually stores.
+**Encrypt the field, not the record.** A note is an ordinary node — `title` and `owner` in the clear, one `secret` field holding a string only its author's key opens — so every peer reads *that a note exists, what it is called and whose it is*, and nobody else reads what it says. Select one and the panel shows both readings: the body if it is yours to open, the ciphertext either way.
 
-**Nodes belonging to other identities are in that list too, marked `Sealed`** — select one and you still see its bytes, just not its meaning. That is the lesson without having to take anyone's word for it: in a P2P database every peer already holds everything, so privacy comes from `db.sm.put` encrypting the value, never from the graph withholding it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
+That choice is what keeps it **live**. Encrypting the whole record with `db.sm.put` would hide the title too and force reads through `db.sm.map`, which is not reactive; encrypting one field leaves the node ordinary, so a single reactive `db.map()` carries titles, owners and ciphertext to every peer as they change — edits appear in a second browser immediately, and the owner edits in place with autosave.
 
-One API asymmetry worth knowing before you build on it: `db.sm.map()` decrypts and queries but is **not** reactive — a fresh pass per call — while `db.sm.get(id, callback)` *is* a live subscription over encrypted data.
+Ownership is **tested, not trusted**: `db.sm.decryptDataForCurrentUser` throws for anyone else, which is the honest check — the `owner` field is plain, and any peer with a write role could set it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
 
 ### [Security Manager (SM Testbed)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
 A hands-on tour of the Security Manager — one-click demo identities, per-user encryption and RBAC — built around a **guided scenario** that shows how a signed role grant propagates **P2P to an offline user via a relay peer, with the superadmin offline**. Open it in three separate browsers to watch authority survive the signer going away.
