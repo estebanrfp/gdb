@@ -23,6 +23,9 @@ The smallest thing GenosDB does, and the shape of everything else: `db.get(id, c
 ### [Two Live Queries Over One Graph](https://estebanrfp.github.io/gdb/examples/status-lists.html)
 Two `db.map()` subscriptions watching different filters, side by side. A node belongs to whichever query it currently matches, so flipping one field makes the engine work both out for you — `removed` from one list, `added` to the other, in the same write. Press a button in one column and watch the row appear in the other: no routing code, because the queries **are** the routing.
 
+### [Automated Tester — Write Pressure](https://estebanrfp.github.io/gdb/examples/todo-tester.html)
+A load generator for the `todoList` graph: it inserts, updates and deletes at a chosen interval and reports every write as it happens. Open it beside `todolist.html` and the list fills, changes and empties on its own — replication with nobody typing. The page only writes and never subscribes; what watches the result is the other window.
+
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.
 

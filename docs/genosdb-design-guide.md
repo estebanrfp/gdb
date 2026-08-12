@@ -830,7 +830,7 @@ Three shapes live here, and picking the wrong one is the most common mistake in 
 | What it is | A lesson: explanation, one call, its result | A bench: you run something, look, adjust, run again | An instrument: it reports a process that changes on its own |
 | Shape | **Centred column**, page scrolls | **Two panels**, input left / output right, each scrolling on its own | **Full-bleed**, page does not scroll |
 | Width | The widest block that must be read intact: ~640px for prose, ~720px with code, ~440px for stat cards alone | ~380–440px for the input panel; the output takes the rest | The viewport |
-| Examples | `todolist` · `paste` · `singleNode` | `edges-max_depth_demo` · `nlquery` · `sandbox` | `mesh-cells-monitor-d3` · `perf-stress-test` · `graph-p2p` |
+| Examples | `todolist` · `paste` · `singleNode` | `edges-max_depth_demo` · `nlquery` · `sandbox` | `todo-tester` · `mesh-cells-monitor-d3` · `graph-p2p` |
 
 **The bench is the default for anything that tests.** Its point is not extra space, it is **simultaneity**: the lesson of a testbed is *"this input produces this output"*, and a single column puts the two halves of that sentence a scroll apart — you run the query, scroll down to read the answer, scroll back up to change something, and never see both at once. Side by side, the comparison is free and a long result never pushes the controls out of reach.
 
@@ -904,6 +904,12 @@ pre { margin: 0; font-family: var(--mono); font-size: 13px; overflow-x: auto; }
 **Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The centred column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a scrolling page needs no breakpoint at all.
 
 **Do not box an instrument.** A live graph or a moving metric belongs edge to edge, with the bands of §5.0 around it and the scrolling inside its panels. Boxing it wastes the space the data was going to occupy.
+
+> **The reference implementation for an instrument is [`examples/todo-tester.html`](../examples/todo-tester.html)** ([live](https://estebanrfp.github.io/gdb/examples/todo-tester.html)) — dark, because it is data rather than an interface to be read. Controls in the 48px top band, a row of stats under it, the stream edge to edge, and a status bar that reports the run and the peer count. Three things it settles:
+>
+> - **The controls live in the chrome, sized to it.** A button at its default padding is 37px tall, which with the band's own padding makes 54 and breaks the rhythm against the status bar. Give a band's buttons `padding: 6px var(--space-3)`.
+> - **A running instrument says so without being read.** An 8px dot in the status bar — grey and still while idle, `--ok` and pulsing while it runs, with the animation dropped under `prefers-reduced-motion`.
+> - **A stream is columns, not sentences.** `grid-template-columns: auto 56px minmax(0, 1fr)` — time, kind, detail — and the kind is the only thing that carries colour. No separators between rows: with 200 lines scrolling past, the alignment already does that job and 200 rules would be noise.
 
 All three share the rest: an uppercase eyebrow label where one helps, a large title, a one-line hint, **stat cards in a row** with mono values, and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
 
