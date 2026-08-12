@@ -33,6 +33,23 @@
             --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
         }
 
+        /* Values only — not one component rule below changes with the theme.
+           Light is this page's base (it reads next to the documentation), so
+           dark is the override rather than the other way round. */
+        [data-theme="dark"] {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+        }
+
         * { box-sizing: border-box; }
 
         body {
@@ -53,10 +70,39 @@
            the two halves of that sentence a scroll apart. Each panel scrolls
            on its own, so a long result never pushes the controls out of reach. */
         .bench {
+            position: relative; /* anchors the theme button, see below */
             display: grid;
             grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
             height: 100%;
         }
+
+        /* No top bar to put it in, so it takes the corner a top bar would have
+           owned: same place as in every other GenosDB app, so it is where the
+           hand already goes. Pulled back by its own padding, like §5.0 says. */
+        .theme-btn {
+            position: absolute;
+            top: var(--space-3);
+            right: calc(var(--space-5) - 6px);
+            width: auto; /* the generic button rule is full-width, for the run button */
+            margin: 0;
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .theme-btn:hover { color: var(--text-primary); }
+        .theme-btn svg { width: 16px; height: 16px; }
+
+        /* One icon per preference, chosen by what was asked for — not by the
+           palette in force, or `system` could not draw itself. */
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
 
         .panel {
             min-width: 0;
@@ -110,6 +156,11 @@
         }
 
         h2:first-child { margin-top: 0; }
+
+        /* The floating theme button sits over this corner, so the first label of
+           the output side stops short of it — otherwise its rule runs under the
+           icon and the two read as one broken element. */
+        .output-panel h2:first-child { margin-right: 56px; } /* 18 right + 28 wide + a breath */
         p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
         code { font-family: var(--mono); font-size: 13px; color: var(--text-primary); }
 
@@ -210,6 +261,23 @@
 <body>
 
     <div class="bench">
+        <button id="theme-btn" class="theme-btn" title="Theme" aria-label="Theme">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+            <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="13" rx="2" />
+                <path d="M9 21h6" />
+            </svg>
+        </button>
+
         <section class="panel input-panel">
             <h1>Graph traversal with <code>$edge</code></h1>
             <p>
@@ -278,6 +346,7 @@
 
         const $ = (id) => document.getElementById(id)
         const el = {
+            themeBtn: $("theme-btn"),
             query: $("query-display"),
             run: $("run-query"),
             emptyView: $("empty-view"),
@@ -291,6 +360,32 @@
 
         const log = (message) =>
             el.log.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n${el.log.textContent}`
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.edgesTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.edgesTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
 
         // No `rtc`: this demo seeds its own graph on every load, and `db.clear()`
         // resets the watermark — so with peers connected, another window (or this

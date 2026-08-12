@@ -840,6 +840,24 @@ The answer goes on top and the trace below, in reading order: you look at what c
 
 **The output panel is never blank.** Before the first run it says what will appear there — an icon and one line, centred — or the split reads as a page that failed to load rather than one waiting for you.
 
+**The theme toggle keeps its corner even without a top bar.** A bench has no chrome band to put it in, so it floats into the top-right of the layout — the same place every other GenosDB app keeps it, which is where the hand already goes. Same three states as §2, same icons, pulled back by its own padding so the icon lands on the page's edge rather than its hit area:
+
+```css
+.bench { position: relative; }        /* anchors the button */
+.theme-btn {
+    position: absolute;
+    top: var(--space-3);
+    right: calc(var(--space-5) - 6px);  /* the icon lands at 24px, like a top bar's */
+    width: auto;                        /* a full-width `button` rule would swallow it */
+    margin: 0;
+    display: flex; padding: 6px;
+    background: none; border: none; color: var(--text-secondary);
+}
+/* Whatever the button floats over stops short of it, or a section rule runs
+   underneath the icon and the two read as one broken element. */
+.output-panel h2:first-child { margin-right: 56px; }
+```
+
 **Nothing inside a panel is a card.** The one-surface rule of §5.0 does not stop at the layout. A bordered, rounded block sitting on the page is a second surface, and three of them turn a bench into a dashboard of floating tiles — but so is a tinted one: `--bg-tertiary` behind a code block is a bubble with the border merely removed. **What separates is a 1px rule and the space around it**, nothing else. A code block reads as code through the typeface alone; if a block needs a box to be found, the spacing around it is wrong.
 
 ```css
