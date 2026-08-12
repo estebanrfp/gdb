@@ -321,7 +321,10 @@
          */
         const buildRow = (id, value, targetStatus) => {
             const li = document.createElement("li")
-            li.id = `task-${id}`
+            // A data attribute, not an id: the same node id exists in both
+            // columns while it moves between them, and two elements sharing an
+            // id make `getElementById` return whichever it finds first.
+            li.dataset.id = id
 
             const name = document.createElement("span")
             name.className = "task-name"
@@ -343,7 +346,10 @@
          */
         const watch = (list, status, targetStatus, label) =>
             db.map({ query: { status } }, ({ id, value, action }) => {
-                const existing = $(`task-${id}`)
+                // Scoped to THIS list. Searching the document would let one
+                // column's `removed` delete the row the other just added — the
+                // two notifications of a move arrive in either order.
+                const existing = list.querySelector(`[data-id="${id}"]`)
 
                 if (action === "removed") existing?.remove()
                 else if (action === "updated") existing?.replaceWith(buildRow(id, value, targetStatus))
