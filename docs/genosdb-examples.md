@@ -82,8 +82,8 @@ A decentralized developer-networking app and full GenosDB showcase: passwordless
 
 ## Security Manager (SM) Examples
 
-### [Encrypted Storage — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-auth-demo.html)
-The same nodes, read two ways, side by side. On the left `db.sm.map()` decrypts what your key opens; on the right a plain `db.map()` reads the raw graph and needs no key at all — showing the `_gdbSecurePayloadV1` envelopes exactly as every peer replicates them. **Sign in as a second identity and the left panel empties while the right one stays as full as ever**: in a P2P database everyone already holds the bytes, and confidentiality comes from `db.sm.put` encrypting the value, never from the graph withholding it. Includes the canonical identity door (mnemonic + passkeys).
+### [Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)
+The same nodes, read two ways, side by side. On the left `db.sm.map()` decrypts what your key opens; on the right a plain `db.map()` reads the raw graph and needs no key at all — showing the `_gdbSecurePayloadV1` envelopes exactly as every peer replicates them. **Sign in as a second identity and the left panel empties while the right one stays as full as ever**: in a P2P database everyone already holds the bytes, and confidentiality comes from `db.sm.put` encrypting the value, never from the graph withholding it. Includes the canonical identity door (mnemonic + passkeys). Note the asymmetry it relies on: `db.sm.map()` decrypts and queries but is **not** reactive — one fresh pass per call — while `db.sm.get(id, callback)` *is* a live subscription over encrypted data.
 
 ### [Security Manager (SM Testbed)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
 A hands-on tour of the Security Manager — one-click demo identities, per-user encryption and RBAC — built around a **guided scenario** that shows how a signed role grant propagates **P2P to an offline user via a relay peer, with the superadmin offline**. Open it in three separate browsers to watch authority survive the signer going away.
@@ -99,9 +99,6 @@ SM Encryption & Decryption Example
 
 ### [Oplog Audit Module](https://estebanrfp.github.io/gdb/examples/todolist-audit.html)
 Provides real-time auditing of oplog entries, detect spam and prohibited content
-
-### [SM Secure Notes](https://estebanrfp.github.io/gdb/examples/sm-secure-notes.html)
-A single-page HTML application demonstrating secure, real-time, peer-to-peer note sharing. It utilizes GenosDB and its SM module for identity management, implicit client-side encryption of notes, and secure P2P data synchronization.
 
 ### [ACLs + Governance Testbed — The Full Security Model](https://estebanrfp.github.io/gdb/examples/acls.html)
 The complete GenosDB security model in one demo — zero-trust, governance and node-level ACLs. Open it in two or three windows: one becomes the demo superadmin with a single button and runs a governance console (live user/role list and signed promotions); the others join as Alice & Bob — zero-trust guests that cannot write until the superadmin's governance rule promotes them to `user` — and then create, share and revoke notes per user with `db.sm.acls.set` / `grant` / `revoke` / `delete`. Referenced from the [SM ACLs Module guide](https://github.com/estebanrfp/gdb/blob/main/docs/sm-acls-module.md) and the [Governance guide](https://github.com/estebanrfp/gdb/blob/main/docs/governance.md).
