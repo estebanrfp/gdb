@@ -474,15 +474,14 @@
         <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
 
         <!-- Guidance for whoever reads this file, deliberately not on screen:
-             `db.sm.put` wraps the value in a payload only the writer's key
-             opens, and stores it as an ordinary node — which is why the right
-             panel can show it while the left one cannot read someone else's.
-             Sign in with a second identity to watch exactly that happen. -->
+             notes are ordinary nodes. Only the `secret` field is encrypted, so
+             every peer reads the title and the owner and nobody else reads the
+             body. Sign in with a second identity to watch exactly that. -->
     </dialog>
 
     <div class="layout">
         <header class="topbar">
-            <h1 class="brand">Encrypted notes <span>· db.sm.put</span></h1>
+            <h1 class="brand">Encrypted notes <span>· public titles, private bodies</span></h1>
             <div class="session">
                 <button id="session-addr" class="session-addr" title="Copy your full address"></button>
                 <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
@@ -536,7 +535,7 @@
                 </div>
 
                 <div id="detail" class="detail hidden">
-                    <h2>What your key opens <small id="detail-mode">· db.sm.map</small></h2>
+                    <h2>What your key opens <small id="detail-mode"></small></h2>
                     <p id="detail-sealed" class="detail-plain sealed hidden"></p>
                     <div id="detail-editor" class="detail-editor hidden">
                         <input type="text" id="detail-title" aria-label="Note title">
@@ -556,24 +555,31 @@
 
     <script type="module">
         /**
-         * Encrypted storage — what a peer holds versus what you read.
+         * Encrypt the field, not the record.
          *
-         * `db.sm.put(value, id)` does not store your value. It wraps it in a
-         * payload that only the writer's key opens, and stores *that* as an
-         * ordinary node — so it replicates like any other, and every peer ends
-         * up holding it. Confidentiality comes from the encryption, never from
-         * the graph: in a P2P database everyone already has the bytes.
+         * A note is an ordinary node: `title` and `owner` in the clear, and one
+         * field — `secret` — holding a string that only its author's key opens.
+         * So everybody can read *that a note exists, what it is called and whose
+         * it is*, and nobody else can read what it says.
          *
-         * The two panels are the same nodes read two ways. Left, `db.sm.map()`
-         * decrypts what your key opens. Right, `db.map()` reads the raw graph
-         * and needs no key at all. Sign in as a second identity and the left
-         * panel empties while the right one stays exactly as full.
+         * Encrypting the whole record with `db.sm.put` would hide the title too,
+         * and force reads through `db.sm.map`, which is not reactive. Encrypting
+         * one field keeps the node ordinary, so a single reactive `db.map`
+         * carries titles, owners and ciphertext to every peer as they change —
+         * which is why edits here appear in another browser immediately.
          *
          * What to read here, and where:
-         *   · db.sm.put(value, id)  — encrypt for the current user, then store
-         *   · db.sm.map(options)    — query encrypted nodes (decrypts, NOT realtime)
-         *   · db.map(options, cb)   — the raw graph, live, no key involved
-         *   · db.sm.setSecurityStateChangeCallback — the single source of truth for the UI
+         *   · db.sm.encryptDataForCurrentUser — a string only your key opens
+         *   · db.sm.decryptDataForCurrentUser — throws for anyone else, which is
+         *     how this page tests ownership rather than trusting a field
+         *   · db.put(value, id)   — an ordinary node; the encryption is yours
+         *   · db.map(opts, cb)    — one reactive subscription, four actions
+         *   · db.sm.setSecurityStateChangeCallback — single source of truth for the UI
+         *
+         * Note what is NOT protected: the title and the owner are plain fields,
+         * so any peer with a write role can change them. Confidentiality here
+         * covers the body only. Node-level ACLs (see acls.html) are what governs
+         * who may write.
          */
         import { gdb } from "../dist/index.js"
 
@@ -780,7 +786,24 @@
             } catch { toast("Could not sign in with the passkey", "error") }
         }
 
-        // ── The two readings of the same nodes ──────────────────────
+        // ── One node, one public half, one private half ─────────────
+        /**
+         * The title is stored in the clear and the content is encrypted into a
+         * field — so this is an ordinary node written with `db.put`, not an
+         * opaque blob written with `db.sm.put`.
+         *
+         * That choice is what makes the page live. `db.map` is reactive and
+         * needs no key, so one subscription feeds both panels and a peer's edit
+         * lands here immediately. Encrypting the whole node would have meant
+         * `db.sm.map` — which is not reactive — and everything would need
+         * re-reading on a timer.
+         *
+         * Encrypt the field, not the record, whenever anything about the record
+         * has to stay legible to everyone.
+         */
+        const notes = new Map() // id → { title, secret, owner }
+        let selectedId = null
+
         const emptyRow = (list, message) => {
             const li = document.createElement("li")
             li.className = "empty"
@@ -788,60 +811,27 @@
             list.replaceChildren(li)
         }
 
-        /**
-         * The list is every encrypted node in the room; the detail is one of
-         * them, read twice.
-         *
-         * Two reads, and neither replaces the other:
-         *
-         *   · `db.map()` sees every node and needs no key, so it is what knows
-         *     the room's full contents. It is reactive — the list keeps itself
-         *     current as peers write.
-         *   · `db.sm.map()` decrypts what this identity can open, so it is what
-         *     supplies meaning. It is NOT reactive: no callback, and each call
-         *     is a fresh decrypt-and-query pass, so it is re-read on write and
-         *     on session change.
-         *
-         * A node in the first and not the second is someone else's — and that
-         * is not an error to hide, it is the demonstration.
-         *
-         * (`db.sm.get(id, callback)` is documented as a live subscription over
-         * encrypted data, returning `unsubscribe`. Measured here, the callback
-         * fired once with the initial value and not again when the node was
-         * rewritten, so nothing below leans on it. Verify before you do.)
-         */
-        const envelopeById = new Map()  // raw id → envelope value, kept by the subscription
-        let openable = new Map()        // logical id → decrypted value
-        let noteIdByTitle = new Map()
-        let selectedRawId = null
-
-        /** The raw node is the logical id behind an SM prefix, so it ends with it. */
-        const openableFor = (rawId) => {
-            for (const [id, value] of openable) if (rawId.endsWith(id)) return { id, value }
-            return null
-        }
+        const isMine = (note) => !!currentUser && note?.owner === currentUser
 
         const renderList = () => {
-            const rawIds = [...envelopeById.keys()]
-            el.notesCount.textContent = rawIds.length ? `· ${rawIds.length}` : ""
+            el.notesCount.textContent = notes.size ? `· ${notes.size}` : ""
+            if (!notes.size) return emptyRow(el.notes, "No notes yet.")
 
-            if (!rawIds.length) return emptyRow(el.notes, "Nothing stored yet.")
-
-            el.notes.replaceChildren(...rawIds.map((rawId) => {
-                const open = openableFor(rawId)
-
+            el.notes.replaceChildren(...[...notes].map(([id, note]) => {
                 const li = document.createElement("li")
-                li.dataset.raw = rawId
-                li.classList.toggle("selected", rawId === selectedRawId)
+                li.dataset.id = id
+                li.classList.toggle("selected", id === selectedId)
 
                 const title = document.createElement("span")
                 title.className = "note-title"
-                title.textContent = open ? (open.value.title || "Untitled") : "Sealed"
+                title.textContent = note.title || "Untitled"
 
-                const body = document.createElement("span")
-                body.className = "note-body"
-                body.textContent = open ? (open.value.content || "") : "not for this identity"
-                body.classList.toggle("sealed", !open)
+                // Everyone reads the title and everyone reads the owner. What
+                // nobody but the owner reads is what the note says.
+                const owner = document.createElement("span")
+                owner.className = "note-body"
+                owner.textContent = isMine(note) ? "yours" : `by ${db.sm.abbrAddr(note.owner ?? "")}`
+                owner.classList.toggle("sealed", !isMine(note))
 
                 const head = document.createElement("div")
                 head.className = "note-head"
@@ -849,169 +839,121 @@
 
                 const row = document.createElement("div")
                 row.className = "note-row"
-                row.append(head, body)
+                row.append(head, owner)
 
                 li.append(row)
-                li.addEventListener("click", () => selectNode(rawId))
+                li.addEventListener("click", () => selectNote(id))
                 return li
             }))
         }
 
-        let selectedLogicalId = null
-
         /**
-         * Autosave, no Save button — §5.3 of the design guide. A button would be
-         * a lie about how the data travels: the graph has already accepted the
-         * write and told the peers by the time you could reach for one.
+         * The detail: the note as its owner reads it, and as it is stored.
          *
-         * Here it doubles as the demonstration: the ciphertext below is fed by a
-         * reactive `db.map()`, so a keystroke rewrites the whole envelope in
-         * front of you.
+         * Decryption is attempted rather than assumed — the SM throws
+         * "Failed to decrypt personal data" for anyone else, which is the
+         * honest test of whether this identity holds the key.
          */
-        const AUTOSAVE_MS = 600
-        let saveTimer
+        const selectNote = async (id) => {
+            selectedId = id
+            const note = notes.get(id)
+            if (!note) return
 
-        const saveEdit = async () => {
-            if (!selectedLogicalId) return
-            const current = openable.get(selectedLogicalId) ?? {}
-            try {
-                await db.sm.put({
-                    ...current,
-                    title: el.detailTitle.value,
-                    content: el.detailBody.value
-                }, selectedLogicalId)
-                el.detailStatus.textContent = "saved"
-                setTimeout(() => { if (el.detailStatus.textContent === "saved") el.detailStatus.textContent = "" }, 2000)
-                await refreshOpenable()
-            } catch (error) {
-                el.detailStatus.textContent = ""
-                toast(error.message, "error")
-            }
-        }
+            let plain = null
+            try { plain = await db.sm.decryptDataForCurrentUser(note.secret) } catch { plain = null }
 
-        const scheduleSave = () => {
-            if (!selectedLogicalId) return
-            el.detailStatus.textContent = "saving…"
-            clearTimeout(saveTimer)
-            saveTimer = setTimeout(saveEdit, AUTOSAVE_MS)
-        }
+            show(el.detailEditor, !!plain)
+            show(el.detailSealed, !plain)
+            el.detailMode.textContent = plain ? "· yours to edit" : "· not your key"
 
-        /** The detail: the same node as you read it, and as the graph stores it. */
-        const selectNode = (rawId) => {
-            selectedRawId = rawId
-            const envelope = envelopeById.get(rawId)
-            if (!envelope) return
-
-            const open = openableFor(rawId)
-            selectedLogicalId = open?.id ?? null
-
-            show(el.detailEditor, !!open)
-            show(el.detailSealed, !open)
-            el.detailMode.textContent = open ? "· yours to edit" : "· db.sm.map"
-
-            if (open) {
+            if (plain) {
                 // Never overwrite the field being typed in: autosave means our own
                 // write comes back through this same path, and reassigning .value
                 // would jump the caret to the end on every keystroke.
-                if (document.activeElement !== el.detailTitle) el.detailTitle.value = open.value.title ?? ""
-                if (document.activeElement !== el.detailBody) el.detailBody.value = open.value.content ?? ""
+                if (document.activeElement !== el.detailTitle) el.detailTitle.value = note.title ?? ""
+                if (document.activeElement !== el.detailBody) el.detailBody.value = plain.content ?? ""
             } else {
-                el.detailSealed.textContent = "This identity holds no key for this node. The bytes below are all it can see."
+                el.detailSealed.textContent = note.owner === undefined
+                    ? "This note has no owner."
+                    : `Written by ${db.sm.abbrAddr(note.owner)}. You can read its title, its owner and its bytes — not its words.`
             }
 
-            el.detailId.textContent = rawId
-            el.detailCipher.textContent = envelope._payload ?? "(payload)"
+            el.detailId.textContent = id
+            el.detailCipher.textContent = note.secret ?? "(no payload)"
 
             show(el.detailEmpty, false)
             show(el.detail, true)
             renderList() // repaint so the selected row is marked
         }
 
-        /** What this identity can decrypt. Re-read on write and on session change. */
-        const refreshOpenable = async () => {
-            if (!currentUser) {
-                openable = new Map()
-                noteIdByTitle = new Map()
-            } else {
-                const { results = [] } = await db.sm.map({ query: { type: "note" } })
-                openable = new Map(results.map(({ id, value }) => [id, value]))
-                noteIdByTitle = new Map(results.map(({ id, value }) => [value.title || "Untitled", id]))
-            }
-            renderList()
-            if (selectedRawId) selectNode(selectedRawId) // the same node, possibly readable now
-        }
-
         /**
-         * Any change to any envelope means the plaintext may have changed too,
-         * and `db.sm.map()` is the only thing that can tell us — it is not
-         * reactive, so it has to be asked again.
-         *
-         * Asking only about *unknown* envelopes was the obvious optimisation
-         * and it was wrong: editing a note you already had left its row showing
-         * the old text beside the new ciphertext. A peer's second edit is not
-         * less of an edit than their first.
-         *
-         * Debounced, because a burst of peer writes is one decrypt pass, not one
-         * per node.
+         * One subscription, four actions, no re-querying — §7. It is reactive and
+         * keyless, so it carries titles, owners and ciphertext to every peer the
+         * moment they change, whoever is signed in here.
          */
-        const DECRYPT_DEBOUNCE_MS = 150
-        let decryptTimer
-
-        const scheduleDecrypt = () => {
-            if (!currentUser) return
-            clearTimeout(decryptTimer)
-            decryptTimer = setTimeout(refreshOpenable, DECRYPT_DEBOUNCE_MS)
-        }
-
-        /**
-         * The room's contents, live and keyless. The envelope is recognised by
-         * its shape rather than by the id prefix — the wrapper type is the
-         * contract, the prefix is an implementation detail.
-         */
-        const watchRawGraph = () =>
-            db.map({}, ({ id, value, action }) => {
-                // One subscription, four actions, no re-querying — §7. The
-                // callback already says what changed; asking the graph again
-                // for everything would throw that away and do the work twice.
-                if (action === "removed") envelopeById.delete(id)
-                else if (value?._gdbWrapperType === "_gdbSecurePayloadV1") envelopeById.set(id, value)
-                else return // some other node — this panel has nothing to say about it
+        const watchNotes = () =>
+            db.map({ query: { type: "note" }, field: "created", order: "desc" }, ({ id, value, action }) => {
+                if (action === "removed") notes.delete(id)
+                else notes.set(id, value)
 
                 renderList()
 
-                // The envelope of the open node changes on every write — that is
-                // the whole show, so repaint just that, never the fields.
-                if (id === selectedRawId) {
-                    el.detailCipher.textContent = envelopeById.get(id)?._payload ?? "(payload)"
-                }
-
-                // The graph told us the bytes changed; only db.sm.map can say
-                // what they now mean. Every change, not just new nodes.
-                scheduleDecrypt()
+                // The open note may be the one that changed — repaint it, which
+                // also re-attempts decryption in case the session changed.
+                if (id === selectedId) selectNote(id)
             })
 
+        /** A new note: public title, encrypted body, owner stated in the clear. */
         const saveNote = async () => {
             const title = el.noteTitle.value.trim()
             const content = el.noteBody.value.trim()
             if (!content) return el.noteBody.focus()
 
-            // The title is the key. Saving over one you already have updates that
-            // node — which is what makes the per-row subscription visible: the
-            // list is never re-read, the row redraws itself.
-            const existingId = noteIdByTitle.get(title || "Untitled")
-
             try {
-                await db.sm.put({ type: "note", title, content, created: Date.now() }, existingId)
+                await db.put({
+                    type: "note",
+                    title: title || "Untitled",
+                    owner: currentUser,
+                    created: Date.now(),
+                    // The only part nobody else can read. A string, so it travels
+                    // in an ordinary node like any other field.
+                    secret: await db.sm.encryptDataForCurrentUser({ content })
+                })
                 el.noteTitle.value = ""
                 el.noteBody.value = ""
                 el.noteTitle.focus()
-
-                await refreshOpenable() // db.sm.map() is not reactive; re-read it deliberately
-
-                toast(existingId ? "Updated in place — same node, new ciphertext" : "Saved — encrypted before it left this tab", "success")
+                toast("Saved — the title is public, the body is not", "success")
             } catch (error) {
                 toast(error.message, "error")
             }
+        }
+
+        /** Editing in place: same node, re-encrypted body. */
+        const saveEdit = async () => {
+            const note = notes.get(selectedId)
+            if (!note) return
+            try {
+                await db.put({
+                    ...note,
+                    title: el.detailTitle.value,
+                    secret: await db.sm.encryptDataForCurrentUser({ content: el.detailBody.value })
+                }, selectedId)
+                el.detailStatus.textContent = "saved"
+                setTimeout(() => { if (el.detailStatus.textContent === "saved") el.detailStatus.textContent = "" }, 2000)
+            } catch (error) {
+                el.detailStatus.textContent = ""
+                toast(error.message, "error")
+            }
+        }
+
+        const AUTOSAVE_MS = 600
+        let saveTimer
+
+        const scheduleSave = () => {
+            if (!selectedId) return
+            el.detailStatus.textContent = "saving…"
+            clearTimeout(saveTimer)
+            saveTimer = setTimeout(saveEdit, AUTOSAVE_MS)
         }
 
         // ── Session ─────────────────────────────────────────────────
@@ -1031,7 +973,8 @@
             el.noteBody.disabled = !isActive
 
             renderIdentityModal(state)
-            refreshOpenable() // the same nodes read by a different key — or by none
+            renderList()                        // ownership labels change with the session
+            if (selectedId) selectNote(selectedId)  // and so does what you can open
 
             if (isActive) return el.modal.close()
             if (!el.modal.open) el.modal.showModal() // signed out *is* the modal's state
@@ -1077,7 +1020,7 @@
         db.sm.setSecurityStateChangeCallback(onSecurityStateChange)
 
         // The raw view needs no session, and says so by being subscribed here.
-        watchRawGraph()
+        watchNotes()
     </script>
 </body>
 
