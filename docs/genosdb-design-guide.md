@@ -790,9 +790,33 @@ Same skeleton; content organized as **stat cards first, tables second**. Tables 
 
 Single centered column (max-width ~680px) for the feed; composer pinned at the natural top or bottom of the column (not fixed over content). Presence ("N peers online") belongs in the top bar next to the session pill, in `--text-tertiary`.
 
-### 5.6 Instruments & testbeds (monitors, probes, benches)
+### 5.6 Instruments & testbeds
 
-Centered narrow column (~440px), no sidebar. An uppercase eyebrow label, a large title, a one-line hint, then **stat cards in a row** (mono values) and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
+Two shapes live here, and picking the wrong one is the most common mistake in this chapter. Ask what the reader does with the page:
+
+| | **A page you read** | **An instrument you watch** |
+| --- | --- | --- |
+| What it does | Answers one question when you ask it — a query and its result, an operator demonstrated | Reports a process that changes on its own — a live topology, a load bench, a stream of events |
+| Shape | **Centred column**, page scrolls | **Full-bleed**, page does not scroll |
+| Width | Set by the widest thing that must be read without scrolling sideways: ~640px for prose, ~720px when a code block or JSON is part of the lesson, ~440px when it is only stat cards | The viewport |
+| Examples | `edges-max_depth_demo` · `nlquery` · `sandbox` | `mesh-cells-monitor-d3` · `perf-stress-test` · `graph-p2p` |
+
+**Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a page that scrolls needs no breakpoint at all.
+
+**Do not box an instrument.** A live graph or a metric that moves belongs edge to edge, with the bands of §5.0 around it and the scrolling inside the panels, not on the page. Boxing it wastes the space the data was going to occupy.
+
+Both share the rest: an uppercase eyebrow label where one helps, a large title, a one-line hint, **stat cards in a row** with mono values, and proportional bars (grey track `--bg-tertiary`, solid `--accent` fill). These tools measure — every pixel should feel like an instrument, not a website.
+
+```css
+/* A page you read. No breakpoint needed: max-width and a scrolling page
+   already handle every width below it. */
+body {
+    margin: 0 auto;
+    padding: var(--space-5);
+    max-width: 720px;   /* the widest block that must be read intact */
+    background: var(--bg-primary);
+}
+```
 
 ### Hard layout rules (learned the hard way)
 
