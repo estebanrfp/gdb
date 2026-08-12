@@ -4,7 +4,10 @@ Opinionated UI patterns, design tokens and page architectures for applications b
 
 The goal is coherence without complexity: every rule here is implementable in plain HTML + CSS + JavaScript, with no UI framework required.
 
-> **Read the reference app first: [`examples/docs.html`](../examples/docs.html)** ([live](https://estebanrfp.github.io/gdb/examples/docs.html)). It is one self-contained file, and it implements this guide end to end — the identity door (§4.1), the banded layout (§5), the toast and the confirm dialog (§6), the single realtime subscription (§7). Every rule below was extracted from it after being built and verified there, which is also the order to work in: copy from the file, use the text to understand *why*. **If the two disagree, the file is right** — the guide has fallen behind and that is a bug worth reporting.
+> **Read the reference implementations first — there are two, one per profile:**
+> **[`examples/docs.html`](../examples/docs.html)** ([live](https://estebanrfp.github.io/gdb/examples/docs.html)) for the **full profile** — an application with identity, permissions and state — and **[`examples/edges-max_depth_demo.html`](../examples/edges-max_depth_demo.html)** ([live](https://estebanrfp.github.io/gdb/examples/edges-max_depth_demo.html)) for the **minimal profile**, the two-panel bench every tool page should follow (§5.6).
+>
+> docs.html is one self-contained file, and it implements this guide end to end — the identity door (§4.1), the banded layout (§5), the toast and the confirm dialog (§6), the single realtime subscription (§7). Every rule below was extracted from it after being built and verified there, which is also the order to work in: copy from the file, use the text to understand *why*. **If the two disagree, the file is right** — the guide has fallen behind and that is a bug worth reporting.
 
 ### Two deployment shapes, one design language
 
@@ -791,6 +794,8 @@ Same skeleton; content organized as **stat cards first, tables second**. Tables 
 Single centered column (max-width ~680px) for the feed; composer pinned at the natural top or bottom of the column (not fixed over content). Presence ("N peers online") belongs in the top bar next to the session pill, in `--text-tertiary`.
 
 ### 5.6 Instruments & testbeds
+
+> **The reference implementation for a bench is [`examples/edges-max_depth_demo.html`](../examples/edges-max_depth_demo.html)** ([live](https://estebanrfp.github.io/gdb/examples/edges-max_depth_demo.html)) — the minimal-profile counterpart to `docs.html`. Query left, answer and trace right, one surface, floating theme toggle, no session and no chrome bands. Copy from the file; the text below explains why it is shaped that way.
 
 Three shapes live here, and picking the wrong one is the most common mistake in this chapter. Ask what the reader *does* with the page:
 
