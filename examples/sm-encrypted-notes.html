@@ -1010,6 +1010,11 @@
 
         // ── Boot ────────────────────────────────────────────────────
         db = await gdb("genosdb-encrypted-notes", {
+            // On deliberately: this page exists to be checked, and the engine's
+            // trace is how you confirm that a write really left, that a peer
+            // really answered, and that the node you are looking at is the node
+            // that travelled. Open the console alongside the panels.
+            // Not for production — it logs every operation.
             debug: true,
             rtc: true,
             sm: { superAdmins: [SUPERADMIN.address] }
