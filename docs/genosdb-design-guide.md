@@ -283,6 +283,33 @@ dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
 .modal-hint  { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
 
+/* ── The page-wide field rule the mnemonic depends on ────────────────────
+   Copy this too. `#mnemonic-input` below states only what makes it DIFFERENT
+   from an ordinary field; everything else — width, padding, border, radius,
+   colour — comes from here. Take the specific rule without this one and you
+   will re-invent those values, get the padding wrong, and end up with a field
+   that no longer matches the button under it. */
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;          /* the border carries focus — §6 */
+  resize: none;
+}
+input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+
+/* A field you cannot edit says so by stepping back. Without this the freshly
+   generated phrase arrives in full white — brightest thing on screen at the
+   exact moment the modal wants to be calm. */
+input:disabled, textarea[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
+
+/* ── The modal's own field ───────────────────────────────────────────── */
 .mnemonic-field { position: relative; }
 
 #mnemonic-input {
@@ -310,7 +337,6 @@ dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 
 .modal-warn { display: grid; place-items: center; min-height: 45px; margin: var(--space-2) 0 0;
               font-size: 13px; font-weight: 600; color: var(--warn); }
-.modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--text-tertiary); }
 ```
 
 Four measurements carry the layout, and each answers a defect:
@@ -885,6 +911,8 @@ All three share the rest: an uppercase eyebrow label where one helps, a large ti
 
 Each of these was a visible defect before it was a rule.
 
+- **A specific rule is never the whole rule — copy the base it sits on.** These files have one stylesheet and no cascade boundaries, so a component's rule states only what makes it *different* from the page-wide rule for its element. Lift `#mnemonic-input` without the `input, textarea, select` block above it and you inherit nothing, re-invent padding and border by hand, and land 4px off the button the field is supposed to match. When something looks wrong beside its reference, look for a **missing base rule** before adding a specific one.
+- **And the same hazard from the other side: scope element selectors to their region.** A bare `h2`, `button` or `input` rule written for one part of a single-file example reaches every other part. Today that put a section label's grey and underline on a modal title, made an icon button light up blue on hover (because the *default* button was the primary one, so `button:hover` painted a fill that outranked `.icon-btn:hover`), and stretched a floating icon button to full width. Write `.panel h2`, `.modal-actions button` — and reserve the bare element selector for what genuinely applies page-wide.
 - **`minmax(0, 1fr)`, never bare `1fr`.** A `1fr` track floors at `min-content`, so one `white-space: nowrap` excerpt of 80 characters is wider than a phone: the column stretches to fit it and drags the document, its buttons and the status bar off the right edge. The text truncates correctly — it just has nothing to truncate against. Same disease as the missing `min-width: 0` on a flex child, and worth checking together.
 - **`min-height: 0` and `min-width: 0` on every grid and flex child.** Without them a child refuses to shrink below its content, the column outgrows the viewport, and the `overflow` you set never engages. This is the single most common layout bug in these apps.
 - **The content column owns the full viewport height.** `overflow: hidden` on `body`, `overflow-y: auto` on the content column. The page never scrolls; the column does. No global fixed footers.
