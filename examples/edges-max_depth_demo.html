@@ -93,7 +93,8 @@
             cursor: pointer;
         }
 
-        .theme-btn:hover { color: var(--text-primary); }
+        /* Only the icon changes — no fill, no border, no square. */
+        .theme-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
         .theme-btn svg { width: 16px; height: 16px; }
 
         /* One icon per preference, chosen by what was asked for — not by the
@@ -173,20 +174,34 @@
             overflow-x: auto;
         }
 
+        /* The four weights of the guide. Getting this wrong is not cosmetic: a
+           blue *default* means `button:hover` paints a background, and that rule
+           outranks any `.some-btn:hover` — so every icon button on the page
+           lights up as a blue square. Secondary is the default; blue is opt-in. */
         button {
-            width: 100%;
-            margin-top: var(--space-4);
-            padding: 13px var(--space-4);
-            font: 600 14px var(--font);
-            background: var(--accent);
-            border: 1px solid var(--accent);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
             border-radius: var(--radius-sm);
-            color: var(--text-on-accent);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
             cursor: pointer;
         }
 
-        button:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
         button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--text-on-accent);
+        }
+
+        /* The one action of this page, so it takes the width and the weight. */
+        #run-query { width: 100%; margin-top: var(--space-4); padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
 
         /* The answer, stated on the page. A demo whose result lives in the
            browser console teaches nothing to whoever is looking at it. */
@@ -289,7 +304,7 @@
             <h2>The query</h2>
             <pre id="query-display"></pre>
 
-            <button id="run-query" disabled>Building the chains…</button>
+            <button id="run-query" class="primary" disabled>Building the chains…</button>
         </section>
 
         <section class="panel output-panel">

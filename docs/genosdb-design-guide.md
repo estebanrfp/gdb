@@ -1099,6 +1099,7 @@ button.danger:hover:not(:disabled) { border-color: var(--danger); }
 
 - **`danger` is outlined, not filled.** A red block reads as *the* action of the screen. Delete is available, not encouraged — the exception is the confirm dialog above, where destroying is the whole point of the button you just opened.
 - **`ghost` has no border at rest.** It is for the escape hatch and the aside: a demo shortcut, a *cancel*. Give it a border and it becomes a second secondary button competing with the real one.
+- **Never make the bare `button` rule the primary one**, however few buttons a page has. `button:hover` then paints a background, and it outranks any `.icon-btn:hover` on specificity — every icon button on the page lights up as a blue square on hover, and no amount of styling the class will stop it. Note that the generic hover changes **border and text colour only**, never the fill, for exactly this reason.
 - In the identity door this maps exactly: `Generate` and `Login with mnemonic` are `primary`, `Login with passkey` is the default secondary, and the demo shortcut is `ghost`. If the demo button grows a border, it starts reading as a third way in.
 
 **Forms:** labels above fields (small, `--text-secondary`, 600 weight); inputs on `--bg-secondary` with `--border-strong`, focus swaps border to `--accent`. Read-only fields (e.g. auto-generated slugs) drop to `--text-tertiary` on `--bg-primary`.
