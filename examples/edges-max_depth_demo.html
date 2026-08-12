@@ -65,6 +65,25 @@
 
         .input-panel { border-right: 1px solid var(--border-subtle); }
 
+        /* The output side is two halves: what the query answered, and what the
+           setup did to get there. Splitting them keeps a long result from
+           burying the log, and a long log from pushing the result off screen —
+           each half scrolls in its own box. */
+        .output-panel {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+            padding: 0; /* each half carries its own */
+            overflow: hidden;
+        }
+
+        .output-half {
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-5);
+        }
+
+        .log-half { border-top: 1px solid var(--border-subtle); }
+
         h1 { margin: 0 0 var(--space-2); font-size: 20px; letter-spacing: -.01em; }
         h2 { margin: var(--space-5) 0 var(--space-2); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
         h2:first-child { margin-top: 0; }
@@ -82,7 +101,7 @@
             overflow-x: auto;
         }
 
-        #log { max-height: 160px; overflow-y: auto; color: var(--text-secondary); }
+        #log { color: var(--text-secondary); }
 
         button {
             width: 100%;
@@ -151,10 +170,15 @@
         @media (max-width: 820px) {
             .bench {
                 grid-template-columns: minmax(0, 1fr);
-                grid-template-rows: minmax(0, 55%) minmax(0, 45%);
+                grid-template-rows: minmax(0, 45%) minmax(0, 55%);
             }
 
             .input-panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+
+            /* Two halves side by side would be 200px tall each; stacked, the
+               result takes the room and the log keeps what it needs. */
+            .output-panel { grid-template-rows: minmax(0, 1fr) auto; }
+            .log-half { max-height: 40%; }
         }
     </style>
 </head>
@@ -174,30 +198,34 @@
             <pre id="query-display"></pre>
 
             <button id="run-query" disabled>Building the chains…</button>
-
-            <h2>Setup log</h2>
-            <pre id="log"></pre>
         </section>
 
-        <section class="panel">
-            <div id="empty-view" class="empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="6" cy="6" r="3" />
-                    <circle cx="18" cy="18" r="3" />
-                    <path d="M6 9v6a3 3 0 0 0 3 3h6" />
-                </svg>
-                <p>Run the query to see which descendants match.</p>
+        <section class="panel output-panel">
+            <div class="output-half">
+                <div id="empty-view" class="empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="6" cy="6" r="3" />
+                        <circle cx="18" cy="18" r="3" />
+                        <path d="M6 9v6a3 3 0 0 0 3 3h6" />
+                    </svg>
+                    <p>Run the query to see which descendants match.</p>
+                </div>
+
+                <div id="result-view" class="hidden">
+                    <h2>Result</h2>
+                    <div class="result">
+                        <p class="stat matched"><b id="stat-count">0</b><span>nodes matched</span></p>
+                        <p class="stat"><b id="stat-time">0</b><span>milliseconds</span></p>
+                        <p class="stat"><b id="stat-scanned">0</b><span>nodes in the graph</span></p>
+                    </div>
+                    <ul id="result-list"></ul>
+                </div>
             </div>
 
-            <div id="result-view" class="hidden">
-                <h2>Result</h2>
-                <div class="result">
-                    <p class="stat matched"><b id="stat-count">0</b><span>nodes matched</span></p>
-                    <p class="stat"><b id="stat-time">0</b><span>milliseconds</span></p>
-                    <p class="stat"><b id="stat-scanned">0</b><span>nodes in the graph</span></p>
-                </div>
-                <ul id="result-list"></ul>
+            <div class="output-half log-half">
+                <h2>Setup log</h2>
+                <pre id="log"></pre>
             </div>
         </section>
     </div>

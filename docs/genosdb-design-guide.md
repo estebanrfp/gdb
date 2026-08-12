@@ -823,6 +823,21 @@ Legibility is not the trade-off people expect, because **the panels stay narrow*
 }
 ```
 
+**Split the output when there are two kinds of it.** A bench usually produces both an *answer* and a *trace* — the result of the run, and the log of what got the graph into that state. Stacked in one scrolling panel they fight: a long result buries the log, a long log pushes the result off screen. Two halves, each scrolling in its own box, and neither can hide the other:
+
+```css
+.output-panel {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 0;          /* each half carries its own */
+    overflow: hidden;
+}
+.output-half { min-height: 0; overflow-y: auto; padding: var(--space-5); }
+.log-half { border-top: 1px solid var(--border-subtle); }
+```
+
+The answer goes on top and the trace below, in reading order: you look at what came back first, and drop to the log only when it surprises you. Keep the controls out of both — the left panel owns everything you press.
+
 **The output panel is never blank.** Before the first run it says what will appear there — an icon and one line, centred — or the split reads as a page that failed to load rather than one waiting for you.
 
 **Do not stretch a page you read.** Prose at 1900px stops being readable, and a five-line answer floating in that much space reads as an empty page rather than a result. The centred column is not a compromise for small screens — it is what a sequence of "explanation → call → result" asks for, and it is already responsive: `max-width` plus a scrolling page needs no breakpoint at all.
