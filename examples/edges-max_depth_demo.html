@@ -172,7 +172,12 @@
         const log = (message) =>
             el.log.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n${el.log.textContent}`
 
-        const db = await gdb("genosdb-edge-traversal", { rtc: true })
+        // No `rtc`: this demo seeds its own graph on every load, and `db.clear()`
+        // resets the watermark — so with peers connected, another window (or this
+        // one, a reload ago) replays the nodes it just deleted and every level
+        // appears two and three times over. Nothing here needs syncing: the
+        // lesson is a query operator, not the transport.
+        const db = await gdb("genosdb-edge-traversal")
 
         // The starting point is found by an ordinary match; $edge filters its
         // descendants. Both halves are one plain object — no traversal code.
