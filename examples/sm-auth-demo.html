@@ -140,7 +140,9 @@
 
         /* A rule under the label divides the sections. Nothing gets a tinted
            box: separation is the line and the space around it. */
-        h2 {
+        /* Scoped to the panels on purpose: the modal title is an `h2` as well,
+           and a bare `h2` rule would hand it this one's grey and its rule. */
+        .panel h2 {
             margin: var(--space-5) 0 var(--space-3);
             padding-bottom: var(--space-2);
             border-bottom: 1px solid var(--border-subtle);
@@ -149,8 +151,8 @@
             color: var(--text-secondary);
         }
 
-        h2:first-child { margin-top: 0; }
-        h2 small { font-weight: 400; color: var(--text-tertiary); }
+        .panel h2:first-child { margin-top: 0; }
+        .panel h2 small { font-weight: 400; color: var(--text-tertiary); }
 
         p { margin: 0 0 var(--space-4); color: var(--text-secondary); }
 
@@ -385,7 +387,7 @@
          there is nothing to show before there is one. -->
     <dialog id="identity-modal">
         <h2 class="modal-title">Encrypted notes</h2>
-        <p class="modal-hint">Stored in a graph every peer replicates. Readable only by you.</p>
+        <p class="modal-hint">Encrypted for you, replicated to everyone.</p>
 
         <div class="mnemonic-field">
             <textarea id="mnemonic-input"
