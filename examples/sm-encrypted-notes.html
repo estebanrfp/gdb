@@ -811,8 +811,24 @@
             list.replaceChildren(li)
         }
 
+        /**
+         * COSMETIC ONLY — never an access check.
+         *
+         * `owner` is a plain field in an ordinary node, so any peer with a write
+         * role can set it to anything. It is good enough to label a row, and it
+         * would be a security hole if anything depended on it. What actually
+         * decides is whether `decryptDataForCurrentUser` throws (see selectNote):
+         * you either hold the key or you do not, and no field can fake that.
+         */
         const isMine = (note) => !!currentUser && note?.owner === currentUser
 
+        /**
+         * Rebuilds the whole list. Acceptable at this size and no further: §7 of
+         * the design guide asks for a DOM gesture per action (`added` prepends,
+         * `updated` replaces that row, `removed` drops it), and a list of
+         * hundreds should do exactly that — see docs.html. The subscription
+         * below already reports which node changed, so the upgrade is local.
+         */
         const renderList = () => {
             el.notesCount.textContent = notes.size ? `· ${notes.size}` : ""
             if (!notes.size) return emptyRow(el.notes, "No notes yet.")
@@ -859,6 +875,11 @@
             const note = notes.get(id)
             if (!note) return
 
+            // The swallowed error IS the check, not sloppiness. The SM throws
+            // "Failed to decrypt personal data" for anyone who is not the author,
+            // and that throw is the only trustworthy answer to "is this mine?" —
+            // so failing to decrypt is an expected outcome here, not an error to
+            // report. Anywhere else, a bare catch like this would be a bug.
             let plain = null
             try { plain = await db.sm.decryptDataForCurrentUser(note.secret) } catch { plain = null }
 
@@ -903,7 +924,14 @@
                 if (id === selectedId) selectNote(id)
             })
 
-        /** A new note: public title, encrypted body, owner stated in the clear. */
+        /**
+         * A new note: public title, encrypted body, owner stated in the clear.
+         *
+         * Creating takes a button and editing does not, on purpose: creation is
+         * a deliberate act with nothing to autosave onto yet, while an existing
+         * note is edited in place (§5.3). Same reason docs.html has one "new"
+         * button and no Save.
+         */
         const saveNote = async () => {
             const title = el.noteTitle.value.trim()
             const content = el.noteBody.value.trim()
