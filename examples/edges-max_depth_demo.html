@@ -222,6 +222,11 @@
 
             el.resultView.classList.remove("hidden")
             log(`Traversed in ${elapsed} ms — ${results.length} descendants past level ${MIN_LEVEL}.`)
+
+            // The page states the answer; the console carries the whole nodes,
+            // so their shape — id, value, edges, timestamp — can be inspected.
+            // No console.clear(): it is not this demo's console to empty.
+            console.log(`$edge traversal — ${results.length} nodes in ${elapsed} ms`, results)
         }
 
         await db.clear()
