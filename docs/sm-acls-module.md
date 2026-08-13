@@ -159,7 +159,7 @@ await db.sm.acls.revoke('node123', '0xUserAddress');
 
 ### `db.sm.acls.delete(nodeId)`
 
-Deletes a node. Only the owner can delete their nodes.
+Deletes a node. The owner — or a collaborator granted `delete` — can remove it.
 
 **Parameters:**
 - `nodeId` (string): The node ID to delete

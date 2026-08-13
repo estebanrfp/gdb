@@ -80,10 +80,11 @@ await sm.assignRole("0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA", "user", Date.n
 await sm.executeWithPermission("write")
 const sid = await sm.put({ private: "data" })
 await sm.get(sid)
-await sm.acls.set(sid, { owner: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA" })
-await sm.acls.grant(sid, "0x1111111111111111111111111111111111111111")
-await sm.acls.revoke(sid, "0x1111111111111111111111111111111111111111")
-await sm.acls.delete(sid)
+const aclId: string = await sm.acls.set({ type: "note", title: "shared" })
+await sm.acls.set({ title: "renamed" }, aclId)
+await sm.acls.grant(aclId, "0x1111111111111111111111111111111111111111", "write")
+await sm.acls.revoke(aclId, "0x1111111111111111111111111111111111111111")
+await sm.acls.delete(aclId)
 // --- SM: encrypted CRUD surface (map/remove) and session helpers ---
 interface SecureNote { type: "note"; name: string; content: string }
 const smNoteId: string = await sm.put({ type: "note", name: "n", content: "" } satisfies SecureNote)

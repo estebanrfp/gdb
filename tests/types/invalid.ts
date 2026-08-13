@@ -38,3 +38,14 @@ const sm = db.sm!
 await sm.assignRole(123)
 
 export {}
+
+const aclSm = db.sm!
+
+// @ts-expect-error — acls.set takes (value, id?): the id is the SECOND argument
+await aclSm.acls.set("node-id", { title: "reversed" })
+
+// @ts-expect-error — grant requires a permission: 'read' | 'write' | 'delete'
+await aclSm.acls.grant("node-id", "0x1111111111111111111111111111111111111111")
+
+// @ts-expect-error — grant only accepts the three documented levels
+await aclSm.acls.grant("node-id", "0x1111111111111111111111111111111111111111", "admin")

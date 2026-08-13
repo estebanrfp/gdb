@@ -172,8 +172,10 @@ declare module "genosdb" {
   }
 
   export interface ACLs {
-    set(nodeId: string, acl: any): Promise<any>
-    grant(nodeId: string, ethAddress: string, permissions?: any): Promise<any>
+    /** Create (value only) or update (value + id). `owner` and `collaborators` are engine-managed: they are stripped from the value and re-based on the stored node. */
+    set(value: any, id?: string): Promise<string>
+    /** Owner-only. One level per address; granting again replaces the previous level. */
+    grant(nodeId: string, ethAddress: string, permission: "read" | "write" | "delete"): Promise<any>
     revoke(nodeId: string, ethAddress: string): Promise<any>
     delete(nodeId: string): Promise<any>
   }
