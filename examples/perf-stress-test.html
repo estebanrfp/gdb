@@ -446,7 +446,7 @@
                     <section class="block">
                         <h2>Sync protocol observatory</h2>
                         <div class="stats">
-                            <p class="stat"><b id="pSync">0</b><span>sync</span></p>
+                            <p class="stat"><b id="pSync">0</b><span>sync requests</span></p>
                             <p class="stat"><b id="pDelta">0</b><span>deltaSync</span></p>
                             <p class="stat full"><b id="pFull">0</b><span>fullStateSync</span></p>
                         </div>
@@ -495,10 +495,13 @@
          * the line between them.
          *
          * What to read here, and where:
-         *   · gdb(name, { saveDelay, oplogSize })  — the two knobs under test
+         *   · gdb(name, { saveDelay, oplogSize })  — the two knobs under test;
+         *     both are documented options (genosdb-api-reference.md)
          *   · db.put(value)                        — the write being timed
          *   · db.map(callback)                     — the subscription being counted
-         *   · db.syncChannel.on('message', …)      — the observatory's tap
+         *   · db.syncChannel.on('message', …)      — the observatory's tap.
+         *     ⚠ INTERNAL: syncChannel is not documented API. Fine for a probe
+         *     like this page; never build application logic on it.
          *
          * saveDelay batches disk writes under load; oplogSize bounds the delta
          * window of the Hybrid Delta Protocol. Push past that window and the
@@ -682,8 +685,10 @@
             for (const input of [el.dbName, el.saveDelay, el.oplogSize]) input.disabled = true
             append("Ready. Subscribe, or start a run.")
 
-            // Other tabs of this origin sync through BroadcastChannel rather than
-            // the mesh, and gdb names that channel after the database.
+            // Other tabs of this origin sync through BroadcastChannel rather
+            // than the mesh. The channel name is an INTERNAL detail of gdb.js —
+            // shown here so the log can tell local traffic from P2P traffic,
+            // but it is not a contract and may change between versions.
             try {
                 const channel = new BroadcastChannel(`graphdb_sync_${name}`)
                 channel.onmessage = (event) => {
@@ -692,9 +697,13 @@
                 }
             } catch { /* the browser may refuse it; the observatory still works */ }
 
-            // The observatory's tap. Channel listeners are a Set internally, so
-            // this diagnostic one coexists with the database's own sync handler
-            // instead of replacing it.
+            // The observatory's tap — a read-only probe on an INTERNAL handle.
+            // The three message types it counts are the Hybrid Delta Protocol's
+            // vocabulary (genosdb-hybrid-delta-protocol.md): a `sync` request
+            // carries the asker's watermark, `deltaSync` answers from the oplog,
+            // and `fullStateSync` is the fallback when the asker is too far
+            // behind. Channel listeners are a Set internally, so this diagnostic
+            // one coexists with the database's own handler instead of replacing it.
             try {
                 db.syncChannel?.on?.("message", (data) => {
                     try {
@@ -827,7 +836,9 @@
             append(`Done. ok=${ok}, failed=${failed} · write ${writeMs.toFixed(1)} ms · wall ${wallMs.toFixed(1)} ms · ${opsPerSec.toLocaleString("en-US")} ops/s`)
 
             // The subscription skipped the bulk, so the held count is stale —
-            // ask the graph how many nodes there really are.
+            // ask the graph how many nodes there really are. `realtime: false`
+            // makes this a one-shot read (map-guide.md): no callback, no
+            // subscription left behind.
             if (isSubscribed) {
                 const { results } = await db.map({ query: {}, realtime: false })
                 lastResults = results.length
