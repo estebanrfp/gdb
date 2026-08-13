@@ -438,6 +438,9 @@
             gap: var(--space-3);
             padding: var(--space-3) var(--space-4);
             background: var(--bg-elevated);
+            /* Not inherited: the UA sheet paints `[popover]` with CanvasText,
+               which is black whatever the page is doing. */
+            color: var(--text-primary);
             border: 1px solid var(--border-strong);
             border-left: 3px solid var(--border-strong);
             border-radius: var(--radius-md);
@@ -498,19 +501,20 @@
            reaches the buttons and still rings them. */
         .modal-title[tabindex] { outline: none; }
 
-        /* One more button in the stack — same gap, same height — told apart by
-           its colour rather than by a rule and extra air. */
+        /* Ghost, like it was: not a fourth way in, so it carries no frame of its
+           own and stays quiet. Only the gap changed — the same one the
+           identities keep between them, instead of a rule and extra air.
+
+           No `color: var(--danger)` here: `button.ghost` is class+element and
+           would outrank a bare `.modal-reset`, so that declaration only ever
+           looked like it was doing something. Quiet is the intent anyway. */
         .modal-reset {
             width: 100%;
             margin-top: var(--space-2);
             padding: 13px var(--space-4);
             font-size: 14px;
             font-weight: 600;
-            border-color: var(--border-strong);
-            color: var(--danger);
         }
-
-        .modal-reset:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
         .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
 
@@ -629,7 +633,7 @@
 
         <!-- Preparation, not an action of the session: you reset before starting
              the scenario, in each window, and then pick who you are. -->
-        <button id="reset-btn" class="modal-reset">Reset the testbed</button>
+        <button id="reset-btn" class="ghost modal-reset">Reset the testbed</button>
         <p class="modal-foot">
             Throwaway identities with their phrases in the source, shared with the other security examples.
             Never do this in a real application.
@@ -736,6 +740,11 @@
 
             item.append(icon, text)
             el.toasts.append(item)
+
+            // Re-enter the top layer on every toast. Order there is order of
+            // entry, so a dialog opened after the stack would sit above it —
+            // and this stack's whole point is being readable over one.
+            if (el.toasts.matches(":popover-open")) el.toasts.hidePopover()
             el.toasts.showPopover?.()
 
             setTimeout(() => {
