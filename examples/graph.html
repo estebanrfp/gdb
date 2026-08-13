@@ -821,10 +821,15 @@
 
             if (selectedId) {
                 const { value } = nodes.get(selectedId) ?? {}
-                let edge = DEFAULT_QUERY.$edge
-                try { edge = JSON.parse(el.query.value).$edge ?? edge } catch { /* keep the default */ }
 
-                el.query.value = JSON.stringify({ type: typeOf(value), name: labelOf(value), $edge: edge }, null, 2)
+                // `$edge: {}` — no filter, so the traversal returns everything
+                // downstream of this node: its children, their children, and so
+                // on. That is what "what does this node reach" means, and it is
+                // the honest answer for whichever node you just picked. Carrying
+                // the previous filter over would ask a Tag for its Tags and come
+                // back empty, which reads as a broken graph rather than as a
+                // filter that no longer applies.
+                el.query.value = JSON.stringify({ type: typeOf(value), name: labelOf(value), $edge: {} }, null, 2)
                 el.query.classList.remove("invalid")
 
                 // The old result no longer answers the query on screen, so it
@@ -965,7 +970,12 @@
             else select(id)
         })
 
-        cy.on("dbltap", "node", (event) => removeNode(event.target.id()))
+        // Both names: Cytoscape emits `dbltap` for a double tap and `dblclick`
+        // for a double click, and which one arrives depends on the pointer.
+        // Registering one of the two makes deleting work on some machines only.
+        for (const gesture of ["dbltap", "dblclick"]) {
+            cy.on(gesture, "node", (event) => removeNode(event.target.id()))
+        }
 
         el.query.addEventListener("keydown", (event) => {
             if (event.key !== "Enter" || event.shiftKey) return
