@@ -2,493 +2,982 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GDB relations in realtime</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"></script>
-  <style>
-    /* --- Base Styles --- */
-    html {
-      box-sizing: border-box;
-      /* Better sizing calculations */
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — The graph, drawn and queried</title>
 
-    *,
-    *:before,
-    *:after {
-      box-sizing: inherit;
-    }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"></script>
 
-    body {
-      font-family: 'Roboto', Arial, sans-serif;
-      /* Prioritize Roboto if available */
-      margin: 0;
-      padding: 0;
-      display: grid;
-      /* Use CSS Grid for layout */
-      grid-template-columns: 280px 1fr;
-      /* Thin sidebar, rest for graph */
-      grid-template-rows: 1fr;
-      /* Single row taking full height */
-      min-height: 100vh;
-      /* Ensure body takes at least full viewport height */
-      background-color: #f4f4f4;
-      /* Light background for the page */
-    }
+    <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light palette — this is an interface
+           built to be learned, next to the documentation it illustrates. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --danger: #dc2626;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --backdrop: rgba(26, 29, 36, .45);
+            --radius-sm: 6px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+            --panel-width: 320px;
+        }
 
-    /* --- Controls Sidebar (#controls) --- */
-    #controls {
-      grid-column: 1 / 2;
-      /* Place in the first column */
-      background-color: #ffffff;
-      /* White background for sidebar */
-      padding: 25px 20px;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #e0e0e0;
-      /* Subtle separator */
-      overflow-y: auto;
-      /* Add scroll if content overflows */
-    }
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="dark"] {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --danger: #ef5350;
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+            --backdrop: rgba(0, 0, 0, .6);
+        }
 
-    #controls h2 {
-      text-align: center;
-      color: #67b0f4;
-      margin-top: 0;
-      margin-bottom: 25px;
-      font-weight: 500;
-      /* Material-like font weight */
-    }
+        * { box-sizing: border-box; }
 
-    /* --- Graph Area (#cy) --- */
-    #cy {
-      grid-column: 2 / 3;
-      /* Place in the second column */
-      width: 100%;
-      /* Height will be controlled by the grid row (1fr) */
-      height: 100%;
-      /* Override potential fixed height */
-      min-height: 400px;
-      /* Ensure a minimum height */
-      border: none;
-      /* Remove the original border */
-      background-color: #ffffff;
-      /* White background for graph area */
-      /* Add some padding *around* the graph area */
-      padding: 15px;
-      position: relative;
-      /* Needed for cytoscape rendering */
-    }
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
 
+        /* ── The catalogue bench, with a canvas for output ──────── */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
 
-    /* --- Material Design Inspired Input/Button Styles --- */
-    input[type="text"] {
-      margin: 0 0 15px 0;
-      /* Consistent bottom margin */
-      padding: 12px 8px;
-      font-size: 16px;
-      border: none;
-      /* border-bottom: 1px solid #ccc; */
-      background-color: #f9f9f9;
-      /* Slightly off-white */
-      border-radius: 4px 4px 0 0;
-      /* Slight rounding at top */
-      transition: border-color 0.3s ease, background-color 0.3s ease;
-      width: 100%;
-      /* Make inputs fill sidebar width */
-    }
+        /* Every chrome band is 48px tall — this one and the status bar read as
+           one system rather than two near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
 
-    input[type="text"]:focus {
-      outline: none;
-      border-bottom: 2px solid #3f51b5;
-      /* Material Indigo focus */
-      background-color: #fff;
-    }
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
 
-    button {
-      margin: 5px 0 15px 0;
-      /* Top/bottom margin */
-      padding: 12px 15px;
-      font-size: 14px;
-      /* Slightly smaller button text */
-      background-color: #67b0f4;
-      /* Material Indigo */
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      text-transform: uppercase;
-      /* Standard for Material buttons */
-      font-weight: bold;
-      letter-spacing: 0.5px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-      transition: background-color 0.3s ease, box-shadow 0.2s ease;
-      width: 100%;
-      /* Make buttons fill sidebar width */
-    }
+        .topbar-end { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
 
-    button:hover {
-      background-color: #303f9f;
-      /* Darker Indigo on hover */
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
+        .current {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
 
-    button:active {
-      background-color: #1a237e;
-      /* Even darker on click */
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
+        .current:empty { display: none; }
 
-    /* Style the breaks for spacing between control groups */
-    #controls br {
-      display: block;
-      /* Make <br> take space */
-      content: "";
-      /* Required for display: block */
-      margin-top: 10px;
-      /* Add space after button before next input */
-    }
+        .bench {
+            display: grid;
+            grid-template-columns: var(--panel-width) minmax(0, 1fr);
+            min-height: 0;
+        }
 
-    /* --- Responsive Adjustments --- */
-    @media (max-width: 768px) {
-      body {
-        grid-template-columns: 1fr;
-        /* Stack elements vertically */
-        grid-template-rows: auto 1fr;
-        /* Controls auto height, graph takes rest */
-        height: auto;
-        /* Allow body height to adjust */
-        min-height: 100vh;
-        /* Still ensure full viewport minimum */
-      }
+        .panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            border-right: 1px solid var(--border-subtle);
+        }
 
-      #controls {
-        grid-column: 1 / 2;
-        /* Take the single column */
-        grid-row: 1 / 2;
-        /* Take the first row */
-        border-right: none;
-        /* Remove side border */
-        border-bottom: 1px solid #e0e0e0;
-        /* Add bottom border */
-        max-height: 45vh;
-        /* Limit controls height, enable scroll */
-        overflow-y: auto;
-        padding: 15px;
-        /* Adjust padding */
-      }
+        .panel-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 var(--space-4) var(--space-4); }
 
-      #cy {
-        grid-column: 1 / 2;
-        /* Take the single column */
-        grid-row: 2 / 3;
-        /* Take the second row */
-        /* Explicit height might be needed if 1fr doesn't work perfectly */
-        /* Trying to calculate remaining height minus potential safe areas and controls height */
-        height: calc(100vh - 45vh - 1px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-        min-height: 250px;
-        /* Smaller min-height on mobile */
-        padding: 10px 5px;
-        /* Adjust padding */
-      }
+        .group {
+            margin: var(--space-5) 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
 
-      input[type="text"],
-      button {
-        font-size: 15px;
-        /* Slightly smaller fonts on mobile */
-        padding: 10px 8px;
-      }
-    }
+        .group:first-child { margin-top: var(--space-3); }
+        .group span { float: right; font-weight: 400; letter-spacing: 0; text-transform: none; }
 
-    #instructions {
-      background: #e9f0fe;
-      border: 1px solid #67b0f4;
-      border-radius: 6px;
-      padding: 12px 15px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      color: #2c3e50;
-    }
+        /* Type and name on one line: adding a node is one gesture, not a form. */
+        .new-node { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); }
 
-    #instructions h3 {
-      margin-top: 0;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #345eaa;
-      font-size: 16px;
-    }
+        /* The node list mirrors the canvas: the same selection, the same marks.
+           Clicking here is clicking the node, for anyone who would rather read a
+           list than hunt a circle. */
+        .node-list { list-style: none; margin: 0; padding: 0; }
 
-    #instructions ul {
-      margin: 0;
-      padding-left: 20px;
-      list-style-type: disc;
-    }
+        .node-list li {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-2);
+            padding: var(--space-2) 0 var(--space-2) var(--space-3);
+            border-left: 2px solid transparent;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+        }
 
-    /* --- Cytoscape Node/Edge Styles (Defined in JS below - Untouched CSS-wise here) --- */
-    /* The styles within the <script> tag's cytoscape initialization take precedence */
-  </style>
+        .node-list li:last-child { border-bottom: none; }
+        .node-list li:hover { border-left-color: var(--border-strong); }
+        .node-list li.selected { border-left-color: var(--accent); }
+        .node-list li.selected b { color: var(--accent); }
+        .node-list li.matched { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+        .node-type {
+            flex: 0 0 auto;
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--text-tertiary);
+        }
+
+        .node-list b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+        .node-list .links { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-tertiary); }
+
+        .hint { margin: 0 0 var(--space-3); font-size: 12px; color: var(--text-tertiary); }
+        .hint kbd {
+            padding: 1px 5px;
+            font-family: var(--mono);
+            font-size: 11px;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+        }
+
+        .panel-foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); }
+        .panel-foot button { width: 100%; }
+
+        /* ── The bench itself ───────────────────────────────────── */
+        .workbench {
+            display: grid;
+            /* The query row is a value the divider writes; the rest follows it. */
+            grid-template-rows: var(--query-height, 140px) auto minmax(0, 1fr) auto;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .query-bar {
+            display: grid;
+            min-height: 0;
+            padding: var(--space-4) var(--space-5) var(--space-2);
+            overflow: hidden;
+        }
+
+        /* The query is the subject of the page, so it keeps the typeface of code
+           and none of the decoration. */
+        #query-display {
+            min-height: 0;
+            padding: 0;
+            font-family: var(--mono);
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: none;
+            border: none;
+            outline: none;
+            resize: none; /* the divider below resizes it, in the axis that matters */
+            white-space: pre;
+            overflow: auto;
+        }
+
+        /* Nothing lights up on focus: in a text field with no frame the caret
+           already says where you are. */
+
+        /* A bar down the edge rather than a box around it — the same mark the
+           node list uses for the selected item, in the colour for a refusal. */
+        #query-display.invalid { box-shadow: inset 2px 0 0 var(--danger); }
+
+        /* ── The divider is the control ─────────────────────────── */
+        /* The field has no box of its own: a framed textarea on a page with one
+           surface is a second surface, and it was already bounded by the divider
+           below it. The hit area is 11px tall while the line stays 1px: a 1px
+           target is a target you miss. */
+        .splitter {
+            position: relative;
+            height: 11px;
+            cursor: row-resize;
+            touch-action: none; /* or a touch drag scrolls the page instead */
+        }
+
+        .splitter::before {
+            content: "";
+            position: absolute;
+            inset: 5px 0 auto;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* Two short bars centred on the line — the one mark that says a line can
+           be moved. Its background covers the line behind it. */
+        .splitter::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 28px;
+            height: 5px;
+            transform: translate(-50%, -50%);
+            border-top: 1px solid var(--border-strong);
+            border-bottom: 1px solid var(--border-strong);
+            background: var(--bg-secondary);
+        }
+
+        .splitter:hover::after,
+        .splitter:focus-visible::after { border-color: var(--accent); }
+        .splitter:focus-visible { outline: none; }
+
+        /* Edge to edge, no rounding, no frame: an instrument is not boxed.
+           No `height: 100%` — a percentage height resolves against a parent whose
+           own height the grid row has not computed yet, so the container
+           collapses and Cytoscape measures nothing. */
+        #cy { min-width: 0; min-height: 0; background: var(--bg-tertiary); }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        #status { font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status.error { color: var(--danger); }
+        #status.ok { color: var(--ok); }
+        .counts { font-family: var(--mono); white-space: nowrap; }
+
+        /* ── Buttons and fields ─────────────────────────────────── */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+        }
+
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            margin-right: -6px; /* aligns the mark with the edge, not the hit area */
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* ── Confirmation dialog ────────────────────────────────── */
+        dialog {
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+        .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+        @media (max-width: 900px) {
+            .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 42%) minmax(0, 58%); }
+            .panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .topbar, .query-bar, .statusbar { padding-inline: var(--space-4); }
+        }
+    </style>
 </head>
 
 <body>
-  <!-- Controls Sidebar -->
-  <div id="controls">
-    <h2>Interactive GDB</h2>
 
-    <div id="instructions">
-      <h3>Instructions</h3>
-      <ul>
-        <li><strong>Create node:</strong> Type text in the first input and press <kbd>Enter</kbd>.</li>
-        <li><strong>Edit node:</strong> Select a node by clicking it, edit the text in the second input, then press
-          <kbd>Enter</kbd>.
-        </li>
-        <li><strong>Connect nodes:</strong> Click a node to select it, then hold <kbd>Shift</kbd> and click another
-          node.</li>
-        <li><strong>Delete node:</strong> Double-click a node and confirm.</li>
-      </ul>
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Graph</h1>
+
+            <div class="topbar-end">
+                <span id="current" class="current"></span>
+
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="bench">
+            <aside class="panel">
+                <div class="panel-scroll">
+                    <p class="group">New node</p>
+                    <form id="new-node" class="new-node">
+                        <select id="node-type" aria-label="Type">
+                            <option>User</option>
+                            <option>Post</option>
+                            <option>Tag</option>
+                        </select>
+                        <input type="text" id="node-name" placeholder="Name, then Enter" required>
+                    </form>
+
+                    <p class="group">Nodes <span id="node-count"></span></p>
+                    <p class="hint">
+                        Click to select · <kbd>Shift</kbd>+click a second node to link them ·
+                        double-click to delete. The same gestures work on the canvas.
+                    </p>
+                    <ul id="node-list" class="node-list"></ul>
+                </div>
+
+                <div class="panel-foot">
+                    <button id="reset-btn" class="danger">Reset &amp; re-seed graph</button>
+                </div>
+            </aside>
+
+            <section class="workbench">
+                <div class="query-bar">
+                    <textarea id="query-display" spellcheck="false" aria-label="Query"
+                        placeholder="A query object, then Enter — the matches light up on the canvas"></textarea>
+                </div>
+
+                <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal"
+                    aria-label="Resize the query field" tabindex="0"></div>
+
+                <div id="cy"></div>
+
+                <footer class="statusbar">
+                    <span id="status">Loading…</span>
+                    <span id="counts" class="counts"></span>
+                </footer>
+            </section>
+        </div>
     </div>
 
-    <input type="text" id="nodeText" placeholder="Enter node text" />
-    <!-- <button onclick="insertNode()">Insert Node</button> -->
-    <br>
-    <input type="text" id="updateText" placeholder="New text" />
-    <!-- <button onclick="updateNode()">Update Selected Node</button> -->
-    <br>
-  </div>
+    <!-- Confirmation before anything irreversible. Never window.confirm: it
+         blocks the thread, and a blocked thread cannot repaint. -->
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog" class="modal-actions">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
 
-  <!-- Graph Display Area -->
-  <div id="cy"></div>
+    <script type="module">
+        /**
+         * The graph, drawn and queried.
+         *
+         * Everything else in this repository shows you a graph someone else
+         * seeded. Here you build it — a node at a time, an edge at a time — and
+         * then ask it a question. The nodes that match light up on the canvas,
+         * which is the only way `$edge` ever really lands: you can see it walk
+         * the links you just made.
+         *
+         * What to read here, and where:
+         *   · db.put(value)              — a node; its id comes back
+         *   · db.put(value, id)          — an update, addressed by that id
+         *   · db.link(from, to)          — a directed edge, source → target
+         *   · db.remove(id)              — a node, and every edge pointing at it
+         *   · db.map({}, callback)       — a subscription: the canvas is redrawn
+         *                                  by the same path a remote change takes
+         *   · db.map({ query })          — one read, for the highlight
+         *
+         * The subscription is the important part. Nothing here draws in response
+         * to a click: a click writes to the graph, the graph notifies, and the
+         * drawing follows. Open this in two windows and the second one draws
+         * what you do in the first.
+         */
+        import { gdb } from "../dist/index.js"
 
-  <!-- JAVASCRIPT - ORIGINAL VERSION - COMPLETELY UNTOUCHED -->
-  <script type="module">
-    // Import GDB
-    import { gdb } from "../dist/index.js";
+        /** A shape per type, so the kinds stay apart without spending a colour. */
+        const SHAPES = { User: "ellipse", Post: "round-rectangle", Tag: "diamond" }
 
-    const db = await gdb("testGraph", { rtc: true, debug: true });
-
-    // Initialize Cytoscape with 'cose' layout settings
-    let cy = cytoscape({
-      container: document.getElementById("cy"),
-      elements: [],
-      style: [ // Using slightly enhanced styles for better visuals, but functionally same
-        { selector: "node", style: { "label": "data(text)", "background-color": "#67B0F4", "color": "#67B0F4", "border-width": 3, "border-color": "#00ffe9" } },
-        { selector: "node:selected", style: { "background-color": "#3fb589", "text-outline-color": "#FF6347", "border-width": 3, "border-color": "#00ff14" } }, // Added selected style for feedback
-        { selector: "edge", style: { "width": 1, "line-color": "#00ff14", "target-arrow-color": "#67B0F4", "target-arrow-shape": "triangle", "curve-style": "bezier" } }
-      ],
-      layout: {
-        name: "cose",
-        animate: true,
-        refresh: 20,
-        maxSimulationTime: 4000,
-        fit: true,
-        padding: 30,
-        nodeRepulsion: 4000,
-        edgeElasticity: 100,
-        nestingFactor: 0.1,
-        gravity: 80,
-        randomize: false
-      }
-    })
-
-    // Variable to store the selected node
-    let selectedNodeId = null;
-
-    // Variable to track if Shift is pressed
-    let isShiftPressed = false;
-
-    // Function to load all nodes and edges from the DB
-    async function updateGraph({ id, value, edges, action }) { // Manteniendo la firma original
-      try {
-        console.log('>', action)
-
-        // --- Manejo de Nodos (Exactamente como en tu original) ---
-        if (action === 'initial') {
-          // Evitar añadir duplicados si 'initial' se llama varias veces
-          if (!cy.getElementById(id).length) {
-            cy.add({ group: "nodes", data: { id: id, text: value } });
-          }
-        }
-        if (action === 'added') {
-          // Evitar añadir duplicados si 'added' se llama varias veces
-          if (!cy.getElementById(id).length) {
-            cy.add({ group: "nodes", data: { id, text: value } });
-          }
-        }
-        if (action === 'updated') {
-          // Usando selectedNodeId como en tu original (aunque sea propenso a bugs)
-          const node = cy.getElementById(id);
-          node.data("text", value);
-        }
-        if (action === 'removed') {
-          // Usando selectedNodeId como en tu original (aunque sea propenso a bugs)
-          const node = cy.getElementById(id);
-          if (node && node.length) { // Añadido .length para verificar que se encontró
-            node.remove();
-          }
-          // Clear selection after removing (como en tu original)
-          selectedNodeId = null;
+        const DEFAULT_QUERY = {
+            // The starting point is matched like any other node…
+            type: "User",
+            name: "Ana",
+            // …and $edge filters everything downstream of it: Ana's posts are
+            // walked through, and their tags come back.
+            $edge: { type: "Tag" }
         }
 
-
-        // --- Manejo de Aristas ---
-        const edges2 = await edges.map(edgeId => ({ source: id, target: edgeId })); // Mapeo original
-        edges2.forEach(edge => {
-          console.log(edge); // Log original
-          cy.add({ group: "edges", data: { id: `${edge.source}-${edge.target}`, source: edge.source, target: edge.target } });
-        });
-
-        // --- Layout (Exactamente como en tu original) ---
-        cy.layout({
-          name: "cose",
-          animate: false,
-          refresh: 20,
-          maxSimulationTime: 4000,
-          fit: true,
-          padding: 130,
-          nodeRepulsion: 4000,
-          edgeElasticity: 100,
-          nestingFactor: 2.1,
-          gravity: 80,
-          randomize: false
-        }).run();
-
-      } catch (error) {
-        // Manejo de errores original, ahora debería capturar menos errores de 'nonexistant target'
-        console.error("Error processing graph update:", error);
-      }
-    }
-
-    // Insert a node
-    window.insertNode = async function () {
-      const text = document.getElementById("nodeText").value.trim();
-      if (!text) return alert("Please enter node text!");
-      try {
-        const id = await db.put(text);
-        console.log("Node inserted with ID:", id);
-        document.getElementById("nodeText").value = '' // Limpiar el input después de insertar
-      } catch (error) {
-        console.error("Error inserting node:", error);
-      }
-    };
-
-    // Update a node
-    window.updateNode = async function () {
-      const newText = document.getElementById("updateText").value.trim();
-      if (!selectedNodeId || !newText) {
-        return alert("Please select a node and enter new text!");
-      }
-      try {
-        await db.put(newText, selectedNodeId);
-        console.log("Node updated:", selectedNodeId);
-      } catch (error) {
-        console.error("Error updating node:", error);
-      }
-    };
-
-    // Remove a node
-    window.removeNode = async function () {
-      if (!selectedNodeId) {
-        return alert("Please select a node to remove!");
-      }
-      try {
-        await db.remove(selectedNodeId);
-        console.log("Node removed:", selectedNodeId);
-        // Nota: La limpieza de selectedNodeId está ahora en updateGraph if action==='removed'
-      } catch (error) {
-        console.error("Error removing node:", error);
-      }
-    };
-
-    // Listen for global keyboard events to detect Shift
-    window.addEventListener("keydown", (event) => { if (event.key === "Shift") isShiftPressed = true; });
-    window.addEventListener("keyup", (event) => { if (event.key === "Shift") isShiftPressed = false; });
-
-    // Add event listener to update input for Enter key
-    document.getElementById("updateText").addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        updateNode();
-      }
-    });
-
-    // Add event listener to insert input for Enter key
-    document.getElementById("nodeText").addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        insertNode();
-      }
-    });
-
-    // // Agregar un event listener global para detectar la tecla "Delete"
-    // document.addEventListener("keydown", function (event) {
-    //   if (event.key === "Backspace") {
-    //     event.preventDefault(); // Evitar comportamiento predeterminado
-    //     removeNode(); // Llamar a la función para eliminar el nodo seleccionado
-    //   }
-    // });
-
-    // Eliminar nodo con doble clic
-    cy.on("dblclick", "node", async function (event) {
-      const nodeId = event.target.id();
-      const confirmDelete = confirm(`Do you want to delete node "${nodeId}"?`);
-      if (!confirmDelete) return;
-
-      try {
-        await db.remove(nodeId);
-        console.log("Node removed via double-click:", nodeId);
-      } catch (error) {
-        console.error("Error removing node:", error);
-      }
-    });
-
-    // Handle clicks on nodes to link or select
-    cy.on("tap", "node", function (event) {
-      const nodeId = event.target.id();
-      const nodeData = event.target.data(); // Obtenemos los datos del nodo
-
-      if (isShiftPressed) {
-        handleLinkWithShift(event, nodeId); // Pasando event como en el original
-      } else {
-        if (selectedNodeId === nodeId) {
-          selectedNodeId = null;
-          console.log("Node deselected.");
-        } else {
-          selectedNodeId = nodeId;
-          console.log(`Node selected: ${nodeId}`);
-
-          // Mostrar el texto del nodo seleccionado en el input de actualización
-          document.getElementById("updateText").value = nodeData.text;
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            current: $("current"),
+            form: $("new-node"),
+            type: $("node-type"),
+            name: $("node-name"),
+            list: $("node-list"),
+            count: $("node-count"),
+            reset: $("reset-btn"),
+            query: $("query-display"),
+            workbench: document.querySelector(".workbench"),
+            queryBar: document.querySelector(".query-bar"),
+            splitter: $("splitter"),
+            status: $("status"),
+            counts: $("counts"),
+            confirmModal: $("confirm-modal"),
+            confirmTitle: $("confirm-title"),
+            confirmText: $("confirm-text"),
+            confirmOk: $("confirm-ok")
         }
-      }
-    });
 
-    // Function to handle linking with Shift
-    async function handleLinkWithShift(event, targetNodeId) { // Firma original
-      // Check if there is a previously selected node
-      if (!selectedNodeId) {
-        // *** Cambio Mínimo Opcional: Mensaje más claro ***
-        alert("Click on the source node first (without Shift), then Shift+Click on the target node.");
-        return;
-      }
-      if (selectedNodeId === targetNodeId) { alert("You cannot link a node to itself."); return; }
+        /** The status bar reports; `tone` only colours what it already says. */
+        const setStatus = (message, tone = "") => {
+            el.status.textContent = message
+            el.status.className = tone
+        }
 
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            el.confirmTitle.textContent = title
+            el.confirmText.textContent = body
+            el.confirmOk.textContent = confirmLabel
+            el.confirmModal.addEventListener(
+                "close",
+                () => resolve(el.confirmModal.returnValue === "ok"),
+                { once: true } // Esc and the backdrop both land here, as a "no"
+            )
+            el.confirmModal.showModal()
+        })
 
-      // Keep original logic
-      const sourceId = selectedNodeId;
-      try {
-        await db.link(sourceId, targetNodeId);
-        console.log(`Link created between ${sourceId} and ${targetNodeId}`);
-        cy.add({ group: "edges", data: { id: `${sourceId}-${targetNodeId}`, source: sourceId, target: targetNodeId } });
-        selectedNodeId = null;
-        cy.$id(sourceId).unselect();
-      } catch (error) {
-        console.error("Error creating link:", error);
-      }
-    }
+        /** Reads a token so the canvas follows the palette. */
+        const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 
-    // Initial load, real-time updates
-    await db.map(updateGraph);
+        // ── The divider ─────────────────────────────────────────────
+        const MIN_QUERY_HEIGHT = 72
+        const MIN_OUTPUT_HEIGHT = 140
 
-  </script>
+        const setQueryHeight = (px, persist = true) => {
+            // A workbench with no height yet cannot say what is too tall, and that
+            // is exactly the state of the first paint: clamping against it would
+            // pin the field to its minimum and store that as the preference.
+            const available = el.workbench.clientHeight
+            const ceiling = available ? Math.max(available - MIN_OUTPUT_HEIGHT, MIN_QUERY_HEIGHT) : Infinity
+            const height = Math.round(Math.min(Math.max(px, MIN_QUERY_HEIGHT), ceiling))
+            el.workbench.style.setProperty("--query-height", `${height}px`)
+            if (persist) localStorage.graphQueryHeight = height
+        }
+
+        el.splitter.addEventListener("pointerdown", (event) => {
+            event.preventDefault() // no text selection while dragging
+            el.splitter.setPointerCapture(event.pointerId)
+
+            const startY = event.clientY
+            const startHeight = el.queryBar.getBoundingClientRect().height
+            const onMove = (move) => setQueryHeight(startHeight + move.clientY - startY)
+
+            el.splitter.addEventListener("pointermove", onMove)
+            el.splitter.addEventListener(
+                "pointerup",
+                () => el.splitter.removeEventListener("pointermove", onMove),
+                { once: true }
+            )
+        })
+
+        el.splitter.addEventListener("keydown", (event) => {
+            const step = { ArrowUp: -16, ArrowDown: 16, PageUp: -64, PageDown: 64 }[event.key]
+            if (!step) return
+            event.preventDefault()
+            setQueryHeight(el.queryBar.getBoundingClientRect().height + step)
+        })
+
+        setQueryHeight(Number(localStorage.graphQueryHeight) || 140, false)
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.graphTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+            // Cytoscape takes its colours as values, not as CSS: a palette change
+            // has to be handed to it.
+            cy?.style(graphStyle())
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        const db = await gdb("genosdb-graph", { rtc: true })
+
+        // ── The canvas ──────────────────────────────────────────────
+        /**
+         * Built from the same tokens as the rest of the page, so the graph is
+         * not a foreign object dropped into the layout. One accent, three
+         * shapes: colour is spent on the answer, not on the taxonomy.
+         */
+        const graphStyle = () => [
+            {
+                selector: "node",
+                style: {
+                    "label": "data(label)",
+                    "shape": "data(shape)",
+                    "width": 34, "height": 34,
+                    "background-color": token("--bg-secondary"),
+                    "border-width": 1.5,
+                    "border-color": token("--border-strong"),
+                    "color": token("--text-secondary"),
+                    "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+                    "font-size": 11,
+                    "text-margin-y": 6,
+                    "text-valign": "bottom"
+                }
+            },
+            {
+                selector: "edge",
+                style: {
+                    "width": 1,
+                    "line-color": token("--border-strong"),
+                    "target-arrow-color": token("--border-strong"),
+                    "target-arrow-shape": "triangle",
+                    "arrow-scale": .8,
+                    "curve-style": "bezier"
+                }
+            },
+            // Selected is the node you are acting on; matched is what the query
+            // answered. They are different questions, so they read differently:
+            // an outline for the first, a fill for the second.
+            {
+                selector: "node.selected",
+                style: { "border-color": token("--accent"), "border-width": 3, "color": token("--text-primary") }
+            },
+            {
+                selector: "node.matched",
+                style: {
+                    "background-color": token("--accent"),
+                    "border-color": token("--accent"),
+                    "color": token("--text-primary")
+                }
+            },
+            { selector: "node.faded", style: { "opacity": .35 } },
+            { selector: "edge.faded", style: { "opacity": .2 } }
+        ]
+
+        const cy = cytoscape({
+            container: $("cy"),
+            elements: [],
+            style: graphStyle(),
+            minZoom: .2,
+            maxZoom: 3,
+            wheelSensitivity: .2
+        })
+
+        /**
+         * Cytoscape measures its container once, like every canvas library, and
+         * this one starts inside a grid row that has not resolved yet — so the
+         * first layout runs against a box of zero height and piles every node in
+         * a corner. Re-measure on resize, and re-frame the first time the
+         * container actually has a size. (Later resizes only re-measure: by then
+         * the reader may have panned or zoomed, and yanking the view back is
+         * the canvas overruling them.)
+         */
+        let framedOnce = false
+        new ResizeObserver(([entry]) => {
+            cy.resize()
+            if (framedOnce || !entry.contentRect.height) return
+            framedOnce = true
+            cy.fit(undefined, 40)
+        }).observe($("cy"))
+
+        const LAYOUT = {
+            name: "cose",
+            animate: false,
+            fit: true,
+            padding: 40,
+            nodeRepulsion: 6000,
+            idealEdgeLength: 90,
+            gravity: 60,
+            randomize: false
+        }
+
+        // ── State ───────────────────────────────────────────────────
+        /**
+         * One local mirror of the graph, kept by the subscription.
+         *
+         * Drawing straight from each callback is what the earlier version did,
+         * and it has two faults: an edge can arrive before the node it points at
+         * (Cytoscape throws), and re-running the layout per node turns twelve
+         * writes into twelve animations. Collecting into a Map and reconciling
+         * once fixes both.
+         */
+        const nodes = new Map() // id -> { value, edges }
+        let selectedId = null
+        let matched = new Set()
+        let syncTimer = null
+
+        const scheduleSync = () => {
+            clearTimeout(syncTimer)
+            syncTimer = setTimeout(sync, 60)
+        }
+
+        const labelOf = (value) => value?.name ?? (typeof value === "string" ? value : "—")
+        const typeOf = (value) => value?.type ?? "Node"
+
+        /** Reconciles canvas and list against the mirror, then lays out if the shape changed. */
+        const sync = () => {
+            let structureChanged = false
+
+            // Nodes: add what is new, update what changed, drop what is gone.
+            for (const [id, { value }] of nodes) {
+                const existing = cy.getElementById(id)
+                const data = { id, label: labelOf(value), shape: SHAPES[typeOf(value)] ?? "ellipse" }
+                if (existing.length) existing.data(data)
+                else { cy.add({ group: "nodes", data }); structureChanged = true }
+            }
+
+            for (const node of cy.nodes()) {
+                if (!nodes.has(node.id())) { node.remove(); structureChanged = true }
+            }
+
+            // Edges: only once both ends exist, which is the whole reason for
+            // reconciling instead of drawing from the callback.
+            const wanted = new Set()
+            for (const [id, { edges }] of nodes) {
+                for (const target of edges) {
+                    if (!nodes.has(target)) continue
+                    const edgeId = `${id}->${target}`
+                    wanted.add(edgeId)
+                    if (!cy.getElementById(edgeId).length) {
+                        cy.add({ group: "edges", data: { id: edgeId, source: id, target } })
+                        structureChanged = true
+                    }
+                }
+            }
+
+            for (const edge of cy.edges()) {
+                if (!wanted.has(edge.id())) { edge.remove(); structureChanged = true }
+            }
+
+            if (structureChanged) cy.layout(LAYOUT).run()
+
+            paintMarks()
+            renderList()
+
+            const edgeCount = cy.edges().length
+            el.count.textContent = nodes.size
+            el.counts.textContent = `${nodes.size} ${nodes.size === 1 ? "node" : "nodes"} · ${edgeCount} ${edgeCount === 1 ? "link" : "links"}`
+        }
+
+        /** Selection and query result are classes, so the style sheet owns the look. */
+        const paintMarks = () => {
+            cy.elements().removeClass("selected matched faded")
+            if (selectedId) cy.getElementById(selectedId).addClass("selected")
+
+            if (matched.size) {
+                for (const node of cy.nodes()) {
+                    node.addClass(matched.has(node.id()) ? "matched" : "faded")
+                }
+                cy.edges().addClass("faded")
+            }
+        }
+
+        const renderList = () => {
+            el.list.replaceChildren(...[...nodes].map(([id, { value, edges }]) => {
+                const li = document.createElement("li")
+                li.dataset.id = id
+                li.classList.toggle("selected", id === selectedId)
+                li.classList.toggle("matched", matched.has(id))
+
+                const type = document.createElement("span")
+                type.className = "node-type"
+                type.textContent = typeOf(value)
+
+                // textContent, not innerHTML: a node's value can come from a peer.
+                const name = document.createElement("b")
+                name.textContent = labelOf(value)
+
+                const links = document.createElement("span")
+                links.className = "links"
+                links.textContent = edges.length ? `${edges.length} →` : ""
+
+                li.append(type, name, links)
+                return li
+            }))
+        }
+
+        // ── Acting on the graph ─────────────────────────────────────
+        const select = (id) => {
+            selectedId = selectedId === id ? null : id
+            el.current.textContent = selectedId ? labelOf(nodes.get(selectedId)?.value) : ""
+            paintMarks()
+            renderList()
+        }
+
+        const linkTo = async (targetId) => {
+            if (!selectedId) return setStatus("Select a node first, then Shift+click another.", "error")
+            if (selectedId === targetId) return setStatus("A node cannot link to itself.", "error")
+
+            await db.link(selectedId, targetId)
+            setStatus(`Linked ${labelOf(nodes.get(selectedId)?.value)} → ${labelOf(nodes.get(targetId)?.value)}`, "ok")
+            select(selectedId) // clears the selection, so the next link starts clean
+        }
+
+        const removeNode = async (id) => {
+            const confirmed = await confirmAction({
+                title: `Delete "${labelOf(nodes.get(id)?.value)}"?`,
+                body: "The node goes, and so does every edge pointing at it. There is no undo.",
+                confirmLabel: "Delete"
+            })
+            if (!confirmed) return
+            await db.remove(id)
+            if (selectedId === id) select(id)
+            setStatus("Node deleted.")
+        }
+
+        // ── The query ───────────────────────────────────────────────
+        const runQuery = async () => {
+            let query
+            try {
+                query = JSON.parse(el.query.value)
+                el.query.classList.remove("invalid")
+            } catch {
+                el.query.classList.add("invalid")
+                return setStatus("Invalid JSON — the field is not a query object.", "error")
+            }
+
+            const started = performance.now()
+            const { results } = await db.map({ query })
+            const elapsed = (performance.now() - started).toFixed(2)
+
+            matched = new Set(results.map(({ id }) => id))
+            paintMarks()
+            renderList()
+
+            setStatus(
+                matched.size
+                    ? `${matched.size} ${matched.size === 1 ? "node matches" : "nodes match"} · ${elapsed} ms`
+                    : `Nothing matches · ${elapsed} ms`,
+                matched.size ? "ok" : ""
+            )
+            console.log(`Query — ${results.length} results in ${elapsed} ms`, query, results)
+        }
+
+        // ── Seeding ─────────────────────────────────────────────────
+        /**
+         * Two users, three posts, three tags, linked into two levels — the
+         * smallest graph where `$edge` has something to walk THROUGH rather than
+         * merely to: Ana's tags are two hops away, so the default query cannot be
+         * answered by looking at her direct links.
+         *
+         * Written with fixed ids, which is what makes it safe to run again: the
+         * same eight nodes are rewritten rather than eight more created. Give
+         * `db.put` no id and every reload leaves another copy of the sample
+         * behind — with `rtc` on, one per window.
+         */
+        const SEED = [
+            ["ana", { type: "User", name: "Ana" }],
+            ["bob", { type: "User", name: "Bob" }],
+            ["post-intro", { type: "Post", name: "Intro to GenosDB" }],
+            ["post-queries", { type: "Post", name: "Advanced Queries" }],
+            ["post-p2p", { type: "Post", name: "P2P Networking" }],
+            ["tag-database", { type: "Tag", name: "database" }],
+            ["tag-p2p", { type: "Tag", name: "p2p" }],
+            ["tag-javascript", { type: "Tag", name: "javascript" }]
+        ]
+
+        const SEED_LINKS = [
+            ["ana", "post-intro"], ["ana", "post-queries"], ["bob", "post-p2p"],
+            ["post-intro", "tag-database"], ["post-intro", "tag-javascript"],
+            ["post-queries", "tag-database"], ["post-p2p", "tag-p2p"]
+        ]
+
+        const seedGraph = async () => {
+            for (const [id, value] of SEED) await db.put(value, id)
+            for (const [from, to] of SEED_LINKS) await db.link(from, to)
+        }
+
+        /**
+         * Removed one node at a time rather than with `db.clear()`.
+         *
+         * A remove is a write every peer replicates; `db.clear()` is local and
+         * resets the watermark, so with peers connected the other window replays
+         * everything this one just deleted — and the sample ends up in the graph
+         * two and three times over.
+         */
+        const resetGraph = async () => {
+            const { results } = await db.map({})
+            for (const { id } of results) await db.remove(id)
+            await seedGraph()
+        }
+
+        // ── Wiring ──────────────────────────────────────────────────
+        el.form.addEventListener("submit", async (event) => {
+            event.preventDefault()
+            const name = el.name.value.trim()
+            if (!name) return
+
+            await db.put({ type: el.type.value, name })
+            el.name.value = ""
+            setStatus(`${el.type.value} "${name}" added.`, "ok")
+        })
+
+        // The list and the canvas answer the same three gestures.
+        el.list.addEventListener("click", (event) => {
+            const li = event.target.closest("li")
+            if (!li) return
+            if (event.shiftKey) linkTo(li.dataset.id)
+            else select(li.dataset.id)
+        })
+
+        el.list.addEventListener("dblclick", (event) => {
+            const li = event.target.closest("li")
+            if (li) removeNode(li.dataset.id)
+        })
+
+        cy.on("tap", "node", (event) => {
+            const id = event.target.id()
+            // originalEvent carries the modifier: Cytoscape's own event does not.
+            if (event.originalEvent?.shiftKey) linkTo(id)
+            else select(id)
+        })
+
+        cy.on("dbltap", "node", (event) => removeNode(event.target.id()))
+
+        el.query.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" || event.shiftKey) return
+            event.preventDefault() // Enter runs; Shift+Enter is a newline
+            runQuery()
+        })
+
+        el.reset.addEventListener("click", async () => {
+            const confirmed = await confirmAction({
+                title: "Rebuild the graph?",
+                body: "Every node you added is deleted and the sample graph is written again.",
+                confirmLabel: "Reset"
+            })
+            if (!confirmed) return
+            selectedId = null
+            matched = new Set()
+            setStatus("Rebuilding…")
+            await resetGraph()
+            setStatus("Sample graph restored.", "ok")
+        })
+
+        applyTheme(localStorage.graphTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+
+        el.query.value = JSON.stringify(DEFAULT_QUERY, null, 2)
+
+        // The subscription: every drawing on this page hangs off it, including
+        // the ones caused by your own clicks.
+        db.map({}, ({ id, value, edges, action }) => {
+            if (action === "removed") nodes.delete(id)
+            else nodes.set(id, { value, edges: edges ?? [] })
+            scheduleSync()
+        })
+
+        const { results: existing } = await db.map({ $limit: 1 })
+        if (!existing.length) await seedGraph()
+        setStatus("Ready. Press Enter in the query to see it walk the links.")
+    </script>
 </body>
 
 </html>
