@@ -461,17 +461,19 @@
         /* Only one button carries a fill, so the eye lands on the root of trust. */
         .modal-actions button:not(.root):not(.danger) { background: transparent; }
 
-        /* Set apart from the three identities: it is not a fourth way in. */
+        /* One more button in the stack — same gap, same height — told apart by
+           its colour rather than by a rule and extra air. */
         .modal-reset {
             width: 100%;
-            margin-top: var(--space-4);
-            padding-top: var(--space-4);
-            border-top: 1px solid var(--border-subtle);
-            border-radius: 0;
+            margin-top: var(--space-2);
+            padding: 13px var(--space-4);
+            font-size: 14px;
+            font-weight: 600;
+            border-color: var(--border-strong);
             color: var(--danger);
         }
 
-        .modal-reset:hover:not(:disabled) { border-color: var(--border-subtle); color: var(--danger); }
+        .modal-reset:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
         .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
 
@@ -587,7 +589,7 @@
 
         <!-- Preparation, not an action of the session: you reset before starting
              the scenario, in each window, and then pick who you are. -->
-        <button id="reset-btn" class="ghost modal-reset">Reset the testbed</button>
+        <button id="reset-btn" class="modal-reset">Reset the testbed</button>
         <p class="modal-foot">
             Throwaway identities with their phrases in the source, shared with the other security examples.
             Never do this in a real application.
@@ -595,17 +597,6 @@
     </dialog>
 
     <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
-
-    <!-- Confirmation before anything irreversible. Never window.confirm: it
-         blocks the thread, and a blocked thread cannot repaint. -->
-    <dialog id="confirm-modal">
-        <h2 class="modal-title" id="confirm-title"></h2>
-        <p class="modal-hint" id="confirm-text"></p>
-        <form method="dialog" class="modal-actions">
-            <button value="ok" id="confirm-ok" class="danger"></button>
-            <button value="cancel" class="ghost">Cancel</button>
-        </form>
-    </dialog>
 
     <script type="module">
         /**
@@ -703,11 +694,7 @@
             peers: $("peers"),
             toasts: $("toasts"),
             identityModal: $("identity-modal"),
-            identityActions: $("identity-actions"),
-            confirmModal: $("confirm-modal"),
-            confirmTitle: $("confirm-title"),
-            confirmText: $("confirm-text"),
-            confirmOk: $("confirm-ok")
+            identityActions: $("identity-actions")
         }
 
         const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
@@ -751,17 +738,6 @@
             }, 3200)
         }
 
-        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
-            el.confirmTitle.textContent = title
-            el.confirmText.textContent = body
-            el.confirmOk.textContent = confirmLabel
-            el.confirmModal.addEventListener(
-                "close",
-                () => resolve(el.confirmModal.returnValue === "ok"),
-                { once: true } // Esc and the backdrop both land here, as a "no"
-            )
-            el.confirmModal.showModal()
-        })
 
         // ── The activity divider ────────────────────────────────────
         const MIN_CONSOLE = 60
@@ -1128,14 +1104,17 @@
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
 
         el.reset.addEventListener("click", async () => {
-            const confirmed = await confirmAction({
-                title: "Reset the testbed?",
-                body: "Every member, role and point is deleted and the page reloads. Do this in each window to start clean.",
-                confirmLabel: "Reset"
-            })
-            if (!confirmed) return
+            // No confirmation: these are throwaway demo records, and the button
+            // only exists in the door — before anything is under way. No reload
+            // either, or the toast would leave with the page; the local mirror
+            // is cleared by hand instead, since db.clear() is not a stream of
+            // removals the subscription can follow.
+            el.reset.disabled = true
             await db.clear()
-            location.reload()
+            members.clear()
+            renderMembers()
+            toast("Testbed cleared.", "success")
+            el.reset.disabled = false
         })
 
         updatePeers()
