@@ -673,11 +673,14 @@
         const nameOf = (address) => whoIs(address)?.name ?? db.sm.abbrAddr(address)
 
         /**
-         * A collaborator's level, read case-insensitively.
+         * A collaborator's level, read case-insensitively — for DISPLAY only.
          *
-         * Addresses arrive in whatever case their source used, and an ACL keyed
-         * by the checksummed form does not answer to the lowercase one. Comparing
-         * with `===` here is a bug that only shows up for some identities.
+         * The engine matches exactly: grant() stores the address verbatim as
+         * the key, and the middleware looks up collaborators[signer] with the
+         * checksummed signer. Grant to a lowercased string and you create an
+         * entry the middleware can never match. Reading loosely here lets the
+         * table SHOW such a mismatched row instead of hiding it — the fix is
+         * always to grant the checksummed form, as this file's constants are.
          */
         const permFor = (collaborators = {}, address) => {
             const key = Object.keys(collaborators).find((candidate) => eqAddr(candidate, address))
@@ -800,6 +803,12 @@
          * may also `delete`. That is a capability, not a licence — the ACL
          * middleware still refuses a deletion of someone else's note unless the
          * owner granted it. Two gates in a row, and both have to open.
+         *
+         * `deleteAny` on the superadmin is carried over from the engine's
+         * default table and is INERT here: the ACL middleware reads only
+         * `owner` and `collaborators`, never role capabilities — so even a
+         * superadmin cannot remove someone else's note. Moderation over ACL
+         * nodes is granted per node at creation, not inherited from a role.
          */
         const db = await gdb(DB_NAME, {
             rtc: true,
@@ -965,6 +974,12 @@
             }
 
             const level = myLevel(note)
+            // The documented ladder (sm-acls-module.md): delete → read + write +
+            // delete, and the P2P middleware honours it — a delete-holder's put
+            // is accepted by every peer. The local acls.set helper is stricter
+            // today and checks for 'write' exactly, so a delete-holder pressing
+            // Save is refused by the helper; the refusal lands in the log, which
+            // is this page's honest behaviour either way.
             const canWrite = level === "owner" || level === "write" || level === "delete"
 
             const title = document.createElement("h2")
@@ -1136,8 +1151,10 @@
         }
 
         const saveNote = (id, content) => run("Saved the note", async () => {
-            // Spread the stored value: db.put replaces, so a partial write would
-            // drop `owner` and `collaborators` — and with them the whole ACL.
+            // Spread the stored value to keep the fields you are not editing
+            // (title, type). The ACL itself is safe either way: acls.set strips
+            // `owner` and `collaborators` from what you pass and re-bases them
+            // on the stored node, so the ACL cannot be overwritten from here.
             await db.sm.acls.set({ ...notes.get(id), content }, id)
             toast("Saved", "success")
         })
