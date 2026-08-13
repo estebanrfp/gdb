@@ -655,13 +655,21 @@
         const ADMIN_AT = 4
 
         /**
-         * The merit ladder — the entire governance model of this example.
+         * The merit ladder — the entire governance model of this example, in
+         * the exact shape governance.md documents: `if` is a standard GenosDB
+         * query (the same language db.map speaks) evaluated against the
+         * `user:<address>` node, and `then.assignRole` is the role it proposes.
          *
          * Read top to bottom and keep the last match:
-         *   1. a guest becomes a user five seconds after joining (onboarding)
+         *   1. a guest becomes a user (onboarding). `offsetTimestamp` holds the
+         *      rule back until the node's LAST WRITE is 5s old — not "5s after
+         *      joining": rewrite the node and the clock starts again
          *   2. any member is a user (the floor nobody falls below)
          *   3. …unless they hold 2 points, which makes them a manager
          *   4. …unless they hold 4, which makes them an admin
+         *
+         * No demotion rules, on purpose: lose the points and the last rule
+         * still matching is the one below — governance.md, "last-match-wins".
          */
         const GOVERNANCE_RULES = [
             { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } },
@@ -848,6 +856,13 @@
          * actually decides, and it signs what it decides. It is here because a
          * rule you can see matching teaches more than a role that simply
          * changes, and these conditions are simple enough to mirror honestly.
+         *
+         * What the mirror deliberately ignores explains any lag between "in
+         * force" here and the role actually changing: the engine runs on the
+         * SUPERADMIN's device against its own replica (a fresh vote has to sync
+         * there first), it passes every 4 seconds, and it skips rules whose
+         * `offsetTimestamp` the node has not aged past. Marking a rule is
+         * painting; assigning a role is the engine's alone.
          */
         const ruleMatches = (rule, role, points) => {
             const wanted = rule.if.role
@@ -1026,7 +1041,7 @@
                 voteControls.down.disabled = !isMember
                 voteControls.note.textContent = isMember
                     ? `Manager at ${MANAGER_AT} points, admin at ${ADMIN_AT}. Losing points demotes you, because the rule below is the last one still matching.`
-                    : "Waiting for the engine to promote you — it takes five seconds, and the superadmin's window has to be open."
+                    : "Waiting for the engine — the onboarding rule fires once your node is five seconds old, and the engine only runs while a superadmin's window is open."
             }
 
             if (lastRole !== null && lastRole !== myRole) {
