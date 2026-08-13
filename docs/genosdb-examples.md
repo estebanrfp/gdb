@@ -101,9 +101,6 @@ RBAC Chat with WebAuthn Security.
 ### [Passkeys — WebAuthn Identity](https://estebanrfp.github.io/gdb/examples/webauthn.html)
 The identity lifecycle on its own, with nothing else on the page: generate a mnemonic, wrap it in a **passkey** (`protectCurrentIdentityWithWebAuthn`), log out, and get back in with the device alone (`loginCurrentUserWithWebAuthn`) — the phrase never typed a second time. Reports what the Security Manager says about the session as it changes, so the difference between *the phrase is the identity* and *the passkey only unlocks it here* is on screen rather than in a comment. Needs HTTPS or `localhost`: an IP address is never a valid Relying Party ID, and the page says so instead of failing.
 
-### [SM Encryption Example](https://estebanrfp.github.io/gdb/examples/encryption.html)
-SM Encryption & Decryption Example
-
 ### [Oplog Audit Module](https://estebanrfp.github.io/gdb/examples/todolist-audit.html)
 Provides real-time auditing of oplog entries, detect spam and prohibited content
 
