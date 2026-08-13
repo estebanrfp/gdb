@@ -92,8 +92,8 @@ That choice is what keeps it **live**. Encrypting the whole record with `db.sm.p
 
 Ownership is **tested, not trusted**: `db.sm.decryptDataForCurrentUser` throws for anyone else, which is the honest check — the `owner` field is plain, and any peer with a write role could set it. Ships with the canonical identity door (mnemonic + WebAuthn passkeys).
 
-### [Security Manager (SM Testbed)](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
-A hands-on tour of the Security Manager — one-click demo identities, per-user encryption and RBAC — built around a **guided scenario** that shows how a signed role grant propagates **P2P to an offline user via a relay peer, with the superadmin offline**. Open it in three separate browsers to watch authority survive the signer going away.
+### [How Permissions Travel — SM Testbed](https://estebanrfp.github.io/gdb/examples/sm-testbed.html)
+A role in GenosDB is not a live permission check against a server — it is a **signed grant**, and signed data spreads like any other data. The guided scenario proves it: promote Bob **while Bob is offline and the superadmin's browser is closed**, and watch Alice relay the grant when Bob returns, verified against a signature from someone who was never there. Three public identities, one click each; the roster is a plain `db.map({ query: { role: { $exists: true } } })`, and your own role comes from `db.get('user:<address>')`, so both update on their own when a grant arrives. Run it in three separate browsers — tabs sync locally and would fake the result.
 
 ### [SM RBAC Chat (WebAuthn Example)](https://estebanrfp.github.io/gdb/examples/chatrbac.html)
 RBAC Chat with WebAuthn Security.

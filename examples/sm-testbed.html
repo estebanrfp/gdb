@@ -2,579 +2,976 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Security Manager — How permissions populate P2P · GenosDB</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    /* ============================ Tokens ============================ */
-    :root {
-      --bg: #f4f6fa;
-      --surface: #ffffff;
-      --surface-2: #f1f3f7;
-      --border: #e4e7ee;
-      --text: #1a1d24;
-      --muted: #6b7280;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #b45309;
-      --warning-bg: #fef3c7;
-      --purple: #7c3aed;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: ui-monospace, 'SF Mono', menlo, monospace;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --radius-pill: 999px;
-      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
-      --transition: 150ms ease;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — How permissions travel</title>
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    <style>
+        /* Full profile: the same tokens as docs.html, because this is a testbed
+           for an application's machinery rather than a tool with one input.
+           Dark is the base; the toggle is the sanctioned opt-in on top. */
+        :root {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
 
-    body {
-      min-height: 100vh;
-      font-family: var(--font-sans);
-      color: var(--text);
-      background: var(--bg);
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.5;
-    }
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
 
-    .is-hidden { display: none !important; }
-    .muted { color: var(--muted); font-size: .9rem; }
-    .mono { font-family: var(--font-mono); }
-    .spacer { flex: 1; }
-    code { font-family: var(--font-mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
 
-    /* ============================ Buttons ============================ */
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      font: inherit; font-weight: 600; font-size: .9rem; padding: 10px 16px;
-      border: 1px solid transparent; border-radius: var(--radius-sm);
-      background: var(--accent); color: #fff; cursor: pointer; transition: var(--transition);
-    }
-    .btn:hover:not(:disabled) { background: var(--accent-hover); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
-    .btn--ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
-    .btn--ghost:hover:not(:disabled) { background: var(--border); }
-    .btn--dark { background: #1a1d24; }
-    .btn--dark:hover:not(:disabled) { background: #343a46; }
-    .btn--sm { padding: 6px 12px; font-size: .82rem; }
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
 
-    /* ============================ Login screen ============================ */
-    .screen { max-width: 940px; margin: 0 auto; padding: 40px 20px; }
+            --text-on-accent: #ffffff;
+            --backdrop: rgba(0, 0, 0, .6);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .35);
 
-    .login-card {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: var(--shadow); padding: 36px; text-align: center; max-width: 640px; margin: 4vh auto 0;
-    }
-    .login-card h1 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 10px; }
-    .login-card .muted { margin-bottom: 24px; text-align: left; }
-    .login-card .muted li { margin: 6px 0 6px 18px; }
-    .login-row { display: flex; gap: 12px; margin-bottom: 12px; }
-    .login-row .btn { flex: 1; padding: 14px; font-size: .95rem; }
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
 
-    /* ============================ Advanced (self-custody) ============================ */
-    .advanced { margin: 18px 0 12px; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
-    .advanced > summary { padding: 12px 16px; font-weight: 600; cursor: pointer; font-size: .9rem; }
-    .advanced[open] > summary { border-bottom: 1px solid var(--border); }
-    .advanced__body { padding: 16px; display: grid; gap: 10px; }
-    .advanced textarea {
-      width: 100%; min-height: 64px; resize: vertical; font: inherit; font-size: .85rem;
-      font-family: var(--font-mono); color: var(--text); background: var(--surface);
-      border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; outline: none;
-    }
-    .advanced textarea:focus { border-color: var(--accent); }
-    .advanced .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 
-    /* ============================ App ============================ */
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 10px;
-    }
-    .me { display: flex; align-items: center; gap: 10px; font-weight: 600; flex-wrap: wrap; }
-    .me .addr {
-      font-family: var(--font-mono); font-size: .8rem; color: var(--muted);
-      background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-sm);
-    }
+            --sidebar-width: 300px;
+        }
 
-    .role-chip {
-      font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
-      padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-2); color: var(--muted);
-    }
-    .role-chip--guest { background: var(--warning-bg); color: var(--warning); }
-    .role-chip--user { background: #dcfce7; color: var(--success); }
-    .role-chip--manager { background: #dbeafe; color: var(--accent); }
-    .role-chip--admin { background: #ede9fe; color: var(--purple); }
-    .role-chip--superadmin { background: #1a1d24; color: #fff; }
+        /* The light palette redefines VALUES ONLY — not one component rule
+           changes below. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
 
-    .peers { font-size: .76rem; font-weight: 600; padding: 4px 11px; border-radius: var(--radius-pill); background: #dcfce7; color: var(--success); white-space: nowrap; }
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
 
-    .main { max-width: 940px; margin: 0 auto; padding: 24px 20px 80px; display: grid; gap: 18px; }
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
 
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
-    .card h2 { font-size: 1.1rem; letter-spacing: -.01em; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-    .card .hint { color: var(--muted); font-size: .85rem; margin-bottom: 14px; }
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
 
-    .warn-banner { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; border-radius: var(--radius); padding: 12px 16px; font-size: .88rem; font-weight: 500; }
+            --backdrop: rgba(26, 29, 36, .45);
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+        }
 
-    /* hero: your live role (the payoff of the demo) */
-    .hero { text-align: center; padding: 26px 20px; transition: background .4s ease; }
-    .hero .label { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-    .hero .role-big { font-size: 2.4rem; font-weight: 700; letter-spacing: -.02em; margin: 6px 0; }
-    .hero[data-role="guest"] .role-big { color: var(--warning); }
-    .hero[data-role="user"] .role-big { color: var(--success); }
-    .hero[data-role="manager"] .role-big { color: var(--accent); }
-    .hero[data-role="admin"] .role-big { color: var(--purple); }
-    .hero[data-role="superadmin"] .role-big { color: var(--text); }
-    .hero .cap { font-size: .85rem; color: var(--muted); }
-    .hero.flash { animation: flash 1.4s ease; }
-    @keyframes flash { 0% { background: #fde68a; } 100% { background: var(--surface); } }
+        * { box-sizing: border-box; }
 
-    /* guided scenario */
-    .scenario ol { list-style: none; counter-reset: step; display: grid; gap: 12px; }
-    .scenario li { counter-increment: step; position: relative; padding-left: 40px; font-size: .9rem; line-height: 1.7; }
-    .scenario li::before {
-      content: counter(step); position: absolute; left: 0; top: 1px;
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
-      font-size: .78rem; font-weight: 700; color: var(--muted);
-    }
-    .scenario li.key::before { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .actor { display: inline-block; font-weight: 700; padding: 1px 8px; border-radius: var(--radius-pill); font-size: .82rem; white-space: nowrap; }
-    .actor--sa { background: #1a1d24; color: #fff; }
-    .actor--alice { background: #dbeafe; color: var(--accent); }
-    .actor--bob { background: #ede9fe; color: var(--purple); }
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
 
-    /* live roster */
-    .roster { display: grid; gap: 10px; }
-    .user-row { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
-    .user-row .who { font-weight: 600; }
-    .user-row.me-row { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-    .empty { color: var(--muted); font-size: .9rem; padding: 16px; text-align: center; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+        .hidden { display: none !important; }
 
-    /* forms */
-    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-    .field { display: grid; gap: 6px; }
-    .field label { font-size: .82rem; font-weight: 600; color: var(--muted); }
-    .field input, .field textarea, .field select {
-      width: 100%; font: inherit; font-size: .9rem; color: var(--text);
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; outline: none;
-    }
-    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
-    .field textarea { resize: vertical; min-height: 52px; }
-    .row .field { flex: 1; min-width: 170px; }
-    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .out { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: var(--font-mono); font-size: .82rem; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; margin-top: 10px; }
+        /* ── Layout ─────────────────────────────────────────────── */
+        /* docs.html's shape: one full-width chrome band, then roster and content.
+           What differs is what fills them — this is a bench for the machinery,
+           so it shows roles and a log where an application would show documents. */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
 
-    /* console */
-    .console {
-      background: #1a1d24; color: #d6dae2; font-family: var(--font-mono); font-size: .8rem;
-      border-radius: var(--radius-sm); padding: 14px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
-    }
-    .console .log-error { color: #f87171; }
-    .console .log-warn { color: #fbbf24; }
-    .console .log-info { color: #60a5fa; }
-    .console .log-success { color: #4ade80; }
+        /* Every chrome band is 48px tall — top bar, roster head and status bar
+           read as one system rather than three near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
 
-    /* toast */
-    .toast {
-      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); max-width: 90vw;
-      padding: 11px 18px; border-radius: var(--radius-pill); background: #1a1d24; color: #fff;
-      font-size: .88rem; font-weight: 500; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity var(--transition);
-    }
-    .toast--show { opacity: 1; }
-    .toast--error { background: var(--danger); }
-  </style>
+        .brand {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-3);
+            margin: 0;
+            min-width: 0;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
+
+        .brand .me { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
+
+        .topbar-end { display: flex; align-items: center; gap: var(--space-3); }
+
+        .peers { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; }
+
+        .body {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        /* ── The roster: this bench's list ──────────────────────── */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .sidebar-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 48px;
+            padding: var(--space-2) var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
+
+        .roster { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
+
+        /* Separators instead of gaps: a roster is a table of facts, and the left
+           bar carries "this one is you" without spending a colour on it. */
+        .roster li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-4);
+            border-left: 2px solid transparent;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .roster li.me { border-left-color: var(--accent); }
+        .roster .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+        .roster .addr { font-family: var(--mono); font-size: 11px; color: var(--text-tertiary); }
+        .roster .spacer { flex: 1; }
+        .roster-empty { padding: var(--space-4); font-size: 13px; color: var(--text-tertiary); }
+
+        /* The role ramp of §6, in one place: every chip on the page reads from
+           these five, so a role always looks the same wherever it appears. */
+        .role {
+            flex: 0 0 auto;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+
+        .role-user { color: var(--ok); }
+        .role-manager { color: var(--accent); }
+        .role-admin { color: var(--violet); }
+        .role-superadmin { background: var(--text-primary); color: var(--bg-primary); }
+
+        .sidebar-foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); }
+        .sidebar-foot button { width: 100%; }
+
+        /* ── Content ────────────────────────────────────────────── */
+        .content {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto auto;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* Your own role, big enough to notice from across the desk — the whole
+           demo is waiting for this word to change on its own. */
+        .hero {
+            padding: var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .hero-label { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); }
+        .hero-role { margin: 2px 0 0; font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+        .hero-note { margin: var(--space-2) 0 0; font-size: 13px; color: var(--text-secondary); }
+
+        .hero.changed { animation: flash 1.4s ease; }
+
+        @keyframes flash {
+            0% { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+            100% { background: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero.changed { animation: none; }
+        }
+
+        .scroll { min-height: 0; overflow-y: auto; padding: var(--space-5); }
+
+        .section { margin-bottom: var(--space-6); }
+        .section:last-child { margin-bottom: 0; }
+
+        .section h2 {
+            margin: 0 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .hint { margin: 0 0 var(--space-3); font-size: 13px; color: var(--text-secondary); }
+        .hint code, .steps code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+
+        /* The scenario is the page's script — numbered, because the order is the
+           whole point: the superadmin has to be gone before the last step means
+           anything. */
+        .steps { margin: 0; padding-left: var(--space-5); font-size: 13px; color: var(--text-secondary); }
+        .steps li { margin-bottom: var(--space-2); }
+        .steps li.key { color: var(--text-primary); }
+        .steps b { color: var(--text-primary); }
+
+        .govern-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: var(--space-2); align-items: end; }
+        .field label { display: block; margin-bottom: 4px; font-size: 12px; color: var(--text-secondary); }
+        .shortcuts { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+
+        /* ── The console ────────────────────────────────────────── */
+        /* Where you watch a grant arrive. It shares the divider pattern with the
+           query benches: drag the line to give it more room. */
+        .splitter {
+            position: relative;
+            height: 11px;
+            cursor: row-resize;
+            touch-action: none; /* or a touch drag scrolls the page instead */
+        }
+
+        .splitter::before {
+            content: "";
+            position: absolute;
+            inset: 5px 0 auto;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .splitter::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 28px;
+            height: 5px;
+            transform: translate(-50%, -50%);
+            border-top: 1px solid var(--border-strong);
+            border-bottom: 1px solid var(--border-strong);
+            background: var(--bg-primary);
+        }
+
+        .splitter:hover::after,
+        .splitter:focus-visible::after { border-color: var(--accent); }
+        .splitter:focus-visible { outline: none; }
+
+        .console {
+            height: var(--console-height, 150px);
+            overflow-y: auto;
+            padding: 0 var(--space-5) var(--space-3);
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .console div { padding: 1px 0; }
+        .console .ok { color: var(--ok); }
+        .console .warn { color: var(--warn); }
+        .console .error { color: var(--danger); }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        #status { font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status.ok { color: var(--ok); }
+        #status.error { color: var(--danger); }
+
+        /* Not a decoration: same-origin tabs sync locally and would fake the
+           result, so the warning stays on screen for as long as the demo runs. */
+        .warn-note { color: var(--warn); white-space: nowrap; }
+
+        /* ── Buttons and fields ─────────────────────────────────── */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .45; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--text-on-accent); }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+        }
+
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+        input[type="text"] { font-family: var(--mono); font-size: 13px; }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+        .topbar-end .icon-btn:last-child { margin-right: -6px; } /* the mark lands on the edge, not the hit area */
+
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* ── The identity door ──────────────────────────────────── */
+        /* No mnemonic field: this bench exists to test permissions quickly, and
+           the identity lifecycle has its own example. Three public identities,
+           one click each — the door is a shortcut, not a lesson. */
+        dialog {
+            width: min(480px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); text-align: left; }
+        .modal-hint b { color: var(--text-primary); }
+
+        .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+        .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
+
+        @media (max-width: 900px) {
+            .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40%) minmax(0, 60%); }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .topbar, .hero, .scroll, .statusbar { padding-inline: var(--space-4); }
+            .govern-row { grid-template-columns: minmax(0, 1fr); }
+            .warn-note { display: none; }
+        }
+    </style>
 </head>
 
 <body>
-  <!-- ============================ Login ============================ -->
-  <div id="login" class="screen">
-    <div class="login-card">
-      <h1>🔐 How permissions populate, peer-to-peer</h1>
-      <div class="muted">
-        A signed role assignment is just <strong>data</strong>: once the superadmin signs it, it spreads through the
-        mesh via <em>any</em> peer — the superadmin doesn't need to be online when it reaches you.
-        <li>Run this in <strong>three separate browsers/profiles</strong> (not tabs — see the note inside).</li>
-        <li><strong>🛡️ Superadmin</strong> grants roles. <strong>👩‍🦰 Alice</strong> &amp; <strong>👨‍🦱 Bob</strong> start
-          as zero-trust <code>guest</code>s.</li>
-        <li>Follow the on-screen <strong>guided scenario</strong> to watch Alice relay a grant to Bob while the
-          superadmin is offline.</li>
-      </div>
-      <div class="login-row">
-        <button id="login-superadmin" class="btn btn--dark">🛡️ Superadmin (demo)</button>
-      </div>
-      <div class="login-row">
-        <button id="login-alice" class="btn">👩‍🦰 Login as Alice</button>
-        <button id="login-bob" class="btn btn--ghost">👨‍🦱 Login as Bob</button>
-      </div>
 
-      <details class="advanced">
-        <summary>Advanced — create your own self-custody identity</summary>
-        <div class="advanced__body">
-          <p class="muted">The real GenosDB auth flow: generate a BIP39 mnemonic (your private key), optionally protect
-            it with a WebAuthn passkey, then log in.</p>
-          <textarea id="mnemonic-io" rows="3" placeholder="Paste a 12-word phrase to log in, or generate one below."></textarea>
-          <div id="new-id-info" class="muted is-hidden">New address: <code id="new-address"></code> — <strong style="color:var(--danger)">save the phrase first.</strong></div>
-          <div class="btn-row">
-            <button id="btn-generate" class="btn btn--ghost btn--sm">Generate new identity</button>
-            <button id="btn-login-mnemonic" class="btn btn--sm">Login with mnemonic</button>
-            <button id="btn-copy-mnemonic" class="btn btn--ghost btn--sm is-hidden">Copy phrase</button>
-            <button id="btn-protect" class="btn btn--sm is-hidden">Protect with passkey &amp; login</button>
-            <button id="btn-login-passkey" class="btn btn--ghost btn--sm is-hidden">Login with passkey</button>
-          </div>
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Permissions <span class="me" id="me"></span></h1>
+
+            <div class="topbar-end">
+                <span class="peers" id="peers">0 peers</span>
+
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+
+                <button id="logout-btn" class="icon-btn hidden" title="Log out" aria-label="Log out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M15 17l5-5-5-5M20 12H9M12 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="body">
+            <aside class="sidebar">
+                <div class="sidebar-head">
+                    <span>Network roster</span>
+                    <span id="roster-count"></span>
+                </div>
+
+                <ul class="roster" id="roster"></ul>
+
+                <div class="sidebar-foot">
+                    <button id="reset-btn" class="danger">Reset the testbed</button>
+                </div>
+            </aside>
+
+            <section class="content">
+                <div class="hero" id="hero">
+                    <p class="hero-label">Your role</p>
+                    <p class="hero-role" id="hero-role">guest</p>
+                    <p class="hero-note" id="hero-note">Signed by the superadmin, delivered by the mesh.</p>
+                </div>
+
+                <div class="scroll">
+                    <section class="section">
+                        <h2>Guided scenario — authority outlives the signer's connection</h2>
+                        <p class="hint">
+                            A role assignment is <b>signed data</b>, not a live permission check. Once the superadmin
+                            signs it, any peer can carry it — so it can reach someone the signer never meets.
+                            Alice's window stays open throughout: she is the relay.
+                        </p>
+                        <ol class="steps">
+                            <li>As <b>Superadmin</b>, promote <b>Alice</b> to <code>manager</code>. Her role updates live.</li>
+                            <li>Close the superadmin's browser. The peer count drops — the signer is offline.</li>
+                            <li>Open <b>Bob</b>. Only Alice is online, and Bob is a <code>guest</code>.</li>
+                            <li>Close Bob's browser.</li>
+                            <li class="key">Reopen <b>Superadmin</b> and promote <b>Bob by address</b>, with Bob offline.
+                                Alice receives and stores the signed grant.</li>
+                            <li>Close the superadmin again. Only Alice holds Bob's promotion now.</li>
+                            <li class="key">Reopen <b>Bob</b>. Alice — not the superadmin — relays the grant, and Bob's
+                                role rises, verified against the superadmin's signature.</li>
+                        </ol>
+                    </section>
+
+                    <section class="section" id="govern-section">
+                        <h2>Govern — assign a role</h2>
+                        <div id="govern-body"></div>
+                    </section>
+                </div>
+
+                <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal"
+                    aria-label="Resize the console" tabindex="0"></div>
+
+                <div class="console" id="console"></div>
+
+                <footer class="statusbar">
+                    <span id="status">Starting…</span>
+                    <span class="warn-note">Use separate browsers, not tabs — tabs sync locally and skip the mesh</span>
+                </footer>
+            </section>
         </div>
-      </details>
-
-      <button id="reset" class="btn btn--ghost btn--sm">Reset demo DB</button>
     </div>
-  </div>
 
-  <!-- ============================ App ============================ -->
-  <div id="app" class="is-hidden">
-    <header class="topbar">
-      <div class="me" id="me"></div>
-      <div style="display:flex; gap:8px; align-items:center">
-        <span class="peers" id="peers">🟢 0 peers</span>
-        <button id="btn-show-mnemonic" class="btn btn--ghost btn--sm is-hidden">Show mnemonic</button>
-        <button id="logout" class="btn btn--ghost btn--sm">Logout</button>
-      </div>
-    </header>
+    <!-- The door. Three public identities, one click each: this bench is for
+         testing permissions, and the identity lifecycle lives in webauthn.html. -->
+    <dialog id="identity-modal">
+        <h2 class="modal-title">Pick an identity</h2>
+        <p class="modal-hint">
+            Run this in <b>three separate browsers or profiles</b> — not tabs. Same-origin tabs sync locally
+            through BroadcastChannel and skip the P2P mesh, so the propagation would not be real.
+            <b>Superadmin</b> grants roles; <b>Alice</b> and <b>Bob</b> start as zero-trust guests.
+        </p>
+        <div class="modal-actions" id="identity-actions"></div>
+        <p class="modal-foot">
+            Throwaway identities with their phrases in the source, shared with the other security examples.
+            Never do this in a real application.
+        </p>
+    </dialog>
 
-    <main class="main">
-      <div class="warn-banner">⚠️ Use <strong>three genuinely separate browsers or profiles</strong> (e.g. Chrome + Firefox + an incognito window). Same-origin <em>tabs</em> sync locally via BroadcastChannel and skip the P2P mesh — the propagation wouldn't be real.</div>
+    <!-- Confirmation before anything irreversible. Never window.confirm: it
+         blocks the thread, and a blocked thread cannot repaint. -->
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog" class="modal-actions">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
 
-      <!-- HERO: your live role -->
-      <section class="card hero" id="hero" data-role="guest">
-        <div class="label">Your current role</div>
-        <div class="role-big" id="hero-role">guest</div>
-        <div class="cap" id="hero-cap">Signed by the superadmin · delivered by the mesh</div>
-      </section>
+    <script type="module">
+        /**
+         * How permissions travel.
+         *
+         * The claim this page exists to prove: in GenosDB a role is not a live
+         * permission check against a server — it is a **signed grant**, and
+         * signed data spreads like any other data. So a promotion can reach
+         * someone the signer never meets, relayed by whichever peer happens to
+         * hold it, and still be verified against the superadmin's signature.
+         *
+         * The guided scenario walks that: promote Bob while Bob is offline and
+         * the superadmin is closed, and watch Alice deliver it.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { sm: { superAdmins } })   — the root of trust
+         *   · db.sm.executeWithPermission('assignRole') — the gate, before the act
+         *   · db.sm.assignRole(address, role)      — writes the signed grant
+         *   · db.get(`user:${address}`, callback)  — your own role, reactively
+         *   · db.map({ query: { role: { $exists: true } } }, callback) — the roster
+         *
+         * Deliberately NOT here: generating a mnemonic, passkeys, and encrypting
+         * a note. Each has its own example, and this bench is for testing
+         * permissions in three windows as fast as possible.
+         */
+        import { gdb } from "../dist/index.js"
 
-      <!-- GUIDED SCENARIO -->
-      <section class="card scenario">
-        <h2>🎬 Guided scenario — authority survives the superadmin going offline</h2>
-        <p class="hint">Alice's window stays open the whole time — she is the <strong>relay</strong>. Watch the roster and
-          your role update even with the superadmin closed.</p>
-        <ol>
-          <li><span class="actor actor--sa">🛡️ Superadmin</span> — log in, then in <strong>Govern</strong> promote
-            <span class="actor actor--alice">Alice</span> to <code>manager</code>. Alice's role updates live.</li>
-          <li><span class="actor actor--sa">🛡️ Superadmin</span> — <strong>close this browser.</strong> The peers count
-            drops: the signer is now offline.</li>
-          <li><span class="actor actor--bob">👨‍🦱 Bob</span> — open a browser and log in. Only Alice is online; Bob is a
-            <code>guest</code>.</li>
-          <li><span class="actor actor--bob">👨‍🦱 Bob</span> — <strong>close Bob's browser.</strong></li>
-          <li class="key"><span class="actor actor--sa">🛡️ Superadmin</span> — reopen and promote
-            <span class="actor actor--bob">Bob</span> <strong>by address</strong>, even though Bob is offline. Alice
-            receives &amp; stores the signed grant.</li>
-          <li><span class="actor actor--sa">🛡️ Superadmin</span> — <strong>close again.</strong> Only Alice now holds
-            Bob's promotion.</li>
-          <li class="key"><span class="actor actor--bob">👨‍🦱 Bob</span> — reopen. <span class="actor actor--alice">Alice</span>
-            (not the superadmin!) relays the grant — <strong>Bob's role rises ✨</strong>, verified by the superadmin's
-            signature.</li>
-        </ol>
-      </section>
+        const DB_NAME = "genosdb-sm-testbed"
 
-      <!-- LIVE ROSTER -->
-      <section class="card">
-        <h2>📡 Network roster <span class="muted" style="font-size:.85rem; font-weight:400">(live — the proof board)</span></h2>
-        <p class="hint">Every known identity and its current role, updated in real time. This is where you watch a role
-          change arrive — even with the superadmin offline.</p>
-        <div id="roster" class="roster"></div>
-      </section>
+        // ⚠️ TESTING ONLY — fixed demo identities, shared with acls.html and
+        // governance.html. Embedding mnemonics in source is never acceptable in a
+        // real app; these are public and protect nothing, so any browser can log
+        // in with one click.
+        const SUPERADMIN = {
+            name: "Superadmin",
+            mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper",
+            address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
+        }
+        const ALICE = {
+            name: "Alice",
+            mnemonic: "prosper fossil kitten crisp view spread jeans shield prosper myself awake usage",
+            address: "0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931"
+        }
+        const BOB = {
+            name: "Bob",
+            mnemonic: "salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus",
+            address: "0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC"
+        }
+        const IDENTITIES = [SUPERADMIN, ALICE, BOB]
 
-      <!-- GOVERN (superadmin) -->
-      <section class="card" id="govern-card">
-        <h2>🛡️ Govern — assign a role</h2>
-        <div id="govern-body"></div>
-      </section>
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            logout: $("logout-btn"),
+            me: $("me"),
+            peers: $("peers"),
+            roster: $("roster"),
+            rosterCount: $("roster-count"),
+            reset: $("reset-btn"),
+            hero: $("hero"),
+            heroRole: $("hero-role"),
+            heroNote: $("hero-note"),
+            governSection: $("govern-section"),
+            governBody: $("govern-body"),
+            splitter: $("splitter"),
+            console: $("console"),
+            status: $("status"),
+            identityModal: $("identity-modal"),
+            identityActions: $("identity-actions"),
+            confirmModal: $("confirm-modal"),
+            confirmTitle: $("confirm-title"),
+            confirmText: $("confirm-text"),
+            confirmOk: $("confirm-ok")
+        }
 
-      <!-- BONUS: per-user encryption -->
-      <section class="card">
-        <h2>🔒 Bonus — per-user encryption</h2>
-        <p class="hint"><code>db.sm.put()</code> encrypts to your key; <code>db.sm.get()</code> decrypts only for you.
-          Another identity loading the same note sees ciphertext.</p>
-        <div class="row">
-          <div class="field" style="flex:0 0 200px"><label for="note-id">Note ID (blank → auto)</label><input id="note-id" type="text" placeholder="my-secret"></div>
-          <div class="field"><label for="note-content">Content</label><input id="note-content" type="text" value="This is a super secret note!"></div>
-        </div>
-        <div class="btn-row" style="margin-top:10px">
-          <button id="btn-save-note" class="btn btn--sm">Save encrypted</button>
-          <button id="btn-load-note" class="btn btn--ghost btn--sm">Load &amp; decrypt</button>
-        </div>
-        <div class="out" id="note-out">No note loaded yet.</div>
-      </section>
+        const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+        const whoIs = (address) => IDENTITIES.find((identity) => eqAddr(identity.address, address))
+        const nameOf = (address) => whoIs(address)?.name ?? db.sm.abbrAddr(address)
 
-      <!-- CONSOLE -->
-      <section class="card">
-        <h2>Console</h2>
-        <div id="console" class="console"></div>
-      </section>
-    </main>
-  </div>
+        /** The status bar reports; `tone` only colours what it already says. */
+        const setStatus = (message, tone = "") => {
+            el.status.textContent = message
+            el.status.className = tone
+        }
 
-  <div id="toast" class="toast"></div>
+        /** One line in the console, which is where a grant is seen arriving. */
+        const log = (message, tone = "") => {
+            const line = document.createElement("div")
+            line.className = tone
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+            el.console.append(line)
+            el.console.scrollTop = el.console.scrollHeight
+        }
 
-  <script type="module">
-    import { gdb } from '../dist/index.js';
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            el.confirmTitle.textContent = title
+            el.confirmText.textContent = body
+            el.confirmOk.textContent = confirmLabel
+            el.confirmModal.addEventListener(
+                "close",
+                () => resolve(el.confirmModal.returnValue === "ok"),
+                { once: true } // Esc and the backdrop both land here, as a "no"
+            )
+            el.confirmModal.showModal()
+        })
 
-    /** Database / room name for this testbed. */
-    const DB_NAME = 'genosdb-sm-testbed';
+        // ── The console divider ─────────────────────────────────────
+        const MIN_CONSOLE = 60
+        const MIN_CONTENT = 220
 
-    // ────────────────────────────────────────────────────────────────────────────
-    // ⚠️ TESTING ONLY — fixed demo identities (shared with acls.html / governance.html).
-    // Embedding mnemonics in source is NEVER acceptable in a real app. These are public,
-    // throwaway identities (they protect nothing) so each browser can log in with one click.
-    // ────────────────────────────────────────────────────────────────────────────
-    const SUPERADMIN = {
-      name: 'Superadmin', emoji: '🛡️',
-      mnemonic: 'panic now afford carbon donate lecture drift excite collect essay stuff prosper',
-      address: '0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA',
-    };
-    const ALICE = {
-      name: 'Alice', emoji: '👩‍🦰',
-      mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
-      address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
-    };
-    const BOB = {
-      name: 'Bob', emoji: '👨‍🦱',
-      mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
-      address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
-    };
-    const IDENTITIES = [SUPERADMIN, ALICE, BOB];
+        const setConsoleHeight = (px, persist = true) => {
+            // A content column with no height yet cannot say what is too tall,
+            // and that is the state of the first paint: clamping against it would
+            // pin the console to its minimum and store that as the preference.
+            const available = document.querySelector(".content").clientHeight
+            const ceiling = available ? Math.max(available - MIN_CONTENT, MIN_CONSOLE) : Infinity
+            const height = Math.round(Math.min(Math.max(px, MIN_CONSOLE), ceiling))
+            document.documentElement.style.setProperty("--console-height", `${height}px`)
+            if (persist) localStorage.smTestbedConsole = height
+        }
 
-    /** @type {object} */ let db;
-    /** @type {object|null} Identity generated via the advanced flow, held until secured. */
-    let volatileIdentity = null;
-    let unsubscribeRole = null, unsubscribeRoster = null;
-    let lastRole = null;
+        el.splitter.addEventListener("pointerdown", (event) => {
+            event.preventDefault() // no text selection while dragging
+            el.splitter.setPointerCapture(event.pointerId)
 
-    const $ = (id) => document.getElementById(id);
-    const loginScreen = $('login'), appScreen = $('app');
-    const meEl = $('me'), toastEl = $('toast'), consoleEl = $('console'), mnemonicIo = $('mnemonic-io');
+            const startY = event.clientY
+            const startHeight = el.console.getBoundingClientRect().height
+            // Dragging up grows the console: it sits below the line.
+            const onMove = (move) => setConsoleHeight(startHeight - (move.clientY - startY))
 
-    const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
-    const isSuperadmin = (a) => eqAddr(a, SUPERADMIN.address);
-    const whoIs = (addr) => IDENTITIES.find((i) => eqAddr(i.address, addr));
-    const label = (addr) => { const i = whoIs(addr); return i ? `${i.emoji} ${i.name}` : `🧩 ${db.sm.abbrAddr(addr)}`; };
+            el.splitter.addEventListener("pointermove", onMove)
+            el.splitter.addEventListener(
+                "pointerup",
+                () => el.splitter.removeEventListener("pointermove", onMove),
+                { once: true }
+            )
+        })
 
-    let toastTimer;
-    /** Show a transient message. @param {string} msg @param {boolean} [isError] */
-    const toast = (msg, isError = false) => {
-      toastEl.textContent = msg;
-      toastEl.className = `toast toast--show${isError ? ' toast--error' : ''}`;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => (toastEl.className = 'toast'), 2800);
-    };
+        el.splitter.addEventListener("keydown", (event) => {
+            const step = { ArrowUp: 16, ArrowDown: -16, PageUp: 64, PageDown: -64 }[event.key]
+            if (!step) return
+            event.preventDefault()
+            setConsoleHeight(el.console.getBoundingClientRect().height + step)
+        })
 
-    /** Append a line to the in-app console. @param {string} msg @param {'info'|'warn'|'error'|'success'} [type] */
-    const log = (msg, type = 'info') => {
-      const line = document.createElement('div');
-      line.className = `log-${type}`;
-      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      consoleEl.appendChild(line);
-      consoleEl.scrollTop = consoleEl.scrollHeight;
-    };
+        setConsoleHeight(Number(localStorage.smTestbedConsole) || 150, false)
 
-    /* ============================ DB bootstrap ============================ */
-    const ensureDb = async () => {
-      if (db) return db;
-      db = await gdb(DB_NAME, { rtc: true, sm: { superAdmins: [SUPERADMIN.address] } });
-      db.sm.setSecurityStateChangeCallback(onSecurityState);
-      // Live peer presence — makes "the superadmin is offline" visible.
-      db.room.on('peer:join', () => { updatePeers(); log('A peer joined the mesh.', 'info'); });
-      db.room.on('peer:leave', () => { updatePeers(); log('A peer left the mesh.', 'warn'); });
-      await subscribeRoster();
-      setInterval(updatePeers, 2500);
-      log('GDB ready — security manager active.', 'success');
-      return db;
-    };
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
 
-    const updatePeers = () => {
-      if (!db?.room) return;
-      const n = Object.keys(db.room.getPeers()).length;
-      $('peers').textContent = `🟢 ${n} peer${n === 1 ? '' : 's'}`;
-    };
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.smTestbedTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
 
-    /* ============================ Auth ============================ */
-    const login = async (mnemonic) => {
-      try { await ensureDb(); await db.sm.loginOrRecoverUserWithMnemonic(mnemonic); }
-      catch (err) { toast(err.message, true); log(`Login failed: ${err.message}`, 'error'); }
-    };
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
 
-    // Single source of truth: the Security Manager state callback drives every view/button.
-    /** @param {object} s securityState */
-    const onSecurityState = (s) => {
-      const active = s.isActive;
-      loginScreen.classList.toggle('is-hidden', active);
-      appScreen.classList.toggle('is-hidden', !active);
+        applyTheme(localStorage.smTestbedTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
 
-      // Advanced (login) controls, driven by the state object.
-      $('btn-generate').classList.toggle('is-hidden', s.hasVolatileIdentity);
-      $('btn-copy-mnemonic').classList.toggle('is-hidden', !s.hasVolatileIdentity);
-      $('btn-protect').classList.toggle('is-hidden', !s.hasVolatileIdentity);
-      $('new-id-info').classList.toggle('is-hidden', !s.hasVolatileIdentity);
-      $('btn-login-passkey').classList.toggle('is-hidden', s.hasVolatileIdentity || !s.hasWebAuthnHardwareRegistration);
-      mnemonicIo.readOnly = s.hasVolatileIdentity;
-      if (s.hasVolatileIdentity && volatileIdentity) {
-        $('new-address').textContent = volatileIdentity.address;
-        mnemonicIo.value = volatileIdentity.mnemonic;
-      } else if (!active) {
-        mnemonicIo.value = '';
-      }
+        // ── Boot ────────────────────────────────────────────────────
+        // The superadmin list IS the root of trust: everyone else joins as a
+        // zero-trust guest and can only be promoted by a signature from it.
+        const db = await gdb(DB_NAME, { rtc: true, sm: { superAdmins: [SUPERADMIN.address] } })
 
-      if (active) renderSession(s);
-      else { unsubscribeRole?.(); unsubscribeRole = null; lastRole = null; }
-    };
+        let unsubscribeRole = null
+        let lastRole = null
 
-    /* ============================ Logged-in session ============================ */
-    const renderSession = (s) => {
-      const sa = isSuperadmin(s.activeAddress);
-      meEl.innerHTML = `<span>${label(s.activeAddress)}</span><span class="addr">${s.abbrAddr}</span><span class="role-chip" id="me-chip">…</span>`;
-      $('btn-show-mnemonic').classList.toggle('is-hidden', !db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery());
-      renderGovern(sa);
-      updatePeers();
+        const updatePeers = () => {
+            // getPeers() returns an object keyed by peer id, not a Map.
+            const count = Object.keys(db.room?.getPeers() ?? {}).length
+            el.peers.textContent = `${count} ${count === 1 ? "peer" : "peers"}`
+        }
 
-      // Reactive role — superadmin from config, everyone else live from their user node.
-      unsubscribeRole?.();
-      if (sa) { paintRole('superadmin'); unsubscribeRole = null; return; }
-      db.get(`user:${s.activeAddress}`, (node) => paintRole(node?.value?.role ?? 'guest'))
-        .then(({ unsubscribe }) => (unsubscribeRole = unsubscribe));
-    };
+        db.room?.on("peer:join", () => { updatePeers(); log("A peer joined the mesh.") })
+        db.room?.on("peer:leave", () => { updatePeers(); log("A peer left the mesh.", "warn") })
+        setInterval(updatePeers, 2500)
 
-    /** Update the hero + chip, flashing when the role actually changes (the demo's payoff). */
-    const paintRole = (role) => {
-      const chip = $('me-chip');
-      if (chip) { chip.className = `role-chip role-chip--${role}`; chip.textContent = role; }
-      const hero = $('hero');
-      hero.dataset.role = role;
-      $('hero-role').textContent = role;
-      if (lastRole !== null && lastRole !== role) {
-        hero.classList.remove('flash'); void hero.offsetWidth; hero.classList.add('flash');
-        $('hero-cap').textContent = `${lastRole} → ${role} — a signed grant just reached you through the mesh.`;
-        log(`Your role changed: ${lastRole} → ${role} (authority delivered P2P).`, 'success');
-        toast(`Role updated → ${role}`);
-      }
-      lastRole = role;
-    };
+        // ── The roster: every identity and its role, live ────────────
+        /**
+         * The proof board. A role lives on an ordinary node — `user:<address>`
+         * with a `role` field — so watching every one of them is an ordinary
+         * query, and a grant arriving from a peer shows up here first.
+         */
+        const roles = new Map()
 
-    /* ============================ Govern (assign role) ============================ */
-    const renderGovern = (isSa) => {
-      const body = $('govern-body');
-      if (!isSa) {
-        body.innerHTML = `<p class="hint" style="margin:0">Only the <strong>superadmin</strong> can assign roles. Keep this
-          window open — if you are Alice you are the <strong>relay</strong> that carries grants to others. Watch your role
-          and the roster update when a promotion reaches you.</p>`;
-        return;
-      }
-      body.innerHTML = `
-        <p class="hint">Assigning a role writes a <strong>signed grant</strong> to <code>user:&lt;address&gt;</code>. The
-          target <strong>need not be online</strong> — the grant propagates through the mesh and reaches them via any peer
-          when they reconnect.</p>
-        <div class="row">
-          <div class="field"><label for="role-target">Target address</label><input id="role-target" type="text" placeholder="0x…"></div>
-          <div class="field" style="flex:0 0 150px"><label for="role-select">Role</label>
-            <select id="role-select"><option>guest</option><option selected>user</option><option>manager</option><option>admin</option></select>
-          </div>
-          <button id="btn-assign" class="btn btn--sm">Assign role</button>
-        </div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn btn--ghost btn--sm" data-fill="alice">↳ target Alice</button>
-          <button class="btn btn--ghost btn--sm" data-fill="bob">↳ target Bob (even if offline)</button>
-        </div>`;
-      body.querySelectorAll('[data-fill]').forEach((b) =>
-        (b.onclick = () => ($('role-target').value = b.dataset.fill === 'alice' ? ALICE.address : BOB.address)));
-      $('btn-assign').onclick = assignRole;
-    };
+        const renderRoster = () => {
+            const me = db.sm.getActiveEthAddress()
 
-    const assignRole = async () => {
-      const target = $('role-target').value.trim();
-      const role = $('role-select').value;
-      if (!target) return toast('Enter a target address.', true);
-      try {
-        await db.sm.executeWithPermission('assignRole');     // superadmin-only — throws otherwise
-        await db.sm.assignRole(target, role);
-        log(`Signed assignRole('${role}') → ${label(target)} sent (target may be offline).`, 'success');
-        toast(`Granted ${role}.`);
-      } catch (err) { log(`assignRole denied: ${err.message}`, 'error'); toast(`Denied: ${err.message}`, true); }
-    };
+            el.rosterCount.textContent = roles.size || ""
+            if (!roles.size) {
+                el.roster.replaceChildren(Object.assign(document.createElement("li"), {
+                    className: "roster-empty",
+                    textContent: "No identities yet."
+                }))
+                return
+            }
 
-    /* ============================ Live roster (the proof board) ============================ */
-    const subscribeRoster = async () => {
-      const rosterEl = $('roster');
-      const roles = new Map();
-      const render = () => {
-        const me = db.sm.getActiveEthAddress();
-        rosterEl.innerHTML = [...roles.entries()].map(([id, role]) => {
-          const addr = id.slice(5);
-          const mine = eqAddr(addr, me) ? ' me-row' : '';
-          return `<div class="user-row${mine}"><span class="who">${label(addr)}</span>
-            <span class="addr mono muted">${db.sm.abbrAddr(addr)}</span><span class="spacer"></span>
-            <span class="role-chip role-chip--${role}">${role}</span></div>`;
-        }).join('') || `<div class="empty">No identities yet — log in to create yours.</div>`;
-      };
-      const onUser = ({ id, value }) => {
-        if (!id?.startsWith('user:') || !value?.role) return;
-        const prev = roles.get(id);
-        roles.set(id, value.role);
-        if (prev && prev !== value.role) log(`📡 Roster: ${label(id.slice(5))} ${prev} → ${value.role}`, 'info');
-        render();
-      };
-      unsubscribeRoster?.();
-      const { results, unsubscribe } = await db.map({ query: { role: { $exists: true } } }, onUser);
-      unsubscribeRoster = unsubscribe;
-      for (const { id, value } of results) if (id.startsWith('user:') && value?.role) roles.set(id, value.role);
-      render();
-    };
+            el.roster.replaceChildren(...[...roles].map(([id, role]) => {
+                const address = id.slice(5) // strip "user:"
+                const li = document.createElement("li")
+                li.classList.toggle("me", eqAddr(address, me))
 
-    /* ============================ Advanced: self-custody ============================ */
-    $('btn-generate').onclick = async () => {
-      try { await ensureDb(); volatileIdentity = await db.sm.startNewUserRegistration(); log(`New identity ${volatileIdentity.address.slice(0, 10)}… — save the phrase!`, 'success'); }
-      catch (err) { toast(err.message, true); }
-    };
-    $('btn-copy-mnemonic').onclick = async () => { try { await navigator.clipboard.writeText(mnemonicIo.value); toast('Phrase copied.'); } catch { toast('Copy failed.', true); } };
-    $('btn-protect').onclick = async () => {
-      if (!volatileIdentity) return;
-      try { await db.sm.protectCurrentIdentityWithWebAuthn(volatileIdentity.privateKey); volatileIdentity = null; log('Identity protected with a passkey & logged in.', 'success'); }
-      catch (err) { toast(err.message, true); }
-    };
-    $('btn-login-mnemonic').onclick = async () => { const m = mnemonicIo.value.trim(); if (!m) return toast('Paste a mnemonic first.', true); await login(m); };
-    $('btn-login-passkey').onclick = async () => { try { await ensureDb(); await db.sm.loginCurrentUserWithWebAuthn(); } catch (err) { toast(err.message, true); } };
-    $('btn-show-mnemonic').onclick = () => { const m = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery(); if (m && confirm('Reveal this session\'s secret mnemonic?')) alert(m); };
+                const who = document.createElement("span")
+                who.className = "who"
+                who.textContent = nameOf(address)
 
-    /* ============================ Bonus: encryption ============================ */
-    $('btn-save-note').onclick = async () => {
-      try {
-        const id = await db.sm.put({ note: $('note-content').value, savedAt: new Date().toISOString() }, $('note-id').value.trim() || undefined);
-        $('note-id').value = id; log(`Encrypted note saved → ${id}`, 'success'); toast('Saved & encrypted.');
-      } catch (err) { toast(err.message, true); }
-    };
-    $('btn-load-note').onclick = async () => {
-      const id = $('note-id').value.trim();
-      if (!id) return toast('Enter a note ID to load.', true);
-      try {
-        const { result: node } = await db.sm.get(id);
-        if (!node) { $('note-out').textContent = 'Note not found.'; return; }
-        $('note-out').textContent = node.decrypted ? JSON.stringify(node.value, null, 2) : `🔒 Cannot decrypt (not the owner). Ciphertext:\n${JSON.stringify(node.value)}`;
-        log(node.decrypted ? `Note '${id}' decrypted.` : `Note '${id}' could not be decrypted — not the owner.`, node.decrypted ? 'success' : 'warn');
-      } catch (err) { toast(err.message, true); }
-    };
+                const addr = document.createElement("span")
+                addr.className = "addr"
+                addr.textContent = db.sm.abbrAddr(address)
 
-    /* ============================ Session controls ============================ */
-    $('logout').onclick = async () => { unsubscribeRole?.(); unsubscribeRole = null; volatileIdentity = null; lastRole = null; await db.sm.clearSecurity(); log('Logged out.', 'info'); };
-    $('login-superadmin').onclick = () => login(SUPERADMIN.mnemonic);
-    $('login-alice').onclick = () => login(ALICE.mnemonic);
-    $('login-bob').onclick = () => login(BOB.mnemonic);
-    $('reset').onclick = async () => { const inst = db ?? await gdb(DB_NAME); await inst.clear(); location.reload(); };
+                const spacer = document.createElement("span")
+                spacer.className = "spacer"
 
-    // Eagerly bootstrap so the roster + peer presence are live before login.
-    ensureDb().catch((err) => log(`Init error: ${err.message}`, 'error'));
-  </script>
+                const chip = document.createElement("span")
+                chip.className = `role role-${role}`
+                chip.textContent = role
+
+                li.append(who, addr, spacer, chip)
+                return li
+            }))
+        }
+
+        await db.map({ query: { role: { $exists: true } } }, ({ id, value, action }) => {
+            if (!id?.startsWith("user:")) return
+            if (action === "removed") roles.delete(id)
+            else {
+                if (!value?.role) return
+                const previous = roles.get(id)
+                roles.set(id, value.role)
+                if (previous && previous !== value.role) {
+                    log(`Roster: ${nameOf(id.slice(5))} ${previous} → ${value.role}`)
+                }
+            }
+            renderRoster()
+        })
+
+        renderRoster()
+        log("Security manager active.", "ok")
+
+        // ── Your own role ───────────────────────────────────────────
+        const ROLE_NOTE = "Signed by the superadmin, delivered by the mesh."
+
+        /** The payoff: this word changes on its own when a grant reaches you. */
+        const paintRole = (role) => {
+            el.heroRole.textContent = role
+            // First paint of a session: restore the standing caption, or the
+            // logged-out prompt stays under a role that is already showing.
+            if (lastRole === null) el.heroNote.textContent = ROLE_NOTE
+
+            if (lastRole !== null && lastRole !== role) {
+                el.hero.classList.remove("changed")
+                void el.hero.offsetWidth // restart the animation
+                el.hero.classList.add("changed")
+                el.heroNote.textContent = `${lastRole} → ${role} — a signed grant just reached you through the mesh.`
+                log(`Your role changed: ${lastRole} → ${role}`, "ok")
+                setStatus(`Role updated → ${role}`, "ok")
+            }
+            lastRole = role
+        }
+
+        // ── Govern ──────────────────────────────────────────────────
+        const renderGovern = (isSuperadmin) => {
+            el.governBody.replaceChildren()
+
+            if (!isSuperadmin) {
+                const note = document.createElement("p")
+                note.className = "hint"
+                note.textContent = "Only the superadmin can assign roles. Keep this window open — as Alice you are the relay that carries grants to peers the superadmin never meets."
+                el.governBody.append(note)
+                return
+            }
+
+            const hint = document.createElement("p")
+            hint.className = "hint"
+            hint.textContent = "Assigning a role writes a signed grant to user:<address>. The target need not be online: the grant travels the mesh and reaches them through any peer when they reconnect."
+
+            const row = document.createElement("div")
+            row.className = "govern-row"
+
+            const targetField = document.createElement("div")
+            targetField.className = "field"
+            const targetLabel = document.createElement("label")
+            targetLabel.textContent = "Target address"
+            targetLabel.htmlFor = "role-target"
+            const target = document.createElement("input")
+            target.type = "text"
+            target.id = "role-target"
+            target.placeholder = "0x…"
+            targetField.append(targetLabel, target)
+
+            const roleField = document.createElement("div")
+            roleField.className = "field"
+            const roleLabel = document.createElement("label")
+            roleLabel.textContent = "Role"
+            roleLabel.htmlFor = "role-select"
+            const select = document.createElement("select")
+            select.id = "role-select"
+            for (const role of ["guest", "user", "manager", "admin"]) {
+                const option = document.createElement("option")
+                option.textContent = role
+                option.selected = role === "user"
+                select.append(option)
+            }
+            roleField.append(roleLabel, select)
+
+            const assign = document.createElement("button")
+            assign.className = "primary"
+            assign.textContent = "Assign role"
+
+            row.append(targetField, roleField, assign)
+
+            // The shortcut that makes step 5 possible: target Bob by address,
+            // with Bob's browser closed.
+            const shortcuts = document.createElement("div")
+            shortcuts.className = "shortcuts"
+            for (const identity of [ALICE, BOB]) {
+                const button = document.createElement("button")
+                button.className = "ghost"
+                button.textContent = `Target ${identity.name}`
+                button.addEventListener("click", () => { target.value = identity.address })
+                shortcuts.append(button)
+            }
+
+            assign.addEventListener("click", async () => {
+                const address = target.value.trim()
+                if (!address) return setStatus("Enter a target address.", "error")
+
+                try {
+                    // The gate first, then the act: executeWithPermission throws
+                    // for anyone who is not allowed, which is the honest check.
+                    await db.sm.executeWithPermission("assignRole")
+                    await db.sm.assignRole(address, select.value)
+                    log(`Signed assignRole('${select.value}') → ${nameOf(address)} (target may be offline).`, "ok")
+                    setStatus(`Granted ${select.value} to ${nameOf(address)}.`, "ok")
+                } catch (error) {
+                    log(`assignRole denied: ${error.message}`, "error")
+                    setStatus(`Denied: ${error.message}`, "error")
+                }
+            })
+
+            el.governBody.append(hint, row, shortcuts)
+        }
+
+        // ── Session ─────────────────────────────────────────────────
+        const onSecurityState = (state) => {
+            const active = state.isActive
+            el.logout.classList.toggle("hidden", !active)
+            el.me.textContent = active ? `${nameOf(state.activeAddress)} · ${state.abbrAddr}` : ""
+
+            if (!active) {
+                unsubscribeRole?.()
+                unsubscribeRole = null
+                lastRole = null
+                el.heroRole.textContent = "—"
+                el.heroNote.textContent = "Pick an identity to begin."
+                el.identityModal.showModal()
+                return
+            }
+
+            el.identityModal.close()
+            renderRoster()
+
+            const superadmin = eqAddr(state.activeAddress, SUPERADMIN.address)
+            renderGovern(superadmin)
+            updatePeers()
+            setStatus(`Signed in as ${nameOf(state.activeAddress)}.`)
+
+            unsubscribeRole?.()
+            if (superadmin) {
+                // The superadmin's authority comes from the constitution, not
+                // from a node, so there is nothing to subscribe to.
+                paintRole("superadmin")
+                unsubscribeRole = null
+                return
+            }
+
+            // Everyone else reads their own role from their user node — the same
+            // node a grant writes to, which is why this updates on its own.
+            db.get(`user:${state.activeAddress}`, (node) => paintRole(node?.value?.role ?? "guest"))
+                .then(({ unsubscribe }) => { unsubscribeRole = unsubscribe })
+        }
+
+        for (const identity of IDENTITIES) {
+            const button = document.createElement("button")
+            button.className = identity === SUPERADMIN ? "primary" : ""
+            button.textContent = `Sign in as ${identity.name}`
+            button.addEventListener("click", async () => {
+                try {
+                    await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic)
+                } catch (error) {
+                    setStatus(error.message, "error")
+                    log(`Login failed: ${error.message}`, "error")
+                }
+            })
+            el.identityActions.append(button)
+        }
+
+        el.logout.addEventListener("click", () => db.sm.clearSecurity())
+
+        el.reset.addEventListener("click", async () => {
+            const confirmed = await confirmAction({
+                title: "Reset the testbed?",
+                body: "Every role assignment is deleted and the page reloads. Do this in each window to start the scenario clean.",
+                confirmLabel: "Reset"
+            })
+            if (!confirmed) return
+            await db.clear()
+            location.reload()
+        })
+
+        db.sm.setSecurityStateChangeCallback(onSecurityState)
+    </script>
 </body>
 
 </html>
