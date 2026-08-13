@@ -72,6 +72,8 @@ They can perform exactly what their role (and any inherited roles) allows. The s
 *   A `manager` can do the above and also `publish`.
 *   An `admin` can do all of the above and also `delete`.
 
+> **Note on `publish`:** it is an **application-level** permission. The engine only evaluates the permissions graph operations map to — `write` (upsert), `delete` (remove), `link` and `sync`, plus `assignRole` for role grants. Capabilities like `publish` are slots for your app's own features: define what publishing means in your app and gate it with `db.sm.executeWithPermission('publish')`, which honours role inheritance. Room channels (GenosRTC) are ephemeral transport and do not pass through the graph's RBAC.
+
 #### Everything They CANNOT Do:
 
 *   **Perform actions of a higher role.** A `user` cannot `delete`. An `admin` cannot `assignRole` (by default). The system enforces a strict and predictable hierarchy.
