@@ -856,6 +856,64 @@ Legibility is not the trade-off people expect, because **the panels stay narrow*
 
 **Two outputs instead of an input and an output.** Some benches compare rather than transform — two live queries, two peers, before and after. The shape is the same and the reason is the same: the lesson is what the *difference* between the panels does, so both have to be on screen at once. Give the columns equal width (`repeat(2, minmax(0, 1fr))`), the same treatment, and put whatever input exists in a band above both, since it belongs to neither. `status-lists.html` is the worked example: press a button in one column and watch the row appear in the other.
 
+**A catalogue is a third column, not a longer input panel.** When the lesson is a *language* rather than a single call — every operator, every prompt, every geo shape — the bench splits its input in two: a catalogue you pick from on the left, and the query itself, editable, above its own output. Picking writes into the field instead of running out of sight, so an example is also a starting point. `query-operators.html` is the worked example, with `query-natural-language.html` and `query-geo.html` as its siblings; the three share one skeleton and differ only in what the output is (cells, posts, a map).
+
+```css
+.bench { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 0; }
+.workbench { display: grid; grid-template-rows: var(--query-height, 140px) auto minmax(0, 1fr) auto; }
+```
+
+The bar above them carries the app's name on the left and **the name of the preset currently on screen** on the right, next to the theme toggle. Edit the field past the preset it came from and both the catalogue mark and that name clear: the chrome stops describing something that is no longer running.
+
+**The divider between input and output is the resize control.** Give the field a frame and you have put a second surface on a page that has one — and the line under it was already the boundary. So the line does the work. Never `resize: vertical` on the textarea: its grab handle sits in a corner, resizes the wrong element, and leaves the browser's own frame behind.
+
+Three details make it feel deliberate rather than clever:
+
+- **An 11px hit area around a 1px rule.** A 1px target is a target you miss. The line is drawn by `::before` inside a taller strip.
+- **Two short bars centred on the line**, drawn by `::after` with a background that covers the rule behind them — the one mark in the interface that says a line can be moved. Anything larger becomes a component; anything smaller is invisible.
+- **`role="separator"` and `tabindex="0"`**, answering the arrow keys. A control that only a pointer can reach is half a control.
+
+```css
+.splitter { position: relative; height: 11px; cursor: row-resize; touch-action: none; }
+.splitter::before { content: ""; position: absolute; inset: 5px 0 auto;
+                    height: 1px; background: var(--border-subtle); }
+.splitter::after  { content: ""; position: absolute; left: 50%; top: 50%;
+                    width: 28px; height: 5px; transform: translate(-50%, -50%);
+                    border-top: 1px solid var(--border-strong);
+                    border-bottom: 1px solid var(--border-strong);
+                    background: var(--bg-secondary); }
+.splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+```
+
+```javascript
+// Pointer events, not mouse events: one path for mouse, pen and touch, and
+// setPointerCapture keeps the drag alive when the cursor outruns an 11px strip.
+splitter.addEventListener('pointerdown', (event) => {
+    event.preventDefault()                       // no text selection while dragging
+    splitter.setPointerCapture(event.pointerId)
+    const startY = event.clientY
+    const startHeight = queryBar.getBoundingClientRect().height
+    const onMove = (move) => setQueryHeight(startHeight + move.clientY - startY)
+    splitter.addEventListener('pointermove', onMove)
+    splitter.addEventListener('pointerup', () => splitter.removeEventListener('pointermove', onMove), { once: true })
+})
+```
+
+**Do not clamp against a container that has no height yet.** The stored height is applied on the first paint, when the workbench may still measure zero — clamp then and the field is pinned to its minimum *and* that minimum is written back as the preference. Skip the ceiling while `clientHeight` is 0, and only persist on a real gesture:
+
+```javascript
+const setQueryHeight = (px, persist = true) => {
+    const available = workbench.clientHeight
+    const ceiling = available ? Math.max(available - MIN_OUTPUT, MIN_QUERY) : Infinity
+    const height = Math.round(Math.min(Math.max(px, MIN_QUERY), ceiling))
+    workbench.style.setProperty('--query-height', `${height}px`)
+    if (persist) localStorage.queryHeight = height
+}
+setQueryHeight(Number(localStorage.queryHeight) || 140, false)
+```
+
+With the frame gone, the two states the border used to carry move: **focus needs nothing** — the caret already says where you are — and an invalid value takes `box-shadow: inset 2px 0 0 var(--danger)`, the same bar the catalogue uses for the selected item, in the colour of a refusal.
+
 **Split the output when there are two kinds of it.** A bench usually produces both an *answer* and a *trace* — the result of the run, and the log of what got the graph into that state. Stacked in one scrolling panel they fight: a long result buries the log, a long log pushes the result off screen. Two halves, each scrolling in its own box, and neither can hide the other:
 
 ```css
