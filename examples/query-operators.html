@@ -71,15 +71,49 @@
         }
 
         /* ── A bench with a catalogue ───────────────────────────── */
-        /* The ordinary bench is input left / output right. This one splits the
-           input in two: a catalogue you pick from, and the query itself, which
-           stays editable above its own results. Picking and editing are the
-           same gesture — a preset lands in the field rather than running out
-           of sight, so every example is also a starting point. */
+        /* One full-width band holds the name and the chrome; below it, the
+           catalogue and the bench. The ordinary bench is input left / output
+           right — this one splits the input in two: a catalogue you pick from,
+           and the query itself, which stays editable above its own results.
+           Picking and editing are the same gesture: a preset lands in the field
+           rather than running out of sight, so every example is a start. */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
+
+        /* Every chrome band is 48px tall — this one and the status bar read as
+           one system rather than two near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        /* Truncates rather than pushing the theme button off the bar. */
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
+
+        /* The data the presets run against, named in the chrome. */
+        .brand span { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
+
         .bench {
             display: grid;
             grid-template-columns: var(--catalogue-width) minmax(0, 1fr);
-            height: 100%;
+            min-height: 0;
         }
 
         .catalogue {
@@ -89,19 +123,6 @@
             min-height: 0;
             border-right: 1px solid var(--border-subtle);
         }
-
-        /* Every chrome band is 48px tall, here and in the status bar below. */
-        .catalogue-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--space-3);
-            min-height: 48px;
-            padding: var(--space-2) var(--space-4);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .catalogue-head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 
         .catalogue-list {
             list-style: none;
@@ -166,9 +187,6 @@
 
         .query-bar {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: var(--space-3);
-            align-items: start;
             padding: var(--space-4) var(--space-5);
             border-bottom: 1px solid var(--border-subtle);
         }
@@ -200,9 +218,7 @@
         #query-display.invalid { border-color: var(--danger); }
 
         /* No Run button: Enter is the gesture, and a button beside a field that
-           already runs on Enter is a second way to do one thing. The icon takes
-           the corner it would have occupied. */
-        .query-bar .icon-btn { margin-top: 5px; } /* optically level with the first line of the field */
+           already runs on Enter is a second way to do one thing. */
 
         .results {
             min-height: 0;
@@ -368,222 +384,222 @@
 
 <body>
 
-    <div class="bench">
-        <aside class="catalogue">
-            <div class="catalogue-head">
-                <h1>Query operators</h1>
-            </div>
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Query operators <span>companies &amp; employees</span></h1>
 
-            <ul class="catalogue-list" id="queryList">
-                <li class="group">Graph traversal ($edge)</li>
-                <li class="query-item"
-                    data-query='{"query": {"type":"Company", "name":"Innovate Inc.", "$edge": {"type":"Employee"}}}'>
-                    <strong>All employees of a company</strong>
-                    <small>Finds Innovate Inc. and returns all its Employee descendants.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "isActive":true}}}'>
-                    <strong>All active developers</strong>
-                    <small>Two conditions in the sub-query: every descendant must match both.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "$edge": {"name":"Bob"}}}}'>
-                    <strong>Nested traversal</strong>
-                    <small>A company, then a Developer descendant, then that developer's descendant named Bob.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"type":"Company", "name":"Data Corp", "$edge": {"age":{"$gte":38}}}}'>
-                    <strong>Employees 38 or older in Data Corp</strong>
-                    <small>The starting point is narrowed by name; the operator filters its descendants.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"tags":{"$in":["JavaScript"]}}}}'>
-                    <strong>Employees tagged JavaScript</strong>
-                    <small>$in against an array field, applied to the descendants.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"type":"Company", "$edge": {"$or": [{"role":"Designer"}, {"role":"QA Engineer"}]}}}'>
-                    <strong>Descendants matching either role</strong>
-                    <small>A logical operator inside $edge: the sub-query is a full query, so $or applies to the
-                        descendants rather than to the starting point.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"type":"Contractor"}}}'>
-                    <strong>No matching descendants</strong>
-                    <small>The companies exist and are found, but nothing below them is a Contractor: a traversal that
-                        matches nothing returns an empty result, never the starting node.</small>
-                </li>
+            <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+                <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M9 21h6" />
+                </svg>
+            </button>
+        </header>
 
-                <li class="group">Conditional operators</li>
-                <li class="query-item" data-query='{"query": {"name": {"$eq": "Alice"}}}'>
-                    <strong>$eq — name is "Alice"</strong>
-                    <small>Finds the employee with that exact name.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"age": {"$gte": 35}}}'>
-                    <strong>$gte — age 35 or older</strong>
-                    <small>Also $gt, $lt and $lte, with the same shape.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"age": {"$between": [30, 40]}}}'>
-                    <strong>$between — age from 30 to 40</strong>
-                    <small>Both ends included, given as a two-element array.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"level": {"$in": ["Senior", "Lead"]}}}'>
-                    <strong>$in — level is Senior or Lead</strong>
-                    <small>Matches a field against a list of accepted values.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"email": {"$exists": true}}}'>
-                    <strong>$exists — has an email address</strong>
-                    <small>Asks whether the field is there at all, whatever its value.</small>
-                </li>
+        <div class="bench">
+            <aside class="catalogue">
+                <ul class="catalogue-list" id="queryList">
+                    <li class="group">Graph traversal ($edge)</li>
+                    <li class="query-item"
+                        data-query='{"query": {"type":"Company", "name":"Innovate Inc.", "$edge": {"type":"Employee"}}}'>
+                        <strong>All employees of a company</strong>
+                        <small>Finds Innovate Inc. and returns all its Employee descendants.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "isActive":true}}}'>
+                        <strong>All active developers</strong>
+                        <small>Two conditions in the sub-query: every descendant must match both.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "$edge": {"name":"Bob"}}}}'>
+                        <strong>Nested traversal</strong>
+                        <small>A company, then a Developer descendant, then that developer's descendant named Bob.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"type":"Company", "name":"Data Corp", "$edge": {"age":{"$gte":38}}}}'>
+                        <strong>Employees 38 or older in Data Corp</strong>
+                        <small>The starting point is narrowed by name; the operator filters its descendants.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"tags":{"$in":["JavaScript"]}}}}'>
+                        <strong>Employees tagged JavaScript</strong>
+                        <small>$in against an array field, applied to the descendants.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"type":"Company", "$edge": {"$or": [{"role":"Designer"}, {"role":"QA Engineer"}]}}}'>
+                        <strong>Descendants matching either role</strong>
+                        <small>A logical operator inside $edge: the sub-query is a full query, so $or applies to the
+                            descendants rather than to the starting point.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"type":"Contractor"}}}'>
+                        <strong>No matching descendants</strong>
+                        <small>The companies exist and are found, but nothing below them is a Contractor: a traversal that
+                            matches nothing returns an empty result, never the starting node.</small>
+                    </li>
 
-                <li class="group">Logical operators</li>
-                <li class="query-item" data-query='{"query": {"$and": [{"role": "Developer"}, {"country": "USA"}]}}'>
-                    <strong>$and — developer and from the USA</strong>
-                    <small>Every clause must match.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"$or": [{"isActive": false}, {"age": {"$gt": 40}}]}}'>
-                    <strong>$or — inactive or older than 40</strong>
-                    <small>Any clause matching is enough.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"country": {"$not": {"$eq": "USA"}}}}'>
-                    <strong>$not — country is not the USA</strong>
-                    <small>Wraps another operator and inverts it.</small>
-                </li>
+                    <li class="group">Conditional operators</li>
+                    <li class="query-item" data-query='{"query": {"name": {"$eq": "Alice"}}}'>
+                        <strong>$eq — name is "Alice"</strong>
+                        <small>Finds the employee with that exact name.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"age": {"$gte": 35}}}'>
+                        <strong>$gte — age 35 or older</strong>
+                        <small>Also $gt, $lt and $lte, with the same shape.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"age": {"$between": [30, 40]}}}'>
+                        <strong>$between — age from 30 to 40</strong>
+                        <small>Both ends included, given as a two-element array.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"level": {"$in": ["Senior", "Lead"]}}}'>
+                        <strong>$in — level is Senior or Lead</strong>
+                        <small>Matches a field against a list of accepted values.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"email": {"$exists": true}}}'>
+                        <strong>$exists — has an email address</strong>
+                        <small>Asks whether the field is there at all, whatever its value.</small>
+                    </li>
 
-                <li class="group">Text search</li>
-                <li class="query-item" data-query='{"query": {"name": {"$regex": "^B"}}}'>
-                    <strong>$regex — name starts with B</strong>
-                    <small>A regular expression, anchored with ^.</small>
-                </li>
-                <li class="query-item" data-query='{"query": {"name": {"$regex": "an"}}}'>
-                    <strong>$regex — name contains "an"</strong>
-                    <small>Unanchored, so it matches anywhere in the value.</small>
-                </li>
+                    <li class="group">Logical operators</li>
+                    <li class="query-item" data-query='{"query": {"$and": [{"role": "Developer"}, {"country": "USA"}]}}'>
+                        <strong>$and — developer and from the USA</strong>
+                        <small>Every clause must match.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"$or": [{"isActive": false}, {"age": {"$gt": 40}}]}}'>
+                        <strong>$or — inactive or older than 40</strong>
+                        <small>Any clause matching is enough.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"country": {"$not": {"$eq": "USA"}}}}'>
+                        <strong>$not — country is not the USA</strong>
+                        <small>Wraps another operator and inverts it.</small>
+                    </li>
 
-                <li class="group">Natural language (nlq module)</li>
-                <li class="query-item"
-                    data-query='{"prompt": "Finds a Company, then finds a Developer descendant, then finds that Developers descendant named Bob."}'>
-                    <strong>Nested traversal, in English</strong>
-                    <small>The same query as "Nested traversal" above, written as a sentence.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Finds a Company, then finds descendant named Bob"}'>
-                    <strong>Company → descendant named Bob</strong>
-                    <small>Without naming a type or a role for the descendant.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Finds only Companies"}'>
-                    <strong>Finds only companies</strong>
-                    <small>The simplest prompt there is: one type, no filters.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "finds descendant Developers"}'>
-                    <strong>Descendant developers</strong>
-                    <small>A traversal with no explicit starting point.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find a Company, then a descendant of type Employee with role Developer, then a descendant named Bob limit 5 order desc by id"}'>
-                    <strong>Nested traversal with order and limit</strong>
-                    <small>Type, role, name, ordering and a ceiling — all in one sentence.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find employees whose role is Developer or role is Designer and country is USA"}'>
-                    <strong>$or and $and, in English</strong>
-                    <small>Developer or Designer, and from the USA.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Find employees whose role in Developer, Designer"}'>
-                    <strong>A list of accepted values</strong>
-                    <small>Parses to $in.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find employees whose name starts with B order asc by name limit 10"}'>
-                    <strong>Starts with, ordered and capped</strong>
-                    <small>Name starts with B, ascending by name, first ten.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find employees whose name ends with son order asc by name limit 5"}'>
-                    <strong>Ends with</strong>
-                    <small>The mirror of the previous one.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Find employees whose name like \"J%\""}'>
-                    <strong>SQL-style like</strong>
-                    <small>Recognised too: name like "J%".</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find employees whose age between 30 and 40 order asc by age limit 5"}'>
-                    <strong>Between, ordered and capped</strong>
-                    <small>Age from 30 to 40, ascending, first five.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find employees whose hireDate between 2020-01-01 and 2020-12-31 order asc by hireDate limit 5"}'>
-                    <strong>Between two dates</strong>
-                    <small>ISO dates in a range, ordered by the same field.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"prompt": "Find a Company, then a descendant of type Employee whose tags includes JavaScript"}'>
-                    <strong>Traversal into an array field</strong>
-                    <small>"includes" reaches inside the tags array.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Find employees whose country is not USA"}'>
-                    <strong>Negation</strong>
-                    <small>Parses to $not.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Full text search \"Developer\""}'>
-                    <strong>Full text search</strong>
-                    <small>Across the fields of every node, rather than one named field.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Full text search \"developer\""}'>
-                    <strong>Full text search, lowercase</strong>
-                    <small>Same result: the search is case-insensitive.</small>
-                </li>
-                <li class="query-item" data-query='{"prompt": "Get employees order asc by name limit 2"}'>
-                    <strong>First two employees by name</strong>
-                    <small>Ordering and limit with no filter at all.</small>
-                </li>
-            </ul>
+                    <li class="group">Text search</li>
+                    <li class="query-item" data-query='{"query": {"name": {"$regex": "^B"}}}'>
+                        <strong>$regex — name starts with B</strong>
+                        <small>A regular expression, anchored with ^.</small>
+                    </li>
+                    <li class="query-item" data-query='{"query": {"name": {"$regex": "an"}}}'>
+                        <strong>$regex — name contains "an"</strong>
+                        <small>Unanchored, so it matches anywhere in the value.</small>
+                    </li>
 
-            <div class="catalogue-foot">
-                <button id="reset-btn" class="danger">Reset &amp; re-seed data</button>
-            </div>
-        </aside>
+                    <li class="group">Natural language (nlq module)</li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Finds a Company, then finds a Developer descendant, then finds that Developers descendant named Bob."}'>
+                        <strong>Nested traversal, in English</strong>
+                        <small>The same query as "Nested traversal" above, written as a sentence.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Finds a Company, then finds descendant named Bob"}'>
+                        <strong>Company → descendant named Bob</strong>
+                        <small>Without naming a type or a role for the descendant.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Finds only Companies"}'>
+                        <strong>Finds only companies</strong>
+                        <small>The simplest prompt there is: one type, no filters.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "finds descendant Developers"}'>
+                        <strong>Descendant developers</strong>
+                        <small>A traversal with no explicit starting point.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find a Company, then a descendant of type Employee with role Developer, then a descendant named Bob limit 5 order desc by id"}'>
+                        <strong>Nested traversal with order and limit</strong>
+                        <small>Type, role, name, ordering and a ceiling — all in one sentence.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find employees whose role is Developer or role is Designer and country is USA"}'>
+                        <strong>$or and $and, in English</strong>
+                        <small>Developer or Designer, and from the USA.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Find employees whose role in Developer, Designer"}'>
+                        <strong>A list of accepted values</strong>
+                        <small>Parses to $in.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find employees whose name starts with B order asc by name limit 10"}'>
+                        <strong>Starts with, ordered and capped</strong>
+                        <small>Name starts with B, ascending by name, first ten.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find employees whose name ends with son order asc by name limit 5"}'>
+                        <strong>Ends with</strong>
+                        <small>The mirror of the previous one.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Find employees whose name like \"J%\""}'>
+                        <strong>SQL-style like</strong>
+                        <small>Recognised too: name like "J%".</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find employees whose age between 30 and 40 order asc by age limit 5"}'>
+                        <strong>Between, ordered and capped</strong>
+                        <small>Age from 30 to 40, ascending, first five.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find employees whose hireDate between 2020-01-01 and 2020-12-31 order asc by hireDate limit 5"}'>
+                        <strong>Between two dates</strong>
+                        <small>ISO dates in a range, ordered by the same field.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"prompt": "Find a Company, then a descendant of type Employee whose tags includes JavaScript"}'>
+                        <strong>Traversal into an array field</strong>
+                        <small>"includes" reaches inside the tags array.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Find employees whose country is not USA"}'>
+                        <strong>Negation</strong>
+                        <small>Parses to $not.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Full text search \"Developer\""}'>
+                        <strong>Full text search</strong>
+                        <small>Across the fields of every node, rather than one named field.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Full text search \"developer\""}'>
+                        <strong>Full text search, lowercase</strong>
+                        <small>Same result: the search is case-insensitive.</small>
+                    </li>
+                    <li class="query-item" data-query='{"prompt": "Get employees order asc by name limit 2"}'>
+                        <strong>First two employees by name</strong>
+                        <small>Ordering and limit with no filter at all.</small>
+                    </li>
+                </ul>
 
-        <section class="workbench">
-            <div class="query-bar">
-                <textarea id="query-display" spellcheck="false" aria-label="Query"
-                    placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
-
-                <!-- The theme toggle keeps the top-right corner of the layout,
-                     where every other GenosDB app puts it. -->
-                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
-                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="12" cy="12" r="4" />
-                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                    </svg>
-                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-                    </svg>
-                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="2" y="4" width="20" height="13" rx="2" />
-                        <path d="M9 21h6" />
-                    </svg>
-                </button>
-            </div>
-
-            <div class="results">
-                <div id="empty-view" class="empty">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="M20 20l-3.5-3.5" />
-                    </svg>
-                    <p id="empty-message">Pick a query to see what it returns.</p>
+                <div class="catalogue-foot">
+                    <button id="reset-btn" class="danger">Reset &amp; re-seed data</button>
                 </div>
-                <div class="results-grid" id="results"></div>
-            </div>
+            </aside>
 
-            <footer class="statusbar">
-                <span id="status">Starting…</span>
-                <span class="hint"><kbd>Enter</kbd> runs · <kbd>Shift</kbd>+<kbd>Enter</kbd> newline</span>
-            </footer>
-        </section>
+            <section class="workbench">
+                <div class="query-bar">
+                    <textarea id="query-display" spellcheck="false" aria-label="Query"
+                        placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
+                </div>
+
+                <div class="results">
+                    <div id="empty-view" class="empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M20 20l-3.5-3.5" />
+                        </svg>
+                        <p id="empty-message">Pick a query to see what it returns.</p>
+                    </div>
+                    <div class="results-grid" id="results"></div>
+                </div>
+
+                <footer class="statusbar">
+                    <span id="status">Starting…</span>
+                    <span class="hint"><kbd>Enter</kbd> runs · <kbd>Shift</kbd>+<kbd>Enter</kbd> newline</span>
+                </footer>
+            </section>
+        </div>
     </div>
 
     <!-- Confirmation before anything irreversible. Never window.confirm: it

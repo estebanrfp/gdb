@@ -68,10 +68,43 @@
         /* ── A bench with a catalogue ───────────────────────────── */
         /* The same shape as the other two query benches, so the three read as
            one family. Here the output is a map rather than a list. */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
+
+        /* Every chrome band is 48px tall — this one and the status bar read as
+           one system rather than two near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        /* Truncates rather than pushing the theme button off the bar. */
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
+
+        /* The data the presets run against, named in the chrome. */
+        .brand span { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
+
         .bench {
             display: grid;
             grid-template-columns: var(--catalogue-width) minmax(0, 1fr);
-            height: 100%;
+            min-height: 0;
         }
 
         .catalogue {
@@ -81,17 +114,6 @@
             min-height: 0;
             border-right: 1px solid var(--border-subtle);
         }
-
-        /* Every chrome band is 48px tall, here and in the status bar below. */
-        .catalogue-head {
-            display: flex;
-            align-items: center;
-            min-height: 48px;
-            padding: var(--space-2) var(--space-4);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .catalogue-head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 
         .catalogue-list {
             list-style: none;
@@ -170,9 +192,6 @@
 
         .query-bar {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: var(--space-3);
-            align-items: start;
             padding: var(--space-4) var(--space-5);
             border-bottom: 1px solid var(--border-subtle);
         }
@@ -202,9 +221,7 @@
         #query-display.invalid { border-color: var(--danger); }
 
         /* No Run button: Enter is the gesture, and a button beside a field that
-           already runs on Enter is a second way to do one thing. The icon takes
-           the corner it would have occupied. */
-        .query-bar .icon-btn { margin-top: 5px; } /* optically level with the first line of the field */
+           already runs on Enter is a second way to do one thing. */
 
         /* Edge to edge, no rounding, no frame: an instrument is not boxed, and
            every pixel taken by a border is a pixel of map.
@@ -329,94 +346,94 @@
 
 <body>
 
-    <div class="bench">
-        <aside class="catalogue">
-            <div class="catalogue-head">
-                <h1>Geo queries</h1>
-            </div>
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Geo queries <span>New York</span></h1>
 
-            <ul class="catalogue-list" id="queryList">
-                <li class="group">$near — a point and a radius</li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$near": {"latitude": 40.7589, "longitude": -73.9851, "radius": 5}}}, "order": "asc", "field": "name"}'>
-                    <strong>Within 5 km of Times Square</strong>
-                    <small>The radius is in kilometres, measured from the point.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$near": {"latitude": 40.7484, "longitude": -73.9857, "radius": 10}}}, "order": "asc", "field": "name"}'>
-                    <strong>Within 10 km of the Empire State</strong>
-                    <small>Twice the reach: the circle grows and takes the outer boroughs with it.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$near": {"latitude": 40.5755, "longitude": -73.9813, "radius": 2}}}, "order": "asc", "field": "name"}'>
-                    <strong>Within 2 km of Coney Island</strong>
-                    <small>Tight enough that only one place qualifies.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$near": {"latitude": 40.6413, "longitude": -73.7781, "radius": 3}}}, "order": "asc", "field": "name"}'>
-                    <strong>Within 3 km of JFK Airport</strong>
-                    <small>The circle is drawn and the map moves there, but nothing is inside it.</small>
-                </li>
+            <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+                <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M9 21h6" />
+                </svg>
+            </button>
+        </header>
 
-                <li class="group">$bbox — a rectangle</li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
-                    <strong>Inside Manhattan</strong>
-                    <small>Four edges instead of a centre: no distance is computed.</small>
-                </li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$bbox": {"minLat": 40.550, "maxLat": 40.720, "minLng": -74.100, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
-                    <strong>Inside the harbour and south</strong>
-                    <small>A box that cuts the city the other way.</small>
-                </li>
+        <div class="bench">
+            <aside class="catalogue">
+                <ul class="catalogue-list" id="queryList">
+                    <li class="group">$near — a point and a radius</li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$near": {"latitude": 40.7589, "longitude": -73.9851, "radius": 5}}}, "order": "asc", "field": "name"}'>
+                        <strong>Within 5 km of Times Square</strong>
+                        <small>The radius is in kilometres, measured from the point.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$near": {"latitude": 40.7484, "longitude": -73.9857, "radius": 10}}}, "order": "asc", "field": "name"}'>
+                        <strong>Within 10 km of the Empire State</strong>
+                        <small>Twice the reach: the circle grows and takes the outer boroughs with it.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$near": {"latitude": 40.5755, "longitude": -73.9813, "radius": 2}}}, "order": "asc", "field": "name"}'>
+                        <strong>Within 2 km of Coney Island</strong>
+                        <small>Tight enough that only one place qualifies.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$near": {"latitude": 40.6413, "longitude": -73.7781, "radius": 3}}}, "order": "asc", "field": "name"}'>
+                        <strong>Within 3 km of JFK Airport</strong>
+                        <small>The circle is drawn and the map moves there, but nothing is inside it.</small>
+                    </li>
 
-                <li class="group">Geo with an ordinary filter</li>
-                <li class="query-item"
-                    data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}, "name": {"$regex": "^T"}}, "order": "asc", "field": "name"}'>
-                    <strong>Inside Manhattan, name starting with T</strong>
-                    <small>A geo operator is one clause among others: five places are inside the box, two of them
-                        are also named like this.</small>
-                </li>
-            </ul>
+                    <li class="group">$bbox — a rectangle</li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
+                        <strong>Inside Manhattan</strong>
+                        <small>Four edges instead of a centre: no distance is computed.</small>
+                    </li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.550, "maxLat": 40.720, "minLng": -74.100, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
+                        <strong>Inside the harbour and south</strong>
+                        <small>A box that cuts the city the other way.</small>
+                    </li>
 
-            <div class="found">
-                <p class="group">Found</p>
-                <ul id="found-list"></ul>
-            </div>
-        </aside>
+                    <li class="group">Geo with an ordinary filter</li>
+                    <li class="query-item"
+                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}, "name": {"$regex": "^T"}}, "order": "asc", "field": "name"}'>
+                        <strong>Inside Manhattan, name starting with T</strong>
+                        <small>A geo operator is one clause among others: five places are inside the box, two of them
+                            are also named like this.</small>
+                    </li>
+                </ul>
 
-        <section class="workbench">
-            <div class="query-bar">
-                <textarea id="query-display" spellcheck="false" aria-label="Query"
-                    placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
+                <div class="found">
+                    <p class="group">Found</p>
+                    <ul id="found-list"></ul>
+                </div>
+            </aside>
 
-                <!-- The theme toggle keeps the top-right corner of the layout,
-                     where every other GenosDB app puts it. -->
-                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
-                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="12" cy="12" r="4" />
-                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                    </svg>
-                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-                    </svg>
-                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="2" y="4" width="20" height="13" rx="2" />
-                        <path d="M9 21h6" />
-                    </svg>
-                </button>
-            </div>
+            <section class="workbench">
+                <div class="query-bar">
+                    <textarea id="query-display" spellcheck="false" aria-label="Query"
+                        placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
+                </div>
 
-            <div id="map"></div>
+                <div id="map"></div>
 
-            <footer class="statusbar">
-                <span id="status">Loading…</span>
-                <span class="legend"><i></i> the dashed shape is the query</span>
-            </footer>
-        </section>
+                <footer class="statusbar">
+                    <span id="status">Loading…</span>
+                    <span class="legend"><i></i> the dashed shape is the query</span>
+                </footer>
+            </section>
+        </div>
     </div>
 
     <script type="module">
