@@ -85,7 +85,10 @@
         .topbar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            /* Name and chrome share the right edge: the catalogue below already
+               owns the left, and a title stranded across from it reads as a
+               second column rather than as the page's name. */
+            justify-content: flex-end;
             gap: var(--space-4);
             min-height: 48px;
             padding: var(--space-2) var(--space-5);

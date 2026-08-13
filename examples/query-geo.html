@@ -79,7 +79,10 @@
         .topbar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            /* Name and chrome share the right edge: the catalogue below already
+               owns the left, and a title stranded across from it reads as a
+               second column rather than as the page's name. */
+            justify-content: flex-end;
             gap: var(--space-4);
             min-height: 48px;
             padding: var(--space-2) var(--space-5);
@@ -233,25 +236,24 @@
            stretches its items; the floors are what let this one shrink. */
         #map { min-width: 0; min-height: 0; background: var(--bg-tertiary); }
 
-        /* The basemap is context, not the subject: a full-colour street map has
-           more contrast than the handful of dots that are the actual answer, and
-           it wins every time. Desaturating it puts the data back on top —
-           the only saturated things left on screen are the query and its
-           results. Filtering the raster also avoids a second tile provider and
-           an API key just to get a dark style. */
-        .leaflet-tile { filter: saturate(.45) contrast(.95); }
+        /* Monochrome, deliberately: the basemap is context, not the subject. A
+           full-colour street map carries more contrast than the handful of dots
+           that are the actual answer, and it wins every time. Stripped of
+           colour, the only hue left on screen belongs to the query and to what
+           it matched — the map recedes into what it is, a backdrop. Filtering
+           the raster also avoids a second tile provider and an API key just to
+           get a styled basemap. */
+        .leaflet-tile { filter: grayscale(1) contrast(1.25) brightness(.96); }
 
-        /* Inverted, not desaturated to grey first: OSM draws pale roads on a pale
-           background, and greyscaling before the invert collapses both into the
-           same near-black. `hue-rotate` puts the hues back where the eye expects
-           them after the invert; `saturate` then takes the shout out of them.
-
-           The brightness above 1 is the part that is easy to get wrong. Zoom in
-           and OSM shows more white, which the invert turns into more black — so
-           a filter tuned on a city-wide view goes pitch dark two zoom levels
-           later. Lifting brightness after the invert (and dropping contrast to
-           keep it from blowing out) holds up at every zoom. */
-        [data-theme="dark"] .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(1.45) contrast(.78) saturate(.7); }
+        /* Dark is the same idea inverted, and the numbers are not the light ones
+           with a minus sign. OSM draws pale roads on a pale background: once
+           both are grey, they sit within a few percent of each other, and
+           inverting lands them together near black — a flat, unreadable sheet.
+           Brightness well above 1 pulls that narrow band back up into visible
+           greys, and the low contrast keeps the roads from turning into white
+           lines that shout over the data. Tune it zoomed IN: the closer the
+           view, the more white OSM draws, and the darker the invert makes it. */
+        [data-theme="dark"] .leaflet-tile { filter: grayscale(1) invert(1) brightness(1.55) contrast(.68); }
         [data-theme="dark"] .leaflet-container { background: var(--bg-tertiary); }
 
         /* The map's own chrome, in the page's palette rather than Leaflet's. */
