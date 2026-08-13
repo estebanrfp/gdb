@@ -1,487 +1,827 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>GenosDB - Query Playground</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      display: grid;
-      height: 100vh;
-      grid-template-rows: 1fr auto;
-      grid-template-columns: 350px 1fr;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — Query operators</title>
 
-    .sidebar {
-      background: white;
-      border-right: .5rem solid #ddd;
-      padding: 20px;
-      overflow-y: auto;
-    }
+    <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light palette — this is an interface
+           built to be learned, next to the documentation it illustrates. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --danger: #dc2626;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --backdrop: rgba(26, 29, 36, .45);
+            --radius-sm: 6px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+            --catalogue-width: 320px;
+        }
 
-    .query-list {
-      list-style-type: none;
-      padding: 0;
-    }
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="dark"] {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --danger: #ef5350;
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+            --backdrop: rgba(0, 0, 0, .6);
+        }
 
-    .query-item {
-      display: flex;
-      flex-direction: column;
-      background: #f8f9fa;
-      color: #444;
-      border-radius: 5px;
-      padding: 10px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      user-select: none;
-    }
+        * { box-sizing: border-box; }
 
-    .query-item:hover {
-      background: #e9ecef;
-    }
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            /* One surface for the whole bench — the panels do not float on it,
+               they are it. Borders divide; nothing is a card. */
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
 
-    .query-item.active {
-      background: #007bff;
-      color: white;
-    }
+        /* ── A bench with a catalogue ───────────────────────────── */
+        /* The ordinary bench is input left / output right. This one splits the
+           input in two: a catalogue you pick from, and the query itself, which
+           stays editable above its own results. Picking and editing are the
+           same gesture — a preset lands in the field rather than running out
+           of sight, so every example is also a starting point. */
+        .bench {
+            display: grid;
+            grid-template-columns: var(--catalogue-width) minmax(0, 1fr);
+            height: 100%;
+        }
 
-    .query-item strong {
-      pointer-events: none;
-      font-size: 0.9em;
-    }
+        .catalogue {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            border-right: 1px solid var(--border-subtle);
+        }
 
-    .query-item small {
-      pointer-events: none;
-      font-size: 0.8em;
-      opacity: 0.7;
-      margin-top: 4px;
-      display: block;
-    }
+        /* Every chrome band is 48px tall, here and in the status bar below. */
+        .catalogue-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
 
-    .main-content {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 20px;
-      padding: 20px;
-      overflow: hidden;
-    }
+        .catalogue-head h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 
-    .query-display {
-      border: 0;
-      font-family: 'Consolas', monospace;
-      padding: 1rem;
-      resize: none;
-      outline: none;
-      height: 250px;
-      background: #f8f9fa;
-      color: #444;
-      white-space: pre-wrap;
-    }
+        .catalogue-list {
+            list-style: none;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            margin: 0;
+            padding: 0 var(--space-4) var(--space-4);
+        }
 
-    .results-panel {
-      display: grid;
-      overflow-y: auto;
-    }
+        /* An uppercase eyebrow with a rule under it, the same one §5.6 puts on a
+           section label. The groups are the lesson's table of contents. */
+        .group {
+            margin: var(--space-5) 0 var(--space-2);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
 
-    .results-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 10px;
-    }
+        .group:first-child { margin-top: var(--space-3); }
 
-    .result-item {
-      color: #333;
-      padding: 15px;
-      border-left: 0.5rem solid #007bff;
-      background: #f8f9fa;
-    }
+        /* Not a card: separated by space and, when selected, by a bar on the
+           left — the same mark the document list in `docs.html` uses. A tinted
+           block per item would turn the catalogue into a wall of bubbles. */
+        .query-item {
+            padding: var(--space-2) 0 var(--space-2) var(--space-3);
+            border-left: 2px solid transparent;
+            cursor: pointer;
+            user-select: none;
+        }
 
-    .result-item strong {
-      color: #0056b3;
-      display: block;
-      margin-bottom: 5px;
-    }
+        .query-item strong { display: block; font-size: 13px; font-weight: 600; pointer-events: none; }
 
-    .result-item pre {
-      color: #000000;
-      font-size: 0.8em;
-      max-height: 150px;
-      overflow-y: auto;
-    }
+        .query-item small {
+            display: block;
+            margin-top: 2px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
 
-    .controls button {
-      background: #dc3545;
-      color: white;
-      cursor: pointer;
-      transition: background 0.3s;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
+        .query-item:hover { border-left-color: var(--border-strong); }
+        .query-item.active { border-left-color: var(--accent); }
+        .query-item.active strong { color: var(--accent); }
 
-    .controls button:hover {
-      background: #c82333;
-    }
+        /* Reset lives at the foot of the catalogue, not in the query bar: it acts
+           on the data every preset assumes, not on the query being written. */
+        .catalogue-foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); }
+        .catalogue-foot button { width: 100%; }
 
-    .status-bar {
-      border-top: 1px solid #ddd;
-      padding: 10px;
-      text-align: center;
-      font-size: 14px;
-      color: #444;
-    }
+        /* ── The bench itself ───────────────────────────────────── */
+        .workbench {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            min-width: 0;
+            min-height: 0;
+        }
 
-    h3 {
-      margin: 20px 0 10px;
-      color: #6c757d;
-      font-size: 0.9em;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-  </style>
+        .query-bar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: var(--space-3);
+            align-items: start;
+            padding: var(--space-4) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        /* The query is the subject of the page, so it keeps the typeface of code
+           and none of the decoration: no tinted panel behind it, one border to
+           say it is editable. It grows to the query and stops before it owns
+           the screen — the results are what you came to read. */
+        #query-display {
+            min-height: 96px;
+            max-height: 34vh;
+            padding: var(--space-3);
+            font-family: var(--mono);
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: none;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+            resize: vertical;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        #query-display:focus { border-color: var(--accent); }
+        /* Invalid JSON is reported by the field itself, not by a modal that
+           interrupts. `alert()` would also block the thread. */
+        #query-display.invalid { border-color: var(--danger); }
+
+        .query-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+        .query-actions button { white-space: nowrap; }
+
+        .results {
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-5);
+        }
+
+        /* A grid of cells, not a deck of cards: no fill, no shadow, no rounded
+           box floating on the page — a rule at the top of each cell and the gap
+           around it. Many small JSON values are read by scanning, so the columns
+           earn their place where a single tall list would not. */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: var(--space-4) var(--space-5);
+        }
+
+        .result-item {
+            min-width: 0;
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .result-item pre {
+            margin: 0;
+            max-height: 220px;
+            overflow: auto;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* The results panel is never blank: before the first query it says what
+           will appear there, so the split reads as intentional. */
+        .empty {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        .empty svg { width: 40px; height: 40px; margin-bottom: var(--space-3); }
+        .empty p { margin: 0; }
+
+        .hidden { display: none !important; }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        #status { font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status.error { color: var(--danger); }
+        #status.ok { color: var(--ok); }
+
+        .hint { white-space: nowrap; }
+        .hint kbd {
+            padding: 1px 5px;
+            font-family: var(--mono);
+            font-size: 11px;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+        }
+
+        /* ── Buttons ────────────────────────────────────────────── */
+        /* Secondary is the default and blue is opt-in: making `button` itself
+           the primary one means `button:hover` paints a fill that outranks
+           every `.icon-btn:hover`, so the theme icon lights up as a blue box. */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--text-on-accent);
+        }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            margin-right: -6px; /* aligns the mark with the edge, not the hit area */
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        /* One icon per preference, chosen by what was asked for — not by the
+           palette in force, or `system` could not draw itself. */
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* ── Confirmation dialog ────────────────────────────────── */
+        dialog {
+            width: min(440px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+        .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+        /* Stacked, and still one screen: each panel keeps scrolling inside its
+           own row rather than handing the scrolling back to the page. */
+        @media (max-width: 900px) {
+            .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40%) minmax(0, 60%); }
+            .catalogue { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .query-bar, .results, .statusbar { padding-inline: var(--space-4); }
+        }
+
+        /* Narrow enough that the field and its button stop fitting side by side.
+           The keyboard hint goes with them: there is no physical Enter key to
+           press here, and the placeholder already says what to do. */
+        @media (max-width: 620px) {
+            .query-bar { grid-template-columns: minmax(0, 1fr); }
+            .query-actions { flex-direction: row; }
+            .query-actions button { flex: 1; }
+            .hint { display: none; }
+        }
+    </style>
 </head>
 
 <body>
 
-  <div class="sidebar">
-    <ul class="query-list" id="queryList">
-      <h3>Graph Traversal ($edge)</h3>
-      <li class="query-item"
-        data-query='{"query": {"type":"Company", "name":"Innovate Inc.", "$edge": {"type":"Employee"}}}'>
-        <strong>All Employees of a Company</strong>
-        <small>Uses $edge to find Innovate Inc. and return all its Employee descendants.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "isActive":true}}}'>
-        <strong>All Active Developers</strong>
-        <small>Uses $edge to find all active developers across all companies.</small>
-      </li>
-      <li class="query-item"
-        data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "$edge": {"name":"Bob"}}}}'>
-        <strong>Find by Hierarchy (Nested)</strong>
-        <small>Finds a Company, then finds a Developer descendant, then finds that Developer's descendant named
-          "Bob".</small>
-      </li>
-      <li class="query-item"
-        data-query='{"query": {"type":"Company", "name":"Data Corp", "$edge": {"age":{"$gte":38}}}}'>
-        <strong>Employees >= 38 in Data Corp</strong>
-        <small>Uses $edge to find employees in Data Corp who are 38 or older.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"tags":{"$in":["JavaScript"]}}}}'>
-        <strong>Employees with 'JavaScript' tag</strong>
-        <small>Uses $edge to find all employees who have "JavaScript" in their tags array.</small>
-      </li>
+    <div class="bench">
+        <aside class="catalogue">
+            <div class="catalogue-head">
+                <h1>Query operators</h1>
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+            </div>
 
-      <li class="query-item"
-        data-query='{"query": {"type":"Company", "$edge": {"$or": [{"role":"Designer"}, {"role":"QA Engineer"}]}}}'>
-        <strong>Descendants matching either role</strong>
-        <small>A logical operator inside $edge: the sub-query is a full query, so $or applies to the descendants
-          rather than to the starting point.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"type":"Contractor"}}}'>
-        <strong>No matching descendants</strong>
-        <small>The companies exist and are found, but nothing below them is a Contractor: a traversal that matches
-          nothing returns an empty result, never the starting node.</small>
-      </li>
-      <h3>Conditional Operators</h3>
-      <li class="query-item" data-query='{"query": {"name": {"$eq": "Alice"}}}'>
-        <strong>$eq: Name is "Alice"</strong>
-        <small>Finds the employee with the exact name "Alice".</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"age": {"$gte": 35}}}'>
-        <strong>$gte: Age >= 35</strong>
-        <small>Finds all employees aged 35 or older.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"age": {"$between": [30, 40]}}}'>
-        <strong>$between: Age between 30 and 40</strong>
-        <small>Finds employees whose age is between 30 and 40.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"level": {"$in": ["Senior", "Lead"]}}}'>
-        <strong>$in: Level is 'Senior' or 'Lead'</strong>
-        <small>Finds employees who are either 'Senior' or 'Lead'.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"email": {"$exists": true}}}'>
-        <strong>$exists: Has an email address</strong>
-        <small>Finds all employees who have an email property.</small>
-      </li>
+            <ul class="catalogue-list" id="queryList">
+                <li class="group">Graph traversal ($edge)</li>
+                <li class="query-item"
+                    data-query='{"query": {"type":"Company", "name":"Innovate Inc.", "$edge": {"type":"Employee"}}}'>
+                    <strong>All employees of a company</strong>
+                    <small>Finds Innovate Inc. and returns all its Employee descendants.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "isActive":true}}}'>
+                    <strong>All active developers</strong>
+                    <small>Two conditions in the sub-query: every descendant must match both.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"query": {"type":"Company", "$edge": {"role":"Developer", "$edge": {"name":"Bob"}}}}'>
+                    <strong>Nested traversal</strong>
+                    <small>A company, then a Developer descendant, then that developer's descendant named Bob.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"query": {"type":"Company", "name":"Data Corp", "$edge": {"age":{"$gte":38}}}}'>
+                    <strong>Employees 38 or older in Data Corp</strong>
+                    <small>The starting point is narrowed by name; the operator filters its descendants.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"tags":{"$in":["JavaScript"]}}}}'>
+                    <strong>Employees tagged JavaScript</strong>
+                    <small>$in against an array field, applied to the descendants.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"query": {"type":"Company", "$edge": {"$or": [{"role":"Designer"}, {"role":"QA Engineer"}]}}}'>
+                    <strong>Descendants matching either role</strong>
+                    <small>A logical operator inside $edge: the sub-query is a full query, so $or applies to the
+                        descendants rather than to the starting point.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"type":"Company", "$edge": {"type":"Contractor"}}}'>
+                    <strong>No matching descendants</strong>
+                    <small>The companies exist and are found, but nothing below them is a Contractor: a traversal that
+                        matches nothing returns an empty result, never the starting node.</small>
+                </li>
 
-      <h3>Logical Operators</h3>
-      <li class="query-item" data-query='{"query": {"$and": [{"role": "Developer"}, {"country": "USA"}]}}'>
-        <strong>$and: Is a Developer AND from the USA</strong>
-        <small>Finds employees who are both developers and from the USA.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"$or": [{"isActive": false}, {"age": {"$gt": 40}}]}}'>
-        <strong>$or: Is Inactive OR older than 40</strong>
-        <small>Finds employees who are inactive OR are older than 40.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"country": {"$not": {"$eq": "USA"}}}}'>
-        <strong>$not: Country is NOT USA</strong>
-        <small>Finds all employees who are not from the USA.</small>
-      </li>
+                <li class="group">Conditional operators</li>
+                <li class="query-item" data-query='{"query": {"name": {"$eq": "Alice"}}}'>
+                    <strong>$eq — name is "Alice"</strong>
+                    <small>Finds the employee with that exact name.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"age": {"$gte": 35}}}'>
+                    <strong>$gte — age 35 or older</strong>
+                    <small>Also $gt, $lt and $lte, with the same shape.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"age": {"$between": [30, 40]}}}'>
+                    <strong>$between — age from 30 to 40</strong>
+                    <small>Both ends included, given as a two-element array.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"level": {"$in": ["Senior", "Lead"]}}}'>
+                    <strong>$in — level is Senior or Lead</strong>
+                    <small>Matches a field against a list of accepted values.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"email": {"$exists": true}}}'>
+                    <strong>$exists — has an email address</strong>
+                    <small>Asks whether the field is there at all, whatever its value.</small>
+                </li>
 
-      <h3>Text Search Operators</h3>
-      <li class="query-item" data-query='{"query": {"name": {"$regex": "^B"}}}'>
-        <strong>$regex: Name starts with "B"</strong>
-        <small>Uses a regular expression to find names starting with 'B'.</small>
-      </li>
-      <li class="query-item" data-query='{"query": {"name": {"$regex": "an"}}}'>
-        <strong>$regex: Name contains "an"</strong>
-        <small>Finds names containing the substring "an".</small>
-      </li>
-      <h3>Search using (NL Query Prompt)</h3>
-      <li class="query-item"
-        data-query='{"prompt": "Finds a Company, then finds a Developer descendant, then finds that Developers descendant named Bob."}'>
-        <strong>Find by Hierarchy</strong>
-        <small>Finds a Company, then finds a Developer descendant, then finds that Developer's descendant named
-          "Bob".</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Finds a Company, then finds descendant named Bob"}'>
-        <strong>Company → descendant named Bob</strong>
-        <small>Company → descendant named "Bob" (sin especificar type/role).</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Finds only Companies"}'>
-        <strong>Finds only Companies</strong>
-        <small>Finds all Companies.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "finds descendant Developers"}'>
-        <strong>finds descendant Developers</strong>
-        <small>finds descendant Developers.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Get posts order desc by id limit 3"}'>
-        <strong>Get posts order desc by id limit 3</strong>
-        <small>Get posts order desc by id limit 3</small>
-      </li>
+                <li class="group">Logical operators</li>
+                <li class="query-item" data-query='{"query": {"$and": [{"role": "Developer"}, {"country": "USA"}]}}'>
+                    <strong>$and — developer and from the USA</strong>
+                    <small>Every clause must match.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"$or": [{"isActive": false}, {"age": {"$gt": 40}}]}}'>
+                    <strong>$or — inactive or older than 40</strong>
+                    <small>Any clause matching is enough.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"country": {"$not": {"$eq": "USA"}}}}'>
+                    <strong>$not — country is not the USA</strong>
+                    <small>Wraps another operator and inverts it.</small>
+                </li>
 
-      <!-- Added NLQ prompts to showcase $edge, $and/$or, order/limit, starts with, between, exists -->
-      <li class="query-item" data-query='{"prompt": "Find a Company, then a descendant of type Employee with role Developer, then a descendant named Bob limit 5 order desc by id"}'>
-        <strong>Nested $edge with type + role + name</strong>
-        <small>Company → Employee(role=Developer) → descendant named Bob, ordered desc by id, limit 5.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find a Company, then a descendant named Bob"}'>
-        <strong>$edge with unnamed type</strong>
-        <small>Company → descendant named Bob (sin especificar type/role).</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose role is Developer or role is Designer and country is USA"}'>
-        <strong>$or + $and (roles OR) AND country</strong>
-        <small>role is Developer OR role is Designer, AND country is USA.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose role in Developer, Designer"}'>
-        <strong>In-list: role in Developer, Designer</strong>
-        <small>role in Developer, Designer (usa $in).</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose name starts with B order asc by name limit 10"}'>
-        <strong>Starts with + order asc + limit</strong>
-        <small>name starts with B, order asc by name, limit 10.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose age between 30 and 40 order asc by age limit 5"}'>
-        <strong>Between age 30–40 + sort/limit</strong>
-        <small>age between 30 and 40, order asc by age, limit 5.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find a Company, then a descendant of type Employee whose tags includes JavaScript"}'>
-        <strong>$edge + includes</strong>
-        <small>Company → Employee with tags includes JavaScript.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose country is not USA"}'>
-        <strong>Not equals</strong>
-        <small>country is not USA.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find a Company, then a descendant of type Employee with level Senior"}'>
-        <strong>Equality in $edge: level Senior</strong>
-        <small>Company → Employee with level Senior.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose name ends with son order asc by name limit 5"}'>
-        <strong>Ends with + sort/limit</strong>
-        <small>name ends with "son", order asc by name, limit 5.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose name like \"J%\""}'>
-        <strong>Like operator</strong>
-        <small>name like "J%".</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Full text search \"Developer\""}'>
-        <strong>Text search</strong>
-        <small>Full text search "Developer".</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Full text search \"developer\""}'>
-        <strong>Text search (case-insensitive)</strong>
-        <small>Full text search "developer" (case-insensitive).</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Full text search \"JavaScript\""}'>
-        <strong>Text search (tags)</strong>
-        <small>Matches tags via $in when applicable.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Full text search JavaScript"}'>
-        <strong>Text search (unquoted single word)</strong>
-        <small>Same behavior as quoted when single-word term.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Find employees whose hireDate between 2020-01-01 and 2020-12-31 order asc by hireDate limit 5"}'>
-        <strong>Between dates + sort/limit</strong>
-        <small>hireDate between 2020-01-01 and 2020-12-31, order asc by hireDate, limit 5.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Get employees order asc by name limit 2"}'>
-        <strong>List: first 2 employees by name</strong>
-        <small>order asc by name, limit 2.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Get employees order desc by name limit 5"}'>
-        <strong>List: last 5 employees by name</strong>
-        <small>order desc by name, limit 5.</small>
-      </li>
-      <li class="query-item" data-query='{"prompt": "Finds only Employees"}'>
-        <strong>Finds only Employees</strong>
-        <small>Find all Employees.</small>
-      </li>
+                <li class="group">Text search</li>
+                <li class="query-item" data-query='{"query": {"name": {"$regex": "^B"}}}'>
+                    <strong>$regex — name starts with B</strong>
+                    <small>A regular expression, anchored with ^.</small>
+                </li>
+                <li class="query-item" data-query='{"query": {"name": {"$regex": "an"}}}'>
+                    <strong>$regex — name contains "an"</strong>
+                    <small>Unanchored, so it matches anywhere in the value.</small>
+                </li>
 
-      
-    </ul>
-  </div>
+                <li class="group">Natural language (nlq module)</li>
+                <li class="query-item"
+                    data-query='{"prompt": "Finds a Company, then finds a Developer descendant, then finds that Developers descendant named Bob."}'>
+                    <strong>Nested traversal, in English</strong>
+                    <small>The same query as "Nested traversal" above, written as a sentence.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Finds a Company, then finds descendant named Bob"}'>
+                    <strong>Company → descendant named Bob</strong>
+                    <small>Without naming a type or a role for the descendant.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Finds only Companies"}'>
+                    <strong>Finds only companies</strong>
+                    <small>The simplest prompt there is: one type, no filters.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "finds descendant Developers"}'>
+                    <strong>Descendant developers</strong>
+                    <small>A traversal with no explicit starting point.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find a Company, then a descendant of type Employee with role Developer, then a descendant named Bob limit 5 order desc by id"}'>
+                    <strong>Nested traversal with order and limit</strong>
+                    <small>Type, role, name, ordering and a ceiling — all in one sentence.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find employees whose role is Developer or role is Designer and country is USA"}'>
+                    <strong>$or and $and, in English</strong>
+                    <small>Developer or Designer, and from the USA.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Find employees whose role in Developer, Designer"}'>
+                    <strong>A list of accepted values</strong>
+                    <small>Parses to $in.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find employees whose name starts with B order asc by name limit 10"}'>
+                    <strong>Starts with, ordered and capped</strong>
+                    <small>Name starts with B, ascending by name, first ten.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find employees whose name ends with son order asc by name limit 5"}'>
+                    <strong>Ends with</strong>
+                    <small>The mirror of the previous one.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Find employees whose name like \"J%\""}'>
+                    <strong>SQL-style like</strong>
+                    <small>Recognised too: name like "J%".</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find employees whose age between 30 and 40 order asc by age limit 5"}'>
+                    <strong>Between, ordered and capped</strong>
+                    <small>Age from 30 to 40, ascending, first five.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find employees whose hireDate between 2020-01-01 and 2020-12-31 order asc by hireDate limit 5"}'>
+                    <strong>Between two dates</strong>
+                    <small>ISO dates in a range, ordered by the same field.</small>
+                </li>
+                <li class="query-item"
+                    data-query='{"prompt": "Find a Company, then a descendant of type Employee whose tags includes JavaScript"}'>
+                    <strong>Traversal into an array field</strong>
+                    <small>"includes" reaches inside the tags array.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Find employees whose country is not USA"}'>
+                    <strong>Negation</strong>
+                    <small>Parses to $not.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Full text search \"Developer\""}'>
+                    <strong>Full text search</strong>
+                    <small>Across the fields of every node, rather than one named field.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Full text search \"developer\""}'>
+                    <strong>Full text search, lowercase</strong>
+                    <small>Same result: the search is case-insensitive.</small>
+                </li>
+                <li class="query-item" data-query='{"prompt": "Get employees order asc by name limit 2"}'>
+                    <strong>First two employees by name</strong>
+                    <small>Ordering and limit with no filter at all.</small>
+                </li>
+            </ul>
 
-  <div class="main-content">
-    <div class="controls">
-      <button id="resetButton">Reset & Re-seed Database</button>
+            <div class="catalogue-foot">
+                <button id="reset-btn" class="danger">Reset &amp; re-seed data</button>
+            </div>
+        </aside>
+
+        <section class="workbench">
+            <div class="query-bar">
+                <textarea id="query-display" spellcheck="false" aria-label="Query"
+                    placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
+                <div class="query-actions">
+                    <button id="run-btn" class="primary">Run</button>
+                </div>
+            </div>
+
+            <div class="results">
+                <div id="empty-view" class="empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M20 20l-3.5-3.5" />
+                    </svg>
+                    <p id="empty-message">Pick a query to see what it returns.</p>
+                </div>
+                <div class="results-grid" id="results"></div>
+            </div>
+
+            <footer class="statusbar">
+                <span id="status">Starting…</span>
+                <span class="hint"><kbd>Enter</kbd> runs · <kbd>Shift</kbd>+<kbd>Enter</kbd> newline</span>
+            </footer>
+        </section>
     </div>
-    <textarea class="query-display" id="queryDisplay"
-      placeholder="Select a query from the left, or edit your own and press Enter..."></textarea>
-    <div class="results-panel">
-      <div class="results-grid" id="results"></div>
-    </div>
-    <div class="status-bar" id="statusBar">Ready</div>
-  </div>
 
-  <script type="module">
-    import { gdb } from "../dist/index.js";
+    <!-- Confirmation before anything irreversible. Never window.confirm: it
+         blocks the thread, and a blocked thread cannot repaint. -->
+    <dialog id="confirm-modal">
+        <h2 class="modal-title" id="confirm-title"></h2>
+        <p class="modal-hint" id="confirm-text"></p>
+        <form method="dialog" class="modal-actions">
+            <button value="ok" id="confirm-ok" class="danger"></button>
+            <button value="cancel" class="ghost">Cancel</button>
+        </form>
+    </dialog>
 
-    // Initialize GenosDB with AI module enabled
-    const db = await gdb('nl-sandbox-db', { rtc: false, nlq: true });
-    const sm = db.sm; // Security manager (sm)
+    <script type="module">
+        /**
+         * The query language, one operator at a time.
+         *
+         * A seeded graph of companies and employees, and a catalogue of queries
+         * that run against it. Every preset lands in the editable field before
+         * it runs, so an example is also a starting point: change a value, press
+         * Enter, and see what moves.
+         *
+         * What to read here, and where:
+         *   · db.map({ query })   — a filter object; returns { results }
+         *   · db.map({ prompt })  — the same call, given a sentence in English,
+         *                           parsed by the `nlq` module enabled below
+         *   · db.link(from, to)   — the edges the $edge presets walk
+         *
+         * No `rtc`: this page seeds its own graph and asks questions of it.
+         * Nothing here is about the transport, and peers would only replay the
+         * nodes a re-seed just deleted.
+         */
+        import { gdb } from "../dist/index.js"
 
-    // Check if DB is empty and seed if needed
-    const { results } = await db.map({ $limit: 1 });
-
-    const resetButton = document.getElementById('resetButton');
-    const queryDisplay = document.getElementById('queryDisplay');
-    const resultsDiv = document.getElementById('results');
-    const statusBar = document.getElementById('statusBar');
-    const resultsPanel = document.querySelector('.results-panel');
-
-    statusBar.textContent = 'Checking database status...';
-
-    if (results.length === 0) {
-      await seedData();
-    } else {
-      statusBar.textContent = 'Existing data found. Ready to query.';
-    }
-
-
-    async function seedData() {
-      statusBar.textContent = 'Seeding data...';
-      await db.clear();
-
-      // Create sample companies
-      const company1Id = await db.put({ type: 'Company', name: 'Innovate Inc.', country: 'USA' });
-      const company2Id = await db.put({ type: 'Company', name: 'Data Corp', country: 'Canada' });
-
-      // Create sample employees
-      const emp1Id = await db.put({ type: 'Employee', name: 'Alice', role: 'Developer', level: 'Senior', age: 32, country: 'USA', isActive: true, hireDate: '2020-01-15T00:00:00Z', tags: ['JavaScript', 'React', 'CSS'] });
-      const emp2Id = await db.put({ type: 'Employee', name: 'Bob', role: 'Developer', level: 'Mid', age: 28, country: 'USA', isActive: true, hireDate: '2021-06-20T00:00:00Z', tags: ['JavaScript', 'Node.js'] });
-      const emp3Id = await db.put({ type: 'Employee', name: 'Charlie', role: 'Designer', level: 'Senior', age: 35, country: 'Canada', isActive: false, hireDate: '2019-03-10T00:00:00Z', tags: ['Figma', 'UX'] });
-      const emp4Id = await db.put({ type: 'Employee', name: 'Diana', role: 'Developer', level: 'Senior', age: 41, country: 'USA', isActive: true, hireDate: '2018-11-01T00:00:00Z', tags: ['Java', 'Spring'], email: 'diana@example.com' });
-      const emp5Id = await db.put({ type: 'Employee', name: 'Frank', role: 'Data Scientist', level: 'Lead', age: 38, country: 'Canada', isActive: true, hireDate: '2019-08-22T00:00:00Z', tags: ['Python', 'AI'], email: 'frank@example.com' });
-      const emp6Id = await db.put({ type: 'Employee', name: 'Grace', role: 'Product Manager', level: 'Senior', age: 39, country: 'USA', isActive: true, hireDate: '2017-05-12T00:00:00Z', tags: ['Agile', 'Roadmap'] });
-      const emp7Id = await db.put({ type: 'Employee', name: 'Henry', role: 'Developer', level: 'Junior', age: 24, country: 'USA', isActive: true, hireDate: '2023-01-30T00:00:00Z', tags: ['JavaScript', 'HTML'] });
-      const emp8Id = await db.put({ type: 'Employee', name: 'Ivy', role: 'QA Engineer', level: 'Mid', age: 29, country: 'Canada', isActive: true, hireDate: '2021-09-01T00:00:00Z', tags: ['Cypress', 'Testing'] });
-      const emp9Id = await db.put({ type: 'Employee', name: 'Jack', role: 'DevOps', level: 'Senior', age: 45, country: 'USA', isActive: false, hireDate: '2016-07-18T00:00:00Z', tags: ['AWS', 'Docker'], email: 'jack@example.com' });
-      const emp10Id = await db.put({ type: 'Employee', name: 'Karen', role: 'Data Analyst', level: 'Mid', age: 31, country: 'Canada', isActive: true, hireDate: '2022-02-14T00:00:00Z', tags: ['SQL', 'Tableau'] });
-      const emp11Id = await db.put({ type: 'Employee', name: 'Leo', role: 'Developer', level: 'Lead', age: 36, country: 'USA', isActive: true, hireDate: '2018-10-10T00:00:00Z', tags: ['JavaScript', 'Architecture'] });
-      const emp12Id = await db.put({ type: 'Employee', name: 'Mona', role: 'HR', level: 'Manager', age: 42, country: 'Canada', isActive: true, hireDate: '2017-12-01T00:00:00Z', tags: ['Recruiting', 'People Ops'], email: 'mona@example.com' });
-
-      // Extra employees to enrich NLQ examples (do not alter existing ones)
-      const emp13Id = await db.put({ type: 'Employee', name: 'Jackson', role: 'Developer', level: 'Mid', age: 29, country: 'USA', isActive: true, hireDate: '2022-07-15T00:00:00Z', tags: ['JavaScript', 'Node.js'] });
-      const emp14Id = await db.put({ type: 'Employee', name: 'Emerson', role: 'QA Engineer', level: 'Senior', age: 37, country: 'Canada', isActive: true, hireDate: '2019-04-21T00:00:00Z', tags: ['Testing', 'Automation'] });
-      const emp15Id = await db.put({ type: 'Employee', name: 'Allison', role: 'Designer', level: 'Mid', age: 30, country: 'USA', isActive: true, hireDate: '2020-09-09T00:00:00Z', tags: ['Figma', 'UX'] });
-
-      // Link employees to companies
-      await db.link(company1Id, emp1Id);
-      await db.link(company1Id, emp2Id);
-      await db.link(company1Id, emp4Id);
-      await db.link(company2Id, emp3Id);
-      await db.link(company2Id, emp5Id);
-      await db.link(company1Id, emp7Id);
-      await db.link(emp1Id, emp2Id);
-
-      // Link extra employees
-      await db.link(company1Id, emp13Id);
-      await db.link(company2Id, emp14Id);
-      await db.link(company1Id, emp15Id);
-
-      statusBar.textContent = 'Data seeded successfully.';
-      console.log('Sample data seeded.');
-    }
-
-    async function executeQuery(queryObj) {
-      // Log the query object
-      console.log('Executing query:', queryObj);
-      resultsDiv.innerHTML = '';
-      statusBar.textContent = 'Executing query...';
-
-      try {
-        const { results } = await db.map(queryObj);
-        resultsPanel.scrollTop = 0;
-        if (results.length > 0) {
-          results.forEach(result => {
-            const item = document.createElement('div');
-            item.className = 'result-item';
-            const valueContent = JSON.stringify(result.value, null, 2);
-            item.innerHTML = `<pre>${valueContent}</pre>`;
-            resultsDiv.appendChild(item);
-          });
-          statusBar.textContent = `Query completed: ${results.length} results found`;
-          const lastElement = resultsDiv.lastElementChild;
-          if (lastElement) {
-            lastElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }
-        } else {
-          resultsDiv.innerHTML = '<p style="text-align:center; color: #6c757d;">No results found.</p>';
-          statusBar.textContent = 'No results found';
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            list: $("queryList"),
+            query: $("query-display"),
+            run: $("run-btn"),
+            reset: $("reset-btn"),
+            results: $("results"),
+            emptyView: $("empty-view"),
+            emptyMessage: $("empty-message"),
+            status: $("status"),
+            confirmModal: $("confirm-modal"),
+            confirmTitle: $("confirm-title"),
+            confirmText: $("confirm-text"),
+            confirmOk: $("confirm-ok")
         }
-        console.log(`Query results:`, results);
-      } catch (error) {
-        statusBar.textContent = `Error executing query: ${error.message}`;
-        console.error(`Query Error:`, error);
-      }
-    }
 
-    resetButton.addEventListener('click', () => {
-      if (confirm('Are you sure you want to clear and re-seed the database?')) {
-        seedData();
-      }
-    });
-
-    document.getElementById('queryList').addEventListener('click', async (event) => {
-      const queryItem = event.target.closest('.query-item');
-      if (queryItem) {
-        document.querySelectorAll('.query-item').forEach(item => item.classList.remove('active'));
-        queryItem.classList.add('active');
-        const queryStr = queryItem.getAttribute('data-query');
-        queryDisplay.value = JSON.stringify(JSON.parse(queryStr), null, 2);
-        await executeQuery(JSON.parse(queryStr));
-      }
-    });
-
-    queryDisplay.addEventListener('keydown', async (event) => {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        try {
-          const query = JSON.parse(queryDisplay.value);
-          await executeQuery(query);
-        } catch (error) {
-          statusBar.textContent = 'Invalid JSON format.';
-          alert('Invalid JSON format. Please correct the query.');
+        /** The status bar reports; `tone` only colours what it already says. */
+        const setStatus = (message, tone = "") => {
+            el.status.textContent = message
+            el.status.className = tone
         }
-      }
-    });
 
-  </script>
+        const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+            el.confirmTitle.textContent = title
+            el.confirmText.textContent = body
+            el.confirmOk.textContent = confirmLabel
+            el.confirmModal.addEventListener(
+                "close",
+                () => resolve(el.confirmModal.returnValue === "ok"),
+                { once: true } // Esc and the backdrop both land here, as a "no"
+            )
+            el.confirmModal.showModal()
+        })
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.operatorsTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.operatorsTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+
+        // `nlq: true` is what makes db.map({ prompt }) work. Without it the
+        // natural-language presets below throw, and the JSON ones still run.
+        const db = await gdb("genosdb-query-operators", { rtc: false, nlq: true })
+
+        // ── Data ────────────────────────────────────────────────────
+        const seedData = async () => {
+            setStatus("Seeding…")
+            await db.clear()
+
+            const innovate = await db.put({ type: "Company", name: "Innovate Inc.", country: "USA" })
+            const dataCorp = await db.put({ type: "Company", name: "Data Corp", country: "Canada" })
+
+            const employees = await Promise.all([
+                { name: "Alice", role: "Developer", level: "Senior", age: 32, country: "USA", isActive: true, hireDate: "2020-01-15T00:00:00Z", tags: ["JavaScript", "React", "CSS"] },
+                { name: "Bob", role: "Developer", level: "Mid", age: 28, country: "USA", isActive: true, hireDate: "2021-06-20T00:00:00Z", tags: ["JavaScript", "Node.js"] },
+                { name: "Charlie", role: "Designer", level: "Senior", age: 35, country: "Canada", isActive: false, hireDate: "2019-03-10T00:00:00Z", tags: ["Figma", "UX"] },
+                { name: "Diana", role: "Developer", level: "Senior", age: 41, country: "USA", isActive: true, hireDate: "2018-11-01T00:00:00Z", tags: ["Java", "Spring"], email: "diana@example.com" },
+                { name: "Frank", role: "Data Scientist", level: "Lead", age: 38, country: "Canada", isActive: true, hireDate: "2019-08-22T00:00:00Z", tags: ["Python", "AI"], email: "frank@example.com" },
+                { name: "Grace", role: "Product Manager", level: "Senior", age: 39, country: "USA", isActive: true, hireDate: "2017-05-12T00:00:00Z", tags: ["Agile", "Roadmap"] },
+                { name: "Henry", role: "Developer", level: "Junior", age: 24, country: "USA", isActive: true, hireDate: "2023-01-30T00:00:00Z", tags: ["JavaScript", "HTML"] },
+                { name: "Ivy", role: "QA Engineer", level: "Mid", age: 29, country: "Canada", isActive: true, hireDate: "2021-09-01T00:00:00Z", tags: ["Cypress", "Testing"] },
+                { name: "Jack", role: "DevOps", level: "Senior", age: 45, country: "USA", isActive: false, hireDate: "2016-07-18T00:00:00Z", tags: ["AWS", "Docker"], email: "jack@example.com" },
+                { name: "Karen", role: "Data Analyst", level: "Mid", age: 31, country: "Canada", isActive: true, hireDate: "2022-02-14T00:00:00Z", tags: ["SQL", "Tableau"] },
+                { name: "Leo", role: "Developer", level: "Lead", age: 36, country: "USA", isActive: true, hireDate: "2018-10-10T00:00:00Z", tags: ["JavaScript", "Architecture"] },
+                { name: "Mona", role: "HR", level: "Manager", age: 42, country: "Canada", isActive: true, hireDate: "2017-12-01T00:00:00Z", tags: ["Recruiting", "People Ops"], email: "mona@example.com" },
+                { name: "Jackson", role: "Developer", level: "Mid", age: 29, country: "USA", isActive: true, hireDate: "2022-07-15T00:00:00Z", tags: ["JavaScript", "Node.js"] },
+                { name: "Emerson", role: "QA Engineer", level: "Senior", age: 37, country: "Canada", isActive: true, hireDate: "2019-04-21T00:00:00Z", tags: ["Testing", "Automation"] },
+                { name: "Allison", role: "Designer", level: "Mid", age: 30, country: "USA", isActive: true, hireDate: "2020-09-09T00:00:00Z", tags: ["Figma", "UX"] }
+            ].map((employee) => db.put({ type: "Employee", ...employee })))
+
+            const [alice, bob, charlie, diana, frank, , henry, , , , , , jackson, emerson, allison] = employees
+
+            // Not every employee hangs off a company: the ones left unlinked are
+            // what makes a $edge preset differ from the same filter without it.
+            for (const [from, to] of [
+                [innovate, alice], [innovate, bob], [innovate, diana], [innovate, henry],
+                [innovate, jackson], [innovate, allison],
+                [dataCorp, charlie], [dataCorp, frank], [dataCorp, emerson],
+                [alice, bob] // a second level, for the nested traversal presets
+            ]) await db.link(from, to)
+
+            setStatus(`Seeded ${employees.length + 2} nodes. Ready.`, "ok")
+        }
+
+        // ── Running ─────────────────────────────────────────────────
+        const renderResults = (results) => {
+            // The panel is never blank: with nothing to show it goes back to the
+            // centred line, which now reports the empty result instead of the
+            // invitation. A query that matched nothing is an answer.
+            el.emptyView.classList.toggle("hidden", results.length > 0)
+            el.emptyMessage.textContent = results.length
+                ? ""
+                : "No node matches this query."
+
+            // textContent, not innerHTML: a node's value is data, and in a P2P
+            // app it can have been written by a peer.
+            el.results.replaceChildren(...results.map(({ value }) => {
+                const item = document.createElement("div")
+                item.className = "result-item"
+                const body = document.createElement("pre")
+                body.textContent = JSON.stringify(value, null, 2)
+                item.append(body)
+                return item
+            }))
+        }
+
+        const executeQuery = async (queryObj) => {
+            setStatus("Running…")
+            try {
+                const started = performance.now()
+                const { results } = await db.map(queryObj)
+                const elapsed = (performance.now() - started).toFixed(2)
+
+                renderResults(results)
+                el.results.parentElement.scrollTop = 0
+
+                setStatus(
+                    results.length
+                        ? `${results.length} ${results.length === 1 ? "node" : "nodes"} · ${elapsed} ms`
+                        : `No results · ${elapsed} ms`,
+                    results.length ? "ok" : ""
+                )
+
+                // The page states the answer; the console carries whole nodes, so
+                // their shape — id, value, edges, timestamp — can be inspected.
+                console.log(`Query — ${results.length} results in ${elapsed} ms`, queryObj, results)
+            } catch (error) {
+                setStatus(error.message, "error")
+                console.error("Query error:", error)
+            }
+        }
+
+        /** Parses the field, marking it rather than interrupting with a modal. */
+        const runFromField = async () => {
+            try {
+                const query = JSON.parse(el.query.value)
+                el.query.classList.remove("invalid")
+                await executeQuery(query)
+            } catch {
+                el.query.classList.add("invalid")
+                setStatus("Invalid JSON — the field is not a query object.", "error")
+            }
+        }
+
+        el.list.addEventListener("click", async (event) => {
+            const item = event.target.closest(".query-item")
+            if (!item) return
+
+            el.list.querySelector(".query-item.active")?.classList.remove("active")
+            item.classList.add("active")
+
+            // The preset lands in the field first: what ran is on screen, and
+            // editing it is the next gesture rather than a fresh start.
+            const query = JSON.parse(item.dataset.query)
+            el.query.value = JSON.stringify(query, null, 2)
+            el.query.classList.remove("invalid")
+            await executeQuery(query)
+        })
+
+        el.run.addEventListener("click", runFromField)
+
+        el.query.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" || event.shiftKey) return
+            event.preventDefault() // Enter runs; Shift+Enter is a newline
+            runFromField()
+        })
+
+        el.reset.addEventListener("click", async () => {
+            const confirmed = await confirmAction({
+                title: "Re-seed the graph?",
+                body: "Every node is deleted and the sample companies and employees are written again.",
+                confirmLabel: "Reset data"
+            })
+            if (confirmed) await seedData()
+        })
+
+        // Seed only an empty graph: a reload should not throw away a graph the
+        // reader has been editing. The button above is how you ask for that.
+        const { results: existing } = await db.map({ $limit: 1 })
+        if (existing.length) setStatus("Existing data found. Ready.")
+        else await seedData()
+    </script>
 </body>
 
 </html>
