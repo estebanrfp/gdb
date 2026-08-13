@@ -83,7 +83,10 @@
             height: 100dvh; /* the mobile address bar is not part of the viewport */
             overflow: hidden;
             font: 14px/1.5 var(--font);
-            background: var(--bg-primary);
+            /* One surface for the whole page. A darker content area behind
+               lighter bands reads as a well, and the bands are already told
+               apart by their borders. */
+            background: var(--bg-secondary);
             color: var(--text-primary);
         }
 
@@ -108,7 +111,6 @@
             gap: var(--space-4);
             min-height: 48px;
             padding: var(--space-2) var(--space-5);
-            background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-subtle);
         }
 
@@ -123,11 +125,24 @@
             letter-spacing: -.01em;
         }
 
-        .brand .me { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
+        .topbar-end { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 
-        .topbar-end { display: flex; align-items: center; gap: var(--space-3); }
+        /* Who you are sits with the session controls on the right, the way every
+           GenosDB app puts it — the left of the bar is the app's name. */
+        .me {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
 
-        .peers { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; }
+        .me:empty { display: none; }
+
+        /* State of the network, bottom right — §5.0 ④. */
+        .peers { font-family: var(--mono); white-space: nowrap; }
 
         .body {
             display: grid;
@@ -141,7 +156,6 @@
             flex-direction: column;
             min-width: 0;
             min-height: 0;
-            background: var(--bg-secondary);
             border-right: 1px solid var(--border-subtle);
         }
 
@@ -197,8 +211,19 @@
         .role-admin { color: var(--violet); }
         .role-superadmin { background: var(--text-primary); color: var(--bg-primary); }
 
-        .sidebar-foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); }
-        .sidebar-foot button { width: 100%; }
+        /* Same 48px as the status bar beside it, so the two rules meet
+           across the divide instead of missing each other by six pixels. */
+        .sidebar-foot {
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            padding: var(--space-2) var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+        }
+        /* Chrome-sized, like every button that lives in a band: at its default
+           padding it is 37px tall, which pushes the foot past 48 and leaves its
+           rule two pixels off the status bar's. */
+        .sidebar-foot button { width: 100%; padding: 5px var(--space-3); }
 
         /* ── Content ────────────────────────────────────────────── */
         .content {
@@ -287,7 +312,7 @@
             transform: translate(-50%, -50%);
             border-top: 1px solid var(--border-strong);
             border-bottom: 1px solid var(--border-strong);
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
         }
 
         .splitter:hover::after,
@@ -316,19 +341,15 @@
             gap: var(--space-4);
             min-height: 48px;
             padding: var(--space-2) var(--space-5);
-            background: var(--bg-secondary);
             border-top: 1px solid var(--border-subtle);
             font-size: 12px;
             color: var(--text-tertiary);
         }
 
-        #status { font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        #status.ok { color: var(--ok); }
-        #status.error { color: var(--danger); }
 
         /* Not a decoration: same-origin tabs sync locally and would fake the
            result, so the warning stays on screen for as long as the demo runs. */
-        .warn-note { color: var(--warn); white-space: nowrap; }
+        .warn-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--warn); }
 
         /* ── Buttons and fields ─────────────────────────────────── */
         button {
@@ -355,6 +376,23 @@
 
         button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
         button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        /* The root of trust, told apart by a fill of its own rather than by the
+           accent — blue is the ordinary primary and would say "the usual choice",
+           which the superadmin is not. Not red: red reads as danger or refusal,
+           and signing grants is the one thing here that is meant to work. The
+           border matches the fill, so nothing is outlined. */
+        button.root {
+            background: var(--ok);
+            border-color: var(--ok);
+            color: var(--bg-primary);
+        }
+
+        button.root:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--ok) 88%, var(--text-primary));
+            border-color: transparent;
+            color: var(--bg-primary);
+        }
 
         input[type="text"], select {
             width: 100%;
@@ -389,6 +427,56 @@
         [data-pref="system"] .icon-sun { display: none; }
         [data-pref="system"] .icon-system { display: block; }
 
+        /* ── Toasts ─────────────────────────────────────────────── */
+        /* Events go here; the status bar keeps what is TRUE. Signing in is an
+           event — it happens once and stops being news. `popover` puts the stack
+           in the top layer, which is the only way to sit above a modal dialog's
+           ::backdrop. */
+        .toast-stack {
+            position: fixed;
+            inset: auto var(--space-5) var(--space-5) auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            width: min(340px, calc(100vw - var(--space-6)));
+            padding: 0;
+            margin: 0;
+            background: none;
+            border: none;
+            overflow: visible;
+        }
+
+        .toast {
+            display: flex;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-left: 3px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            font-size: 13px;
+            transition: opacity .25s, transform .25s;
+        }
+
+        .toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.success .toast-icon { color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.error .toast-icon { color: var(--danger); }
+        .toast.warning { border-left-color: var(--warn); }
+        .toast.warning .toast-icon { color: var(--warn); }
+
+        /* Older ones step back rather than stack equally loud. */
+        .toast:not(:last-child) { opacity: .6; }
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { transition: none; }
+        }
+
         /* ── The identity door ──────────────────────────────────── */
         /* No mnemonic field: this bench exists to test permissions quickly, and
            the identity lifecycle has its own example. Three public identities,
@@ -412,6 +500,17 @@
         .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
         .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
 
+        /* Only one button in the door carries a fill. The other two keep the
+           dialog's own surface and say what they are with a border, so the eye
+           lands on the root of trust instead of on three grey slabs. */
+        .modal-actions button:not(.root):not(.danger) { background: transparent; }
+
+        /* The dialog focuses its first control on open, and the browser draws a
+           ring around it — which reads as "this one is selected" before anyone
+           has chosen anything. The title takes the focus instead; Tab still
+           reaches the buttons and still rings them. */
+        .modal-title[tabindex] { outline: none; }
+
         .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
 
         @media (max-width: 900px) {
@@ -428,10 +527,10 @@
 
     <div class="layout">
         <header class="topbar">
-            <h1 class="brand">Permissions <span class="me" id="me"></span></h1>
+            <h1 class="brand">Permissions</h1>
 
             <div class="topbar-end">
-                <span class="peers" id="peers">0 peers</span>
+                <span class="me" id="me"></span>
 
                 <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
                     <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -513,8 +612,8 @@
                 <div class="console" id="console"></div>
 
                 <footer class="statusbar">
-                    <span id="status">Starting…</span>
                     <span class="warn-note">Use separate browsers, not tabs — tabs sync locally and skip the mesh</span>
+                    <span class="peers" id="peers">0 peers</span>
                 </footer>
             </section>
         </div>
@@ -523,7 +622,7 @@
     <!-- The door. Three public identities, one click each: this bench is for
          testing permissions, and the identity lifecycle lives in webauthn.html. -->
     <dialog id="identity-modal">
-        <h2 class="modal-title">Pick an identity</h2>
+        <h2 class="modal-title" tabindex="-1" autofocus>Pick an identity</h2>
         <p class="modal-hint">
             Run this in <b>three separate browsers or profiles</b> — not tabs. Same-origin tabs sync locally
             through BroadcastChannel and skip the P2P mesh, so the propagation would not be real.
@@ -535,6 +634,8 @@
             Never do this in a real application.
         </p>
     </dialog>
+
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
     <!-- Confirmation before anything irreversible. Never window.confirm: it
          blocks the thread, and a blocked thread cannot repaint. -->
@@ -612,7 +713,7 @@
             governBody: $("govern-body"),
             splitter: $("splitter"),
             console: $("console"),
-            status: $("status"),
+            toasts: $("toasts"),
             identityModal: $("identity-modal"),
             identityActions: $("identity-actions"),
             confirmModal: $("confirm-modal"),
@@ -625,10 +726,39 @@
         const whoIs = (address) => IDENTITIES.find((identity) => eqAddr(identity.address, address))
         const nameOf = (address) => whoIs(address)?.name ?? db.sm.abbrAddr(address)
 
-        /** The status bar reports; `tone` only colours what it already says. */
-        const setStatus = (message, tone = "") => {
-            el.status.textContent = message
-            el.status.className = tone
+        /**
+         * A transient message.
+         *
+         * Events belong here, not in the status bar: that bar reports what is
+         * TRUE — the network, the warning — and "you signed in" stops being true
+         * the moment after it happens. Glyphs rather than emoji, so the icon
+         * inherits the text colour like every other mark in the interface.
+         */
+        const TOAST_ICONS = { info: "\u24d8", success: "\u2713", error: "\u2715", warning: "!" }
+
+        const toast = (message, kind = "info") => {
+            const item = document.createElement("div")
+            item.className = `toast ${kind}`
+
+            const icon = document.createElement("span")
+            icon.className = "toast-icon"
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+
+            const text = document.createElement("span")
+            text.className = "toast-text"
+            text.textContent = message
+
+            item.append(icon, text)
+            el.toasts.append(item)
+            el.toasts.showPopover?.()
+
+            setTimeout(() => {
+                item.classList.add("out")
+                item.addEventListener("transitionend", () => {
+                    item.remove()
+                    if (!el.toasts.children.length) el.toasts.hidePopover?.()
+                }, { once: true })
+            }, 3200)
         }
 
         /** One line in the console, which is where a grant is seen arriving. */
@@ -815,7 +945,7 @@
                 el.hero.classList.add("changed")
                 el.heroNote.textContent = `${lastRole} → ${role} — a signed grant just reached you through the mesh.`
                 log(`Your role changed: ${lastRole} → ${role}`, "ok")
-                setStatus(`Role updated → ${role}`, "ok")
+                toast(`Role updated → ${role}`, "success")
             }
             lastRole = role
         }
@@ -885,7 +1015,7 @@
 
             assign.addEventListener("click", async () => {
                 const address = target.value.trim()
-                if (!address) return setStatus("Enter a target address.", "error")
+                if (!address) return toast("Enter a target address.", "error")
 
                 try {
                     // The gate first, then the act: executeWithPermission throws
@@ -893,10 +1023,10 @@
                     await db.sm.executeWithPermission("assignRole")
                     await db.sm.assignRole(address, select.value)
                     log(`Signed assignRole('${select.value}') → ${nameOf(address)} (target may be offline).`, "ok")
-                    setStatus(`Granted ${select.value} to ${nameOf(address)}.`, "ok")
+                    toast(`Granted ${select.value} to ${nameOf(address)}.`, "success")
                 } catch (error) {
                     log(`assignRole denied: ${error.message}`, "error")
-                    setStatus(`Denied: ${error.message}`, "error")
+                    toast(`Denied: ${error.message}`, "error")
                 }
             })
 
@@ -925,7 +1055,6 @@
             const superadmin = eqAddr(state.activeAddress, SUPERADMIN.address)
             renderGovern(superadmin)
             updatePeers()
-            setStatus(`Signed in as ${nameOf(state.activeAddress)}.`)
 
             unsubscribeRole?.()
             if (superadmin) {
@@ -944,13 +1073,13 @@
 
         for (const identity of IDENTITIES) {
             const button = document.createElement("button")
-            button.className = identity === SUPERADMIN ? "primary" : ""
+            button.className = identity === SUPERADMIN ? "root" : ""
             button.textContent = `Sign in as ${identity.name}`
             button.addEventListener("click", async () => {
                 try {
                     await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic)
                 } catch (error) {
-                    setStatus(error.message, "error")
+                    toast(error.message, "error")
                     log(`Login failed: ${error.message}`, "error")
                 }
             })
