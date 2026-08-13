@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenosDB — Write pressure and the sync protocol</title>
+    <title>GenosDB — Throughput and the sync protocol</title>
 
     <style>
         /* Dark, because this page is data and measurement rather than an
@@ -329,7 +329,7 @@
 
     <div class="layout">
         <header class="topbar">
-            <h1 class="brand">Write pressure</h1>
+            <h1 class="brand">Benchmark</h1>
 
             <div class="topbar-end">
                 <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
@@ -485,7 +485,11 @@
 
     <script type="module">
         /**
-         * Write pressure, and what the sync protocol does about it.
+         * Throughput, and what the sync protocol does about it.
+         *
+         * Not to be confused with todo-tester.html: that page GENERATES write
+         * pressure for another window to watch replicate. This one MEASURES —
+         * ops/s under the knobs, and the catch-up messages on the wire.
          *
          * Two instruments in one page. The first pushes as many writes as you
          * ask for and reports what the engine actually managed — ops/s measured

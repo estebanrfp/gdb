@@ -125,7 +125,7 @@ A live viewer of GenosDB's governance engine, which resolves each user's role by
 ### [GenosDB - Mesh Cells Reach Probe](https://estebanrfp.github.io/gdb/examples/mesh-cells-reach-probe.html)
 A minimal instrument for observing how peers partition into cells. Open it in several tabs — each is a peer; past 10 peers the mesh organizes into cells linked by elected bridges, and the panel reports how many peers land in each cell and who bridges them. Press **PING** to broadcast a `hello` that every peer answers with `world`, so **reach N/N** confirms the message still reaches every peer across the cells, with the coverage latency.
 
-### [GenosDB - Perf & Stress Test](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
+### [Benchmark — Throughput and the Sync Protocol](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
 A dedicated environment for benchmarking GenosDB under high-load scenarios: chunked mass insertions with honest metrics (**ops/s over pure write time**, fulfilled vs failed), realtime subscription counters, configurable `saveDelay` / `oplogSize` knobs, and a **Sync Protocol Observatory** that counts `sync` / `deltaSync` / `fullStateSync` messages live so you can watch the Hybrid Delta Protocol switch between delta and full-state catch-up across browsers.
 
 ### [Query Operators — The Catalogue](https://estebanrfp.github.io/gdb/examples/query-operators.html)
