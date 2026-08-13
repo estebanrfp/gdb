@@ -50,7 +50,7 @@ Results are the same as any operator-based query in GenosDB. NLQ does not modify
 
 ## Supported Language (Cheat‑Sheet)
 
-Below are the natural-language patterns that NLQ recognizes and how they map to GenosDB query objects. Examples here mirror the examples in the sandbox and the test suite.
+Below are the natural-language patterns that NLQ recognizes and how they map to GenosDB query objects. Examples here mirror the examples in the query playgrounds and the test suite.
 
 ### Types and Base Selection
 
@@ -142,7 +142,7 @@ Notes:
 
 ## End‑to‑End Examples
 
-These prompts are available in the sandbox and covered by tests:
+These prompts are available in the query playgrounds and covered by tests:
 
 - “Finds a Company, then finds descendant named Bob” → `{ type: 'Company', $edge: { name: 'Bob' } }`
 - “finds descendant Developers” → `{ $edge: { role: 'Developer' } }`
@@ -181,7 +181,8 @@ These prompts are available in the sandbox and covered by tests:
 
 ---
 
-## Sandbox
+## Playgrounds
 
-- Live example: https://estebanrfp.github.io/gdb/examples/sandbox.html
-- The sandbox includes all the prompts listed above and mirrors test coverage.
+- Prompts beside the operator catalogue: https://estebanrfp.github.io/gdb/examples/query-operators.html
+- Prompts on their own, over 50 posts loaded from a public API: https://estebanrfp.github.io/gdb/examples/query-natural-language.html
+- Between them they cover the prompts listed above and mirror test coverage.

@@ -131,11 +131,11 @@ A minimal instrument for observing how peers partition into cells. Open it in se
 ### [GenosDB - Perf & Stress Test](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
 A dedicated environment for benchmarking GenosDB under high-load scenarios: chunked mass insertions with honest metrics (**ops/s over pure write time**, fulfilled vs failed), realtime subscription counters, configurable `saveDelay` / `oplogSize` knobs, and a **Sync Protocol Observatory** that counts `sync` / `deltaSync` / `fullStateSync` messages live so you can watch the Hybrid Delta Protocol switch between delta and full-state catch-up across browsers.
 
-### [GenosDB - Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox.html)
-A testing environment to experiment with GDB Operators and Natural Language for Queries examples
+### [Query Operators — The Catalogue](https://estebanrfp.github.io/gdb/examples/query-operators.html)
+Every operator the query language has, each one a preset you can run against a seeded graph of companies and employees: `$edge` traversals (including one nested inside another), `$eq` / `$gte` / `$between` / `$in` / `$exists`, `$and` / `$or` / `$not`, `$regex`, and a set of natural-language prompts. Picking a preset drops it into an editable field before it runs, so every example is also a starting point.
 
-### [GenosDB - Geo Query Playground](https://estebanrfp.github.io/gdb/examples/sandbox-locations.html)
-An interactive playground for the **Geo module**: pick or edit `$near` / `$bbox` queries and watch the matching places render live on a Leaflet map of New York. Ideal for learning the documented geo query syntax.
+### [Geo Queries — The Shape of the Question](https://estebanrfp.github.io/gdb/examples/query-geo.html)
+The **Geo module** drawn rather than listed: `$near` is a circle of N kilometres and `$bbox` is a rectangle, so both are rendered over the map as a dashed outline with the matching places inside them. Run the one that matches nothing and the circle is still drawn — you can see exactly where you were looking. The last preset puts a `$regex` beside the geo clause, because a geo operator is one clause among others.
 
 ### [How Deep `$edge` Goes — Traversal Depth](https://estebanrfp.github.io/gdb/examples/traversal-depth.html)
 Two chains of 50 linked nodes, and a single `db.map()` that walks one of them end to end: `$edge` takes the filter you would have applied at each hop and pushes it into the traversal, so depth costs one query instead of one round trip per level. The second chain is never a starting point and never appears in the result — which is the part worth watching.
@@ -143,8 +143,8 @@ Two chains of 50 linked nodes, and a single `db.map()` that walks one of them en
 ### [Interactive Graph Playground](https://estebanrfp.github.io/gdb/examples/edges.html)
 A hands-on tour of the graph itself: add nodes, link them with `db.link(source, target)`, and traverse the result with the **`$edge` operator** — the query it opens with returns every tag on the posts Ana wrote, two hops away. Ships a seeded example graph (users → posts → tags) so the traversal queries have something to walk before you type anything.
 
-### [Natural Language Query Playground](https://estebanrfp.github.io/gdb/examples/nlquery.html)
-The **`nlq` module** (`gdb(name, { nlq: true })`) turning plain English into GenosDB queries: load 50 real posts from DummyJSON, then run prompts like *"Get posts id between 4, 10"* or *"posts whose title contains the word And"* and see the query and its results side by side. Prompts are editable, so it doubles as a way to learn what the module can and cannot parse.
+### [Queries Written in English](https://estebanrfp.github.io/gdb/examples/query-natural-language.html)
+The **`nlq` module** (`gdb(name, { nlq: true })`) answering `db.map({ prompt })` — *"Get posts id between 4, 10"*, *"Get posts order desc by views limit 5"*, *"Full text search 'fiction'"* — against 50 real posts loaded from a public API, so the prompts run over values nobody arranged to make them work. It is a local, regex-based parser rather than a model: no inference, no network. The field holds the whole call, editable, which is what the page teaches.
 
 ### [Cellular Mesh Graph (D3)](https://estebanrfp.github.io/gdb/examples/graph-p2p.html)
 The compact companion to the Mesh Network Monitor: a D3 force graph of the **real** peers in your room (`db.room`), coloured by cell, with bridge peers and cross-cell links styled from the engine's own cellular state. Open it in several tabs and watch the mesh partition as peers arrive. ~170 lines — the smallest complete reading of `rtc: { cells }`.

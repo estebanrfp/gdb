@@ -830,7 +830,7 @@ Three shapes live here, and picking the wrong one is the most common mistake in 
 | What it is | A lesson: explanation, one call, its result | A bench: you run something, look, adjust, run again | An instrument: it reports a process that changes on its own |
 | Shape | **Centred column**, page scrolls | **Two panels**, input left / output right, each scrolling on its own | **Full-bleed**, page does not scroll |
 | Width | The widest block that must be read intact: ~640px for prose, ~720px with code, ~440px for stat cards alone | ~380–440px for the input panel; the output takes the rest | The viewport |
-| Examples | `todolist` · `paste` · `singleNode` | `traversal-depth` · `nlquery` · `sandbox` | `todo-tester` · `mesh-cells-monitor-d3` · `graph-p2p` |
+| Examples | `todolist` · `paste` · `singleNode` | `traversal-depth` · `query-operators` · `query-natural-language` | `todo-tester` · `mesh-cells-monitor-d3` · `graph-p2p` |
 
 **The bench is the default for anything that tests.** Its point is not extra space, it is **simultaneity**: the lesson of a testbed is *"this input produces this output"*, and a single column puts the two halves of that sentence a scroll apart — you run the query, scroll down to read the answer, scroll back up to change something, and never see both at once. Side by side, the comparison is free and a long result never pushes the controls out of reach.
 
