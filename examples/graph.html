@@ -485,9 +485,6 @@
          */
         import { gdb } from "../dist/index.js"
 
-        /** A shape per type, so the kinds stay apart without spending a colour. */
-        const SHAPES = { User: "ellipse", Post: "round-rectangle", Tag: "diamond" }
-
         const DEFAULT_QUERY = {
             // The starting point is matched like any other node…
             type: "User",
@@ -608,16 +605,18 @@
         // ── The canvas ──────────────────────────────────────────────
         /**
          * Built from the same tokens as the rest of the page, so the graph is
-         * not a foreign object dropped into the layout. One accent, three
-         * shapes: colour is spent on the answer, not on the taxonomy.
+         * not a foreign object dropped into the layout. One shape and one
+         * accent: the subject is the network of connections, so nothing is
+         * spent on taxonomy — a node's type lives in the list, and colour is
+         * reserved for the answer.
          */
         const graphStyle = () => [
             {
                 selector: "node",
                 style: {
                     "label": "data(label)",
-                    "shape": "data(shape)",
-                    "width": 34, "height": 34,
+                    "shape": "ellipse",
+                    "width": 30, "height": 30,
                     "background-color": token("--bg-secondary"),
                     "border-width": 1.5,
                     "border-color": token("--border-strong"),
@@ -684,14 +683,22 @@
             cy.fit(undefined, 40)
         }).observe($("cy"))
 
+        /**
+         * cose measures repulsion in the hundreds of thousands — its default is
+         * 400000, so the 6000 this page used to pass meant "almost none" and
+         * every node landed in a pile. idealEdgeLength keeps linked nodes a
+         * label apart; the low gravity stops the mesh collapsing back to the
+         * centre once it has spread.
+         */
         const LAYOUT = {
             name: "cose",
             animate: false,
             fit: true,
-            padding: 40,
-            nodeRepulsion: 6000,
-            idealEdgeLength: 90,
-            gravity: 60,
+            padding: 48,
+            nodeRepulsion: 400000,
+            nodeOverlap: 16,
+            idealEdgeLength: 110,
+            gravity: 40,
             randomize: false
         }
 
@@ -725,7 +732,7 @@
             // Nodes: add what is new, update what changed, drop what is gone.
             for (const [id, { value }] of nodes) {
                 const existing = cy.getElementById(id)
-                const data = { id, label: labelOf(value), shape: SHAPES[typeOf(value)] ?? "ellipse" }
+                const data = { id, label: labelOf(value) }
                 if (existing.length) existing.data(data)
                 else { cy.add({ group: "nodes", data }); structureChanged = true }
             }
