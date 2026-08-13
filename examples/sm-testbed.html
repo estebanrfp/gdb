@@ -211,19 +211,6 @@
         .role-admin { color: var(--violet); }
         .role-superadmin { background: var(--text-primary); color: var(--bg-primary); }
 
-        /* Same 48px as the status bar beside it, so the two rules meet
-           across the divide instead of missing each other by six pixels. */
-        .sidebar-foot {
-            display: flex;
-            align-items: center;
-            min-height: 48px;
-            padding: var(--space-2) var(--space-4);
-            border-top: 1px solid var(--border-subtle);
-        }
-        /* Chrome-sized, like every button that lives in a band: at its default
-           padding it is 37px tall, which pushes the foot past 48 and leaves its
-           rule two pixels off the status bar's. */
-        .sidebar-foot button { width: 100%; padding: 5px var(--space-3); }
 
         /* ── Content ────────────────────────────────────────────── */
         .content {
@@ -511,6 +498,18 @@
            reaches the buttons and still rings them. */
         .modal-title[tabindex] { outline: none; }
 
+        /* Set apart from the three identities: it is not a fourth way in. */
+        .modal-reset {
+            width: 100%;
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+            border-radius: 0;
+            color: var(--danger);
+        }
+
+        .modal-reset:hover:not(:disabled) { border-color: var(--border-subtle); color: var(--danger); }
+
         .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
 
         @media (max-width: 900px) {
@@ -566,10 +565,6 @@
                 </div>
 
                 <ul class="roster" id="roster"></ul>
-
-                <div class="sidebar-foot">
-                    <button id="reset-btn" class="danger">Reset the testbed</button>
-                </div>
             </aside>
 
             <section class="content">
@@ -629,6 +624,10 @@
             <b>Superadmin</b> grants roles; <b>Alice</b> and <b>Bob</b> start as zero-trust guests.
         </p>
         <div class="modal-actions" id="identity-actions"></div>
+
+        <!-- Preparation, not an action of the session: you reset before starting
+             the scenario, in each window, and then pick who you are. -->
+        <button id="reset-btn" class="ghost modal-reset">Reset the testbed</button>
         <p class="modal-foot">
             Throwaway identities with their phrases in the source, shared with the other security examples.
             Never do this in a real application.

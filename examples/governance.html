@@ -191,16 +191,6 @@
         .role-admin { color: var(--violet); }
         .role-superadmin { background: var(--text-primary); color: var(--bg-primary); }
 
-        /* Same 48px as the status bar beside it, so the two rules meet. */
-        .sidebar-foot {
-            display: flex;
-            align-items: center;
-            min-height: 48px;
-            padding: var(--space-2) var(--space-4);
-            border-top: 1px solid var(--border-subtle);
-        }
-
-        .sidebar-foot button { width: 100%; padding: 5px var(--space-3); }
 
         /* ── Content ────────────────────────────────────────────── */
         .content {
@@ -471,6 +461,18 @@
         /* Only one button carries a fill, so the eye lands on the root of trust. */
         .modal-actions button:not(.root):not(.danger) { background: transparent; }
 
+        /* Set apart from the three identities: it is not a fourth way in. */
+        .modal-reset {
+            width: 100%;
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
+            border-top: 1px solid var(--border-subtle);
+            border-radius: 0;
+            color: var(--danger);
+        }
+
+        .modal-reset:hover:not(:disabled) { border-color: var(--border-subtle); color: var(--danger); }
+
         .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
 
         @media (max-width: 900px) {
@@ -525,10 +527,6 @@
                 </div>
 
                 <ul class="members" id="members"></ul>
-
-                <div class="sidebar-foot">
-                    <button id="reset-btn" class="danger">Reset the testbed</button>
-                </div>
             </aside>
 
             <section class="content">
@@ -586,6 +584,10 @@
             guests, are promoted to <code>user</code> after five seconds, and climb by earning points.
         </p>
         <div class="modal-actions" id="identity-actions"></div>
+
+        <!-- Preparation, not an action of the session: you reset before starting
+             the scenario, in each window, and then pick who you are. -->
+        <button id="reset-btn" class="ghost modal-reset">Reset the testbed</button>
         <p class="modal-foot">
             Throwaway identities with their phrases in the source, shared with the other security examples.
             Never do this in a real application.
