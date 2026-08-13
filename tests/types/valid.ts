@@ -75,7 +75,12 @@ await sm.loginCurrentUserWithWebAuthn()
 await sm.loginOrRecoverUserWithMnemonic("panic now afford carbon donate lecture drift excite collect essay stuff prosper")
 sm.isSecurityActive()
 sm.getActiveEthAddress()
-sm.setSecurityStateChangeCallback(({ isActive, activeAddress }) => console.log(isActive, activeAddress))
+sm.setSecurityStateChangeCallback((state) => {
+  const phase: boolean = state.isActive && state.hasVolatileIdentity && state.isWebAuthnProtected && state.hasWebAuthnHardwareRegistration
+  console.log(phase, state.activeAddress, state.abbrAddr)
+})
+const short: string = sm.abbrAddr("0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA")
+console.log(short)
 await sm.assignRole("0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA", "user", Date.now() + 3600_000)
 await sm.executeWithPermission("write")
 const sid = await sm.put({ private: "data" })
@@ -100,3 +105,8 @@ console.log(smNames, smLimited.results.length, smMnemonic, smWebAuthnSession)
 await sm.clearSecurity()
 
 console.log(db2.selfId)
+
+// ── Geo module shapes (geo-module.md) ────────────────────────────────
+const db5 = await gdb("typed-geo", { geo: true })
+await db5.map({ query: { location: { $near: { latitude: 40.7589, longitude: -73.9851, radius: 5 } } } })
+await db5.map({ query: { location: { $bbox: { minLat: 40.7, maxLat: 40.8, minLng: -74.02, maxLng: -73.9 } } } })

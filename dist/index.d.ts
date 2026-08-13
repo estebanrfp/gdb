@@ -52,10 +52,10 @@ declare module "genosdb" {
     $or?: Query[]
     /** Recursive graph traversal: sub-query applied to every descendant. */
     $edge?: Query
-    /** Geo module: proximity search (requires `geo: true`). */
-    $near?: { center: [number, number]; radius: number }
+    /** Geo module: proximity search, radius in km (requires `geo: true`). */
+    $near?: { latitude: number; longitude: number; radius: number }
     /** Geo module: bounding-box search (requires `geo: true`). */
-    $bbox?: [number, number, number, number]
+    $bbox?: { minLat: number; maxLat: number; minLng: number; maxLng: number }
   }
 
   /** MongoDB-style filter: field names to literals or operator objects. */
@@ -180,6 +180,21 @@ declare module "genosdb" {
     delete(nodeId: string): Promise<any>
   }
 
+  /** State pushed to `setSecurityStateChangeCallback` on every session change. */
+  export interface SecurityState {
+    /** A local signer is active: writes can be signed. */
+    isActive: boolean
+    activeAddress: string | null
+    /** Abbreviated address (`0x1234...abcd`) for display. */
+    abbrAddr: string
+    /** The active session was opened via WebAuthn. */
+    isWebAuthnProtected: boolean
+    /** A freshly generated identity is held in memory, not yet secured. */
+    hasVolatileIdentity: boolean
+    /** This device has a WebAuthn registration to log in with. */
+    hasWebAuthnHardwareRegistration: boolean
+  }
+
   export interface SecurityManager {
     startNewUserRegistration(): Promise<any>
     loginCurrentUserWithWebAuthn(): Promise<any>
@@ -192,9 +207,7 @@ declare module "genosdb" {
     /** Mnemonic held in memory right after registration or recovery, for one-time display. */
     getMnemonicForDisplayAfterRegistrationOrRecovery(): string | null
     clearSecurity(): Promise<void>
-    setSecurityStateChangeCallback(
-      callback: (state: { isActive: boolean; activeAddress: string | null }) => void
-    ): void
+    setSecurityStateChangeCallback(callback: (state: SecurityState) => void): void
     setGovernanceStateChangeCallback(callback: (state: any) => void): void
     assignRole(targetUserEthAddress: string, role: string, expiresAt?: number | string): Promise<any>
     executeWithPermission(operationName: string): Promise<any>
@@ -210,6 +223,8 @@ declare module "genosdb" {
     map(options?: QueryOptions): Promise<MapResult>
     /** Delete an encrypted node by id; the internal SM prefix is handled for you. */
     remove(id: string): Promise<void>
+    /** Abbreviate an address (`0x1234...abcd`) for display. */
+    abbrAddr(address: string): string
     encryptDataForCurrentUser(data: any): Promise<any>
     decryptDataForCurrentUser(encrypted: any): Promise<any>
     /** Node-level access control lists. */
@@ -279,8 +294,17 @@ declare module "genosdb" {
     remove(id: string): Promise<void>
     /** Delete every node and index. */
     clear(): Promise<void>
-    /** Middleware over incoming P2P operation batches. */
-    use(middleware: (operations: any[]) => Promise<any[]> | any[]): void
+    /**
+     * Middleware over incoming P2P operation batches. Receives the batch and a
+     * Map of each node's previous state; return the (filtered) batch, or
+     * nothing to discard the whole message.
+     */
+    use(
+      middleware: (
+        operations: any[],
+        previousStates: Map<string, any>
+      ) => Promise<any[] | void> | any[] | void
+    ): void
     /** P2P room (present when `rtc` is enabled). */
     room?: Room
     /** This peer's id (present when `rtc` is enabled). */
