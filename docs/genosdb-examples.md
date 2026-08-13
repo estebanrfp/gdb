@@ -146,7 +146,7 @@ The **`nlq` module** (`gdb(name, { nlq: true })`) answering `db.map({ prompt })`
 ### [Cellular Mesh Graph (D3)](https://estebanrfp.github.io/gdb/examples/graph-p2p.html)
 The compact companion to the Mesh Network Monitor: a D3 force graph of the **real** peers in your room (`db.room`), coloured by cell, with bridge peers and cross-cell links styled from the engine's own cellular state. Open it in several tabs and watch the mesh partition as peers arrive. ~170 lines — the smallest complete reading of `rtc: { cells }`.
 
-### [The Graph, Drawn and Queried](https://estebanrfp.github.io/gdb/examples/relations.html)
+### [The Graph, Drawn and Queried](https://estebanrfp.github.io/gdb/examples/graph.html)
 Every other example hands you a graph someone else seeded; here you build it. Add a node, `Shift`+click a second one to link them, double-click to delete — on the canvas or in the list, they answer the same gestures. Then ask a question: the query runs and the matching nodes **light up on the drawing**, which is the only way `$edge` really lands — you watch it walk the links you just made. Nothing draws in response to a click: a click writes to the graph, the graph notifies, and the drawing follows, so a second window draws what you do in the first.
 
 ---
