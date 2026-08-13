@@ -201,8 +201,9 @@ const { unsubscribe } = await db.map(({ id, value, action }) => {
 
 ## **Live Example**
 
-To see the geo-spatial operators in action, visit the interactive example:
-[**Geolocation with GenosDB**](https://estebanrfp.github.io/gdb/examples/geo.html)
+To see the geo-spatial operators in action, visit the interactive examples:
+[**Geo queries — the shape of the question**](https://estebanrfp.github.io/gdb/examples/query-geo.html), which draws `$near` and `$bbox` over a map, and
+[**Nearby**](https://estebanrfp.github.io/gdb/examples/geo-nearby.html), which builds the same `$near` from the position the browser reports.
 
 ## **Conclusion**
 

@@ -66,8 +66,8 @@ A real-time peer-to-peer File Streaming app using GenosDB’s room feature.
 An interactive example that enables multiple users to share their live location on a map in real time, using Leaflet for visualization and GenosRTC as the P2P transport layer.
 Each participant can start or stop location sharing, track their own path, and follow other connected users’ movements live.
 
-### [Real-Time Geolocation](https://estebanrfp.github.io/gdb/examples/geo.html)
-Detects your current position, seeds sample nodes around it, and finds the ones within 50 km using the **Geo module's** `$near` operator — markers and results update on a Leaflet map wherever you are.
+### [Nearby — Where You Actually Are](https://estebanrfp.github.io/gdb/examples/geo-nearby.html)
+The other half of the **Geo module**: the playground runs `$near` against coordinates you type, this one takes them from the device. `watchPosition` reports where you are, six nodes are seeded around you — so it works in Tokyo as readily as in Toledo — and the query is asked again every time you move. The radius is a slider, the assembled query is on the page rather than in the console, and each result carries its distance so you can see why it qualified. A denied permission is treated as an ordinary answer: it says so and offers a sample position.
 
 ### [Real-Time collaborative rich‑text editor powered by GenosDB](https://estebanrfp.github.io/gdb/examples/collab.html)
 A real-time collaborative rich‑text editor powered by GenosDB: live typing sync, remote cursors/selections, RBAC + WebAuthn auth, Markdown/HTML split preview with draggable splitter, version history panel, file sharing, and video room.

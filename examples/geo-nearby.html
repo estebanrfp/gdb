@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — What is near you</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light palette — this is an interface
+           built to be learned, next to the documentation it illustrates. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+            --panel-width: 320px;
+        }
+
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="dark"] {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* ── The same bench as the query playgrounds ────────────── */
+        /* Left panel, map, status bar — the shape the geo playground uses, with
+           one difference that is the whole point: nothing here is a preset. The
+           query is built from where you actually are. */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
+
+        /* Every chrome band is 48px tall — this one and the status bar read as
+           one system rather than two near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+        }
+
+        .topbar-end { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+
+        .coords {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .coords:empty { display: none; }
+
+        .bench {
+            display: grid;
+            grid-template-columns: var(--panel-width) minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0 var(--space-4) var(--space-4);
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .group {
+            margin: var(--space-5) 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
+
+        .group:first-child { margin-top: var(--space-3); }
+
+        /* The radius is the only thing you can turn, so it gets a real control
+           and its value in the label — a slider whose number is elsewhere makes
+           you look in two places to read one setting. */
+        .radius-value { float: right; font-family: var(--mono); font-weight: 400; color: var(--text-secondary); }
+
+        input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
+
+        /* The query, assembled from the position above and the radius beside it.
+           This is the lesson of the page, so it is on the page rather than in
+           the console: watch it change as you move. */
+        #query-view {
+            margin: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .found { list-style: none; margin: 0; padding: 0; }
+
+        .found li {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: var(--space-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+        }
+
+        .found li:last-child { border-bottom: none; }
+        .found li span { font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
+        .found-empty { margin: 0; font-size: 13px; color: var(--text-tertiary); }
+
+        /* Shown only when the browser will not hand over a position, which is
+           the ordinary case rather than an error: the page has to keep teaching
+           without it. */
+        .denied { margin: 0 0 var(--space-3); font-size: 13px; color: var(--text-secondary); }
+        .denied strong { display: block; margin-bottom: 4px; color: var(--warn); }
+        .panel button { width: 100%; }
+
+        /* Edge to edge, no rounding, no frame: an instrument is not boxed.
+           No `height: 100%` — see the ResizeObserver in the script. */
+        #map { min-width: 0; min-height: 0; background: var(--bg-tertiary); }
+
+        /* A basemap that is already the right colour, rather than a street map
+           put through a CSS filter — see BASEMAPS in the script. */
+        .leaflet-container { background: var(--bg-tertiary); }
+
+        /* The map's own chrome, in the page's palette rather than Leaflet's. */
+        .leaflet-control-attribution {
+            background: var(--bg-secondary) !important;
+            color: var(--text-tertiary) !important;
+            font-family: var(--font);
+        }
+
+        .leaflet-control-attribution a { color: var(--text-secondary) !important; }
+
+        .leaflet-control-zoom a {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-subtle) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-tooltip {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-subtle) !important;
+        }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        #status { font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status.error { color: var(--danger); }
+        #status.ok { color: var(--ok); }
+
+        /* Whether the page is still following you, stated without being read:
+           grey and still while it is not, green and breathing while it is. */
+        .watch-state { display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); }
+        .watching .dot { background: var(--ok); animation: pulse 1.6s ease-in-out infinite; }
+
+        @keyframes pulse { 50% { opacity: .25; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .watching .dot { animation: none; }
+        }
+
+        /* ── Buttons ────────────────────────────────────────────── */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            margin-right: -6px; /* aligns the mark with the edge, not the hit area */
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 900px) {
+            .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 45%) minmax(0, 55%); }
+            .panel { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .topbar, .statusbar { padding-inline: var(--space-4); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Nearby</h1>
+
+            <div class="topbar-end">
+                <span id="coords" class="coords"></span>
+
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="bench">
+            <aside class="panel">
+                <p id="denied-note" class="denied hidden">
+                    <strong>No position available</strong>
+                    The browser did not hand over a location. Everything below still
+                    works from a sample position.
+                </p>
+                <button id="sample-btn" class="hidden">Use a sample position</button>
+
+                <p class="group">Radius <span id="radius-value" class="radius-value">50 km</span></p>
+                <input type="range" id="radius" min="1" max="100" step="1" value="50" aria-label="Radius in kilometres">
+
+                <p class="group">The query</p>
+                <pre id="query-view">Waiting for a position…</pre>
+
+                <p class="group">Found</p>
+                <ul id="found" class="found"></ul>
+                <p id="found-empty" class="found-empty">Nothing yet.</p>
+            </aside>
+
+            <div id="map"></div>
+        </div>
+
+        <footer class="statusbar">
+            <span id="status">Asking for your position…</span>
+            <span id="watch-state" class="watch-state"><span class="dot"></span><span id="watch-label">Not tracking</span></span>
+        </footer>
+    </div>
+
+    <script type="module">
+        /**
+         * What is near you — the query built from where you actually are.
+         *
+         * The geo playground next door runs `$near` against coordinates typed
+         * into a field. This one takes them from the device: the browser reports
+         * a position, the page seeds a handful of nodes around it, and the same
+         * operator answers "which of these are within N kilometres". Move, and
+         * the query is asked again with your new coordinates.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { geo: true })   — enables $near / $bbox
+         *   · db.map({ query: { location: { $near: { latitude, longitude, radius } } } })
+         *   · navigator.geolocation.watchPosition — the only part that is not GenosDB
+         *
+         * The radius is in KILOMETRES. Leaflet draws circles in metres, which is
+         * the one unit mismatch worth remembering when you plot a $near.
+         *
+         * A denied permission is an ordinary outcome, not a crash: the page says
+         * so and offers a sample position, because a reader who will not share
+         * their location should still get the lesson.
+         */
+        import { gdb } from "../dist/index.js"
+
+        // Somewhere with enough map around it to make the circle legible.
+        const SAMPLE_POSITION = { latitude: 40.4168, longitude: -3.7038 } // Madrid
+
+        /**
+         * Seeded around wherever you turn out to be, at fixed offsets, so the
+         * demo has neighbours in Tokyo as readily as in Toledo. The spread is
+         * deliberate: from under a kilometre to well past the widest radius, so
+         * moving the slider always changes the answer.
+         */
+        const OFFSETS = [
+            { name: "Alpha", dLat: .006, dLng: .004 },
+            { name: "Bravo", dLat: -.02, dLng: .015 },
+            { name: "Charlie", dLat: .05, dLng: -.03 },
+            { name: "Delta", dLat: -.09, dLng: -.07 },
+            { name: "Echo", dLat: .22, dLng: .17 },
+            { name: "Foxtrot", dLat: -.65, dLng: .45 }
+        ]
+
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            coords: $("coords"),
+            deniedNote: $("denied-note"),
+            sampleBtn: $("sample-btn"),
+            radius: $("radius"),
+            radiusValue: $("radius-value"),
+            queryView: $("query-view"),
+            found: $("found"),
+            foundEmpty: $("found-empty"),
+            status: $("status"),
+            watchState: $("watch-state"),
+            watchLabel: $("watch-label")
+        }
+
+        /** The status bar reports; `tone` only colours what it already says. */
+        const setStatus = (message, tone = "") => {
+            el.status.textContent = message
+            el.status.className = tone
+        }
+
+        /** Reads a token so the shapes drawn on the map follow the palette. */
+        const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+
+        /**
+         * Great-circle distance in kilometres.
+         *
+         * Written out because the engine returns matching nodes, not distances —
+         * `$near` answers "is this within the radius", and the number beside each
+         * result here is this page's own arithmetic.
+         */
+        const distanceKm = (a, b) => {
+            const R = 6371
+            const toRad = (deg) => deg * Math.PI / 180
+            const dLat = toRad(b.latitude - a.latitude)
+            const dLng = toRad(b.longitude - a.longitude)
+            const h = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2
+            return 2 * R * Math.asin(Math.sqrt(h))
+        }
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.nearbyTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+
+            // Leaflet takes its colours as values, not as CSS, so a palette
+            // change has to be handed to it: a different basemap, and the shapes
+            // drawn again in the new accent.
+            basemap.setUrl(BASEMAPS[root.dataset.theme])
+            if (position) render()
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        // `geo: true` is what makes $near work; without it it is an unknown
+        // operator. No `rtc`: the neighbours are seeded locally around you, and
+        // a peer would only replay someone else's neighbourhood into yours.
+        const db = await gdb("genosdb-geo-nearby", { geo: true })
+
+        // ── The map ─────────────────────────────────────────────────
+        /**
+         * A basemap that is already the right colour, rather than a street map
+         * put through a CSS filter: inverting OSM gives a negative, not a dark
+         * map, and its roads compete with the data drawn on top. Same OSM data
+         * underneath, no key to register for, attribution covers both.
+         */
+        const BASEMAPS = {
+            light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+        }
+
+        const map = L.map("map", { zoomControl: true }).setView([SAMPLE_POSITION.latitude, SAMPLE_POSITION.longitude], 10)
+        const basemap = L.tileLayer(BASEMAPS.dark, {
+            subdomains: "abcd",
+            maxZoom: 20,
+            attribution: "© OpenStreetMap contributors © CARTO"
+        }).addTo(map)
+
+        const drawn = L.layerGroup().addTo(map)
+
+        let position = null      // { latitude, longitude, accuracy }
+        let seededAround = null  // the position the neighbours were placed around
+        let watchId = null
+        let bounds = null
+
+        /**
+         * Frames whatever was last drawn.
+         *
+         * Leaflet measures its container at construction, and a container that
+         * was still 0px tall then leaves the map convinced it is zero-sized —
+         * every fitBounds after that frames the whole planet. Re-measuring on
+         * resize covers both the first paint and every change afterwards.
+         */
+        const frame = () => {
+            map.invalidateSize()
+            if (bounds?.isValid()) map.fitBounds(bounds.pad(.15))
+        }
+
+        new ResizeObserver(frame).observe($("map"))
+
+        // ── Data ────────────────────────────────────────────────────
+        /** Fixed ids, so re-seeding rewrites the same six nodes rather than piling up copies. */
+        const seedNeighbours = async ({ latitude, longitude }) => {
+            for (const { name, dLat, dLng } of OFFSETS) {
+                await db.put({ name, location: { latitude: latitude + dLat, longitude: longitude + dLng } }, name)
+            }
+            seededAround = { latitude, longitude }
+        }
+
+        // ── Running ─────────────────────────────────────────────────
+        const buildQuery = () => ({
+            query: {
+                location: {
+                    $near: {
+                        latitude: Number(position.latitude.toFixed(5)),
+                        longitude: Number(position.longitude.toFixed(5)),
+                        radius: Number(el.radius.value) // kilometres
+                    }
+                }
+            },
+            field: "name",
+            order: "asc"
+        })
+
+        const draw = (results, query) => {
+            drawn.clearLayers()
+
+            const accent = token("--accent")
+            const surface = token("--bg-secondary")
+            const { latitude, longitude, radius } = query.query.location.$near
+            const shapes = []
+
+            // The question, drawn: the operator is a circle, and a list of
+            // results never shows that.
+            shapes.push(L.circle([latitude, longitude], {
+                radius: radius * 1000, // the operator speaks kilometres, Leaflet metres
+                color: accent, weight: 1.5, dashArray: "5 5", fill: true, fillOpacity: .06
+            }))
+
+            // How sure the browser is, at the same scale as everything else.
+            if (position.accuracy) {
+                shapes.push(L.circle([latitude, longitude], {
+                    radius: position.accuracy, color: accent, weight: 0, fill: true, fillOpacity: .12
+                }))
+            }
+
+            shapes.push(L.circleMarker([latitude, longitude], {
+                radius: 5, color: surface, weight: 2, fillColor: accent, fillOpacity: 1
+            }).bindTooltip("You", { direction: "top" }))
+
+            const markers = results.map(({ value }) => {
+                const { latitude: lat, longitude: lng } = value.location
+                return L.circleMarker([lat, lng], {
+                    radius: 6, color: surface, weight: 2, fillColor: accent, fillOpacity: .85
+                }).bindTooltip(value.name, { direction: "top" })
+            })
+
+            for (const layer of [...shapes, ...markers]) drawn.addLayer(layer)
+            bounds = L.featureGroup([...shapes, ...markers]).getBounds()
+            frame()
+        }
+
+        const render = async () => {
+            const query = buildQuery()
+            el.queryView.textContent = JSON.stringify(query.query, null, 2)
+
+            const { results } = await db.map(query)
+            draw(results, query)
+
+            // The distance beside each name is this page's arithmetic, not the
+            // engine's: it explains why a node is in the list, and why the one
+            // just outside is not.
+            el.found.replaceChildren(...results.map(({ value }) => {
+                const li = document.createElement("li")
+                const name = document.createElement("b")
+                name.textContent = value.name
+                const away = document.createElement("span")
+                away.textContent = `${distanceKm(position, value.location).toFixed(1)} km`
+                li.append(name, away)
+                return li
+            }))
+
+            el.foundEmpty.classList.toggle("hidden", results.length > 0)
+            el.foundEmpty.textContent = `No node within ${el.radius.value} km.`
+            setStatus(
+                `${results.length} of ${OFFSETS.length} within ${el.radius.value} km`,
+                results.length ? "ok" : ""
+            )
+        }
+
+        /** A new position: seed once, then re-ask the question from where you now are. */
+        const usePosition = async (next, { tracking }) => {
+            position = next
+            el.coords.textContent = `${next.latitude.toFixed(4)}, ${next.longitude.toFixed(4)}`
+
+            if (!seededAround) await seedNeighbours(next)
+
+            el.watchState.classList.toggle("watching", tracking)
+            el.watchLabel.textContent = tracking ? "Tracking" : "Sample position"
+
+            await render()
+        }
+
+        const useSamplePosition = () => {
+            stopWatching()
+            el.deniedNote.classList.add("hidden")
+            el.sampleBtn.classList.add("hidden")
+            usePosition({ ...SAMPLE_POSITION, accuracy: 0 }, { tracking: false })
+        }
+
+        const stopWatching = () => {
+            if (watchId === null) return
+            navigator.geolocation.clearWatch(watchId)
+            watchId = null
+            el.watchState.classList.remove("watching")
+            el.watchLabel.textContent = "Not tracking"
+        }
+
+        const offerSample = (reason) => {
+            setStatus(reason, "error")
+            el.deniedNote.classList.remove("hidden")
+            el.sampleBtn.classList.remove("hidden")
+        }
+
+        /**
+         * watchPosition, not getCurrentPosition: the browser keeps reporting as
+         * you move, and every report re-runs the query. That is what makes this
+         * page live rather than a snapshot — walk a block and the list changes.
+         */
+        const startWatching = () => {
+            if (!navigator.geolocation) {
+                offerSample("This browser has no geolocation API.")
+                return
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                ({ coords }) => usePosition(
+                    { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy },
+                    { tracking: true }
+                ),
+                (error) => {
+                    stopWatching()
+                    // Denied is the common one, and it is a choice rather than a
+                    // fault: say what happened and carry on with a sample.
+                    offerSample(error.code === error.PERMISSION_DENIED
+                        ? "Location permission denied."
+                        : `Location unavailable: ${error.message}`)
+                },
+                { enableHighAccuracy: false, maximumAge: 10_000, timeout: 15_000 }
+            )
+        }
+
+        // ── Wiring ──────────────────────────────────────────────────
+        el.radius.addEventListener("input", () => {
+            el.radiusValue.textContent = `${el.radius.value} km`
+            if (position) render()
+        })
+
+        el.sampleBtn.addEventListener("click", useSamplePosition)
+
+        applyTheme(localStorage.nearbyTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+
+        // Geolocation needs a secure context: over plain http on anything but
+        // localhost the browser refuses without ever prompting.
+        if (!isSecureContext) offerSample("Geolocation needs https (or localhost).")
+        else startWatching()
+    </script>
+</body>
+
+</html>
