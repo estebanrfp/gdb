@@ -44,8 +44,8 @@ Move your mouse cursor in realtime.
 ### [P2P Collaborative Whiteboard](https://estebanrfp.github.io/gdb/examples/whiteboard.html)
 Build complex real-time apps without a backend. This collaborative whiteboard runs entirely peer-to-peer, powered by the simplicity of GenosDB.
 
-### [Instant Search](https://estebanrfp.github.io/gdb/examples/search.html)
-Implementation of a quick search for GDB Operator testing.
+### [Query Builder — From a Form to a Query](https://estebanrfp.github.io/gdb/examples/query-builder.html)
+The problem every app with a search box has to solve: a handful of optional controls, and one query assembled from whichever the reader actually filled in. The field above the results is rewritten on every keystroke, so what you watch is the **translation** — fill one age box and it reads `$gte`, fill both and the two collapse into a single `$between`. Controls that are contributing a clause are outlined, tying the form to the JSON without reading it. Runs against 50 real people from a public API, with `field` / `order` / `$limit` travelling in the same options object.
 
 ### [Real-Time Paste](https://estebanrfp.github.io/gdb/examples/paste.html)
 A textarea that syncs content in real-time with GenosDB.
