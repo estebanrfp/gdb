@@ -198,40 +198,84 @@
         /* ── The bench itself ───────────────────────────────────── */
         .workbench {
             display: grid;
-            grid-template-rows: auto minmax(0, 1fr) auto;
+            /* The query row is a value the divider writes; the rest follows it. */
+            grid-template-rows: var(--query-height, 140px) auto minmax(0, 1fr) auto;
             min-width: 0;
             min-height: 0;
         }
 
         .query-bar {
             display: grid;
-            padding: var(--space-4) var(--space-5);
-            border-bottom: 1px solid var(--border-subtle);
+            min-height: 0;
+            padding: var(--space-4) var(--space-5) var(--space-2);
+            overflow: hidden;
         }
 
         /* The options object you would pass to db.map(), editable. Code
            typeface, one border to say so, and no tinted panel behind it. */
         #query-display {
-            min-height: 88px;
-            max-height: 30vh;
+            min-height: 0;
             padding: var(--space-3);
             font-family: var(--mono);
             font-size: 13px;
             line-height: 1.5;
             color: var(--text-primary);
             background: none;
-            border: 1px solid var(--border-strong);
-            border-radius: var(--radius-sm);
+            border: none;
             outline: none;
-            resize: vertical;
+            resize: none; /* the divider below resizes it, in the axis that matters */
             white-space: pre;
             overflow: auto;
         }
 
-        #query-display:focus { border-color: var(--accent); }
+        /* Nothing lights up on focus: in a text field with no frame the caret
+           already says where you are. */
         /* Invalid JSON is reported by the field itself, not by a modal that
            interrupts. `alert()` would also block the thread. */
-        #query-display.invalid { border-color: var(--danger); }
+        /* A bar down the edge rather than a box around it — the same mark the
+           catalogue uses for the selected item, in the colour for a refusal. */
+        #query-display.invalid { box-shadow: inset 2px 0 0 var(--danger); }
+
+        /* ── The divider is the control ─────────────────────────── */
+        /* The field has no box of its own: a framed textarea on a page with one
+           surface is a second surface, and it was already bounded by the divider
+           below it. So the divider does the work — drag it and the query grows
+           into the results. The hit area is 11px tall while the line stays 1px:
+           a 1px target is a target you miss. */
+        .splitter {
+            position: relative;
+            height: 11px;
+            cursor: row-resize;
+            touch-action: none; /* or a touch drag scrolls the page instead */
+        }
+
+        .splitter::before {
+            content: "";
+            position: absolute;
+            inset: 5px 0 auto;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* Two short bars centred on the line — the one mark that says a line can
+           be moved. Its background covers the line behind it, so the grip reads
+           as a handle rather than as a scratch on the border. */
+        .splitter::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 28px;
+            height: 5px;
+            transform: translate(-50%, -50%);
+            border-top: 1px solid var(--border-strong);
+            border-bottom: 1px solid var(--border-strong);
+            background: var(--bg-secondary);
+        }
+
+        .splitter:hover::after,
+        .splitter:focus-visible::after { border-color: var(--accent); }
+        .splitter:focus-visible { outline: none; }
 
         /* No Run button: Enter is the gesture, and a button beside a field that
            already runs on Enter is a second way to do one thing. */
@@ -429,6 +473,9 @@
                         placeholder="Pick one from the catalogue, or write your own and press Enter…"></textarea>
                 </div>
 
+                <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal"
+                    aria-label="Resize the query field" tabindex="0"></div>
+
                 <div id="map"></div>
 
                 <footer class="statusbar">
@@ -469,6 +516,9 @@
             themeBtn: $("theme-btn"),
             list: $("queryList"),
             query: $("query-display"),
+            workbench: document.querySelector(".workbench"),
+            queryBar: document.querySelector(".query-bar"),
+            splitter: $("splitter"),
             current: $("current"),
             found: $("found-list"),
             status: $("status")
@@ -482,6 +532,57 @@
 
         /** Reads a token so the shapes drawn on the map follow the palette. */
         const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+
+        // ── The divider ─────────────────────────────────────────────
+        /**
+         * Dragging the line between the query and its results.
+         *
+         * The height lives in a custom property on the workbench, so the grid
+         * row and the stored value are the same number and nothing has to be
+         * kept in sync. Pointer events rather than mouse events: one code path
+         * covers mouse, pen and touch, and setPointerCapture keeps the drag
+         * alive when the cursor outruns an 11px strip.
+         */
+        const MIN_QUERY_HEIGHT = 72
+        const MIN_OUTPUT_HEIGHT = 140
+
+        const setQueryHeight = (px, persist = true) => {
+            // A workbench with no height yet cannot say what is too tall, and that
+            // is exactly the state of the first paint: clamping against it would pin
+            // the field to its minimum and then store that as the preference.
+            const available = el.workbench.clientHeight
+            const ceiling = available ? Math.max(available - MIN_OUTPUT_HEIGHT, MIN_QUERY_HEIGHT) : Infinity
+            const height = Math.round(Math.min(Math.max(px, MIN_QUERY_HEIGHT), ceiling))
+            el.workbench.style.setProperty("--query-height", `${height}px`)
+            if (persist) localStorage.geoQueryHeight = height
+        }
+
+        el.splitter.addEventListener("pointerdown", (event) => {
+            event.preventDefault() // no text selection while dragging
+            el.splitter.setPointerCapture(event.pointerId)
+
+            const startY = event.clientY
+            const startHeight = el.queryBar.getBoundingClientRect().height
+            const onMove = (move) => setQueryHeight(startHeight + move.clientY - startY)
+
+            el.splitter.addEventListener("pointermove", onMove)
+            el.splitter.addEventListener(
+                "pointerup",
+                () => el.splitter.removeEventListener("pointermove", onMove),
+                { once: true }
+            )
+        })
+
+        // Reachable without a pointer: the divider is focusable and answers the
+        // arrow keys, which is what `role="separator"` promises.
+        el.splitter.addEventListener("keydown", (event) => {
+            const step = { ArrowUp: -16, ArrowDown: 16, PageUp: -64, PageDown: 64 }[event.key]
+            if (!step) return
+            event.preventDefault()
+            setQueryHeight(el.queryBar.getBoundingClientRect().height + step)
+        })
+
+        setQueryHeight(Number(localStorage.geoQueryHeight) || 140, false)
 
         /**
          * Theme: values only. `data-theme` is the palette in force, which the CSS
