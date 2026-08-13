@@ -801,9 +801,38 @@
         }
 
         // ── Acting on the graph ─────────────────────────────────────
+        /**
+         * Selecting a node also writes the query that starts from it.
+         *
+         * The panel on the left looks like the catalogue in the query
+         * playgrounds, so it has to behave like one: picking something there
+         * must put a runnable query in the field. The difference is that a
+         * catalogue lists questions and this lists nodes — so the node becomes
+         * the question's starting point, and the `$edge` filter beside it is
+         * kept, since that is the part you are usually iterating on.
+         *
+         * It stops short of running: a click here is also the first half of a
+         * link (Shift+click on a second node), and firing a query on every
+         * selection would fight the gesture. Press Enter when you want it.
+         */
         const select = (id) => {
             selectedId = selectedId === id ? null : id
             el.current.textContent = selectedId ? labelOf(nodes.get(selectedId)?.value) : ""
+
+            if (selectedId) {
+                const { value } = nodes.get(selectedId) ?? {}
+                let edge = DEFAULT_QUERY.$edge
+                try { edge = JSON.parse(el.query.value).$edge ?? edge } catch { /* keep the default */ }
+
+                el.query.value = JSON.stringify({ type: typeOf(value), name: labelOf(value), $edge: edge }, null, 2)
+                el.query.classList.remove("invalid")
+
+                // The old result no longer answers the query on screen, so it
+                // goes: a highlight that outlives its question is a lie.
+                matched = new Set()
+                setStatus("Press Enter to run this query.")
+            }
+
             paintMarks()
             renderList()
         }
