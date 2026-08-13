@@ -79,10 +79,7 @@
         .topbar {
             display: flex;
             align-items: center;
-            /* Name and chrome share the right edge: the catalogue below already
-               owns the left, and a title stranded across from it reads as a
-               second column rather than as the page's name. */
-            justify-content: flex-end;
+            justify-content: space-between;
             gap: var(--space-4);
             min-height: 48px;
             padding: var(--space-2) var(--space-5);
@@ -103,6 +100,22 @@
 
         /* The data the presets run against, named in the chrome. */
         .brand span { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--text-tertiary); }
+
+        /* The app on the left, what you are looking at on the right: the bar
+           answers "where am I" and "which one is this" without the catalogue
+           having to stay in view. */
+        .topbar-end { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+
+        .current {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .current:empty { display: none; }
 
         .bench {
             display: grid;
@@ -236,25 +249,12 @@
            stretches its items; the floors are what let this one shrink. */
         #map { min-width: 0; min-height: 0; background: var(--bg-tertiary); }
 
-        /* Monochrome, deliberately: the basemap is context, not the subject. A
-           full-colour street map carries more contrast than the handful of dots
-           that are the actual answer, and it wins every time. Stripped of
-           colour, the only hue left on screen belongs to the query and to what
-           it matched — the map recedes into what it is, a backdrop. Filtering
-           the raster also avoids a second tile provider and an API key just to
-           get a styled basemap. */
-        .leaflet-tile { filter: grayscale(1) contrast(1.25) brightness(.96); }
-
-        /* Dark is the same idea inverted, and the numbers are not the light ones
-           with a minus sign. OSM draws pale roads on a pale background: once
-           both are grey, they sit within a few percent of each other, and
-           inverting lands them together near black — a flat, unreadable sheet.
-           Brightness well above 1 pulls that narrow band back up into visible
-           greys, and the low contrast keeps the roads from turning into white
-           lines that shout over the data. Tune it zoomed IN: the closer the
-           view, the more white OSM draws, and the darker the invert makes it. */
-        [data-theme="dark"] .leaflet-tile { filter: grayscale(1) invert(1) brightness(1.55) contrast(.68); }
-        [data-theme="dark"] .leaflet-container { background: var(--bg-tertiary); }
+        /* No CSS filter on the tiles. Inverting a street map is a trick that only
+           half works: OSM draws every road, so a negative of it is noisy rather
+           than dark, and that noise competes with the handful of dots that are
+           the actual answer. The basemap arrives already styled instead — see
+           BASEMAPS in the script. */
+        .leaflet-container { background: var(--bg-tertiary); }
 
         /* The map's own chrome, in the page's palette rather than Leaflet's. */
         .leaflet-control-attribution {
@@ -352,22 +352,26 @@
         <header class="topbar">
             <h1 class="brand">Geo queries <span>New York</span></h1>
 
-            <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
-                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-                </svg>
-                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-                </svg>
-                <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="2" y="4" width="20" height="13" rx="2" />
-                    <path d="M9 21h6" />
-                </svg>
-            </button>
+            <div class="topbar-end">
+                <span id="current" class="current"></span>
+
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+            </div>
         </header>
 
         <div class="bench">
@@ -468,6 +472,7 @@
             themeBtn: $("theme-btn"),
             list: $("queryList"),
             query: $("query-display"),
+            current: $("current"),
             found: $("found-list"),
             status: $("status")
         }
@@ -495,8 +500,11 @@
             root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
             localStorage.geoTheme = pref
             el.themeBtn.title = `Theme: ${pref}`
-            // Leaflet layers take their colours as values, not as CSS: they have
-            // to be drawn again for a palette change to reach them.
+
+            // Leaflet takes its colours as values, not as CSS, so a palette
+            // change has to be handed to it: a different basemap, and the shapes
+            // drawn again in the new accent.
+            basemap.setUrl(BASEMAPS[root.dataset.theme])
             if (lastQuery) draw(lastResults, lastQuery)
         }
 
@@ -509,9 +517,26 @@
         const db = await gdb("genosdb-geo-queries", { geo: true })
 
         // ── The map ─────────────────────────────────────────────────
+        /**
+         * A basemap that is already the right colour, rather than a street map
+         * put through a CSS filter.
+         *
+         * Inverting OSM gives a negative, not a dark map: every road it draws
+         * stays drawn, so the result is busier than the data on top of it. These
+         * two styles are built to sit under data — no roads shouting, no key to
+         * register for, and the same OSM data underneath. Attribution covers
+         * both, as their terms require.
+         */
+        const BASEMAPS = {
+            light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+        }
+
         const map = L.map("map", { zoomControl: true }).setView(NYC, 11)
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: "© OpenStreetMap contributors"
+        const basemap = L.tileLayer(BASEMAPS.dark, {
+            subdomains: "abcd",
+            maxZoom: 20,
+            attribution: "© OpenStreetMap contributors © CARTO"
         }).addTo(map)
 
         // Everything a query draws lives in one layer, so a new run clears the
@@ -651,6 +676,14 @@
 
         /** Parses the field, marking it rather than interrupting with a modal. */
         const runFromField = async () => {
+            // Once the field differs from the preset it came from, the catalogue
+            // is no longer describing what is on screen — so it stops claiming to.
+            const active = el.list.querySelector(".query-item.active")
+            if (active && JSON.stringify(JSON.parse(active.dataset.query), null, 2) !== el.query.value) {
+                active.classList.remove("active")
+                el.current.textContent = "Edited query"
+            }
+
             try {
                 const options = JSON.parse(el.query.value)
                 el.query.classList.remove("invalid")
@@ -667,6 +700,7 @@
 
             el.list.querySelector(".query-item.active")?.classList.remove("active")
             item.classList.add("active")
+            el.current.textContent = item.querySelector("strong").textContent
 
             // The preset lands in the field first: what ran is on screen, and
             // editing it is the next gesture rather than a fresh start.
