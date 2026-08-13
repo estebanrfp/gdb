@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.2] - Unreleased
+
+### Fixed
+
+- **The published TypeScript declarations now match the engine.** Declarations only — no runtime code changes; consumers pick this up with the package update. `acls.set` was declared as `set(nodeId, acl)`, the reverse of what the engine implements and the docs describe (`set(value, id?)`) — the exact wrong call an AI assistant reproduced in [#40](https://github.com/estebanrfp/gdb/issues/40), since assistants read `index.d.ts`; it now also documents that `owner` and `collaborators` are engine-managed. `acls.grant` required its permission argument to be one of `'read' | 'write' | 'delete'` at runtime while the types declared it optional `any`; the types now fail where the engine would. The security-state callback declared two of the six properties the Security Manager publishes, leaving `abbrAddr`, `isWebAuthnProtected`, `hasVolatileIdentity` and `hasWebAuthnHardwareRegistration` unusable from typed code — the payload is now a named `SecurityState`, and `db.sm.abbrAddr()` is declared. The geo operators were declared with shapes the module never reads (`$near` as `center` tuple, `$bbox` as a 4-tuple); they now state what `geo.js` destructures: `{ latitude, longitude, radius }` and `{ minLat, maxLat, minLng, maxLng }`. And `db.use()` middleware declares its real signature — `(operations, previousStates: Map)`, where returning nothing discards the message — which the ACL middleware itself relies on. The type-test fixtures had codified the reversed `acls.set` call; they now exercise the documented API, and `@ts-expect-error` guards lock each regression.
+
 ## [0.23.1] - 2026-08-11
 
 ### Fixed
