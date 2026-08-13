@@ -2,850 +2,1283 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ACLs + Governance Testbed — powered by GenosDB</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    /* ============================ Tokens ============================ */
-    :root {
-      --bg: #f4f6fa;
-      --surface: #ffffff;
-      --surface-2: #f1f3f7;
-      --border: #e4e7ee;
-      --text: #1a1d24;
-      --muted: #6b7280;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #b45309;
-      --warning-bg: #fef3c7;
-      --read: #0891b2;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-mono: ui-monospace, 'SF Mono', menlo, monospace;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --radius-pill: 999px;
-      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
-      --transition: 150ms ease;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — Permission as data</title>
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    <style>
+        /* Full profile: the same tokens as docs.html. This is a testbed for an
+           application's machinery, so it wears the application's shape.
+           Dark is the base; the toggle is the sanctioned opt-in on top. */
+        :root {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
 
-    body {
-      min-height: 100vh;
-      font-family: var(--font-sans);
-      color: var(--text);
-      background: var(--bg);
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.5;
-    }
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
 
-    .is-hidden {
-      display: none !important;
-    }
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
 
-    .muted {
-      color: var(--muted);
-      font-size: .9rem;
-    }
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
 
-    .mono {
-      font-family: var(--font-mono);
-    }
+            --text-on-accent: #ffffff;
+            --backdrop: rgba(0, 0, 0, .6);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .35);
 
-    /* ============================ Buttons ============================ */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font: inherit;
-      font-weight: 600;
-      font-size: .9rem;
-      padding: 10px 16px;
-      border: 1px solid transparent;
-      border-radius: var(--radius-sm);
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      transition: var(--transition);
-    }
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
 
-    .btn:hover:not(:disabled) {
-      background: var(--accent-hover);
-    }
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 
-    .btn:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
+            --sidebar-width: 320px;
+        }
 
-    .btn--ghost {
-      background: var(--surface-2);
-      color: var(--text);
-      border-color: var(--border);
-    }
+        /* The light palette redefines VALUES ONLY — not one component rule
+           changes below. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
 
-    .btn--ghost:hover:not(:disabled) {
-      background: var(--border);
-    }
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
 
-    .btn--danger {
-      background: var(--danger);
-    }
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
 
-    .btn--danger:hover:not(:disabled) {
-      background: #b91c1c;
-    }
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
 
-    .btn--dark {
-      background: #1a1d24;
-    }
+            --backdrop: rgba(26, 29, 36, .45);
+            --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+        }
 
-    .btn--dark:hover:not(:disabled) {
-      background: #343a46;
-    }
+        * { box-sizing: border-box; }
 
-    .btn--sm {
-      padding: 6px 12px;
-      font-size: .82rem;
-    }
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh; /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            /* One surface for the whole page: the bands are told apart by their
+               borders, not by a darker well behind the content. */
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
 
-    /* ============================ Login screen ============================ */
-    .screen {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+        .hidden { display: none !important; }
 
-    .login-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 36px;
-      text-align: center;
-      max-width: 560px;
-      margin: 6vh auto 0;
-    }
+        /* ── Layout ─────────────────────────────────────────────── */
+        .layout {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            height: 100%;
+        }
 
-    .login-card h1 {
-      font-size: 1.5rem;
-      letter-spacing: -.02em;
-      margin-bottom: 10px;
-    }
+        /* Every chrome band is 48px tall — top bar, list head and status bar
+           read as one system rather than three near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
 
-    .login-card .muted {
-      margin-bottom: 24px;
-      text-align: left;
-    }
+        .brand { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 
-    .login-card .muted li {
-      margin: 6px 0 6px 18px;
-    }
+        .topbar-end { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 
-    .login-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
+        .me {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
 
-    .login-row .btn {
-      flex: 1;
-      padding: 14px;
-      font-size: .95rem;
-    }
+        .me:empty { display: none; }
 
-    /* ============================ App ============================ */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 24px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
+        .body {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+            min-height: 0;
+        }
 
-    .me {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-    }
+        /* ── The list ───────────────────────────────────────────── */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            border-right: 1px solid var(--border-subtle);
+        }
 
-    .me .addr {
-      font-family: var(--font-mono);
-      font-size: .8rem;
-      color: var(--muted);
-      background: var(--surface-2);
-      padding: 2px 8px;
-      border-radius: var(--radius-sm);
-    }
+        .sidebar-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
 
-    .role-chip {
-      font-size: .72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      background: var(--surface-2);
-      color: var(--muted);
-    }
+        .sidebar-head button { padding: 5px var(--space-3); }
 
-    .role-chip--guest {
-      background: var(--warning-bg);
-      color: var(--warning);
-    }
+        .list { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
 
-    .role-chip--user {
-      background: #dcfce7;
-      color: var(--success);
-    }
+        .group {
+            padding: var(--space-4) var(--space-4) var(--space-2);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
 
-    .role-chip--superadmin {
-      background: #dbeafe;
-      color: var(--accent);
-    }
+        .list li.item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-4);
+            border-left: 2px solid transparent;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+        }
 
-    .main {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 28px 20px 80px;
-      display: grid;
-      gap: 28px;
-    }
+        .list li.item:hover { border-left-color: var(--border-strong); }
+        .list li.item.selected { border-left-color: var(--accent); }
+        .list li.item.selected .title { color: var(--accent); }
 
-    .banner {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
-      border-radius: var(--radius);
-      font-size: .9rem;
-      font-weight: 500;
-    }
+        .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+        .list .spacer { flex: 1; }
+        .list-empty { padding: var(--space-2) var(--space-4) var(--space-4); font-size: 13px; color: var(--text-tertiary); }
 
-    .banner--wait {
-      background: var(--warning-bg);
-      color: var(--warning);
-      border: 1px solid #fde68a;
-    }
+        /* The permission ramp: one colour per level, used everywhere a level is
+           named — in the list, in the table, in the status bar. */
+        .perm {
+            flex: 0 0 auto;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
 
-    .banner--ok {
-      background: #dcfce7;
-      color: var(--success);
-      border: 1px solid #bbf7d0;
-    }
+        .perm-read { color: var(--text-secondary); }
+        .perm-write { color: var(--ok); }
+        .perm-delete { color: var(--warn); }
+        .perm-owner { color: var(--violet); }
+        .perm-none { color: var(--text-tertiary); }
 
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
+        /* The role ramp, for the superadmin's view of the network. */
+        .role {
+            flex: 0 0 auto;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
 
-    .section-head h2 {
-      font-size: 1.15rem;
-      letter-spacing: -.01em;
-    }
+        .role-user { color: var(--ok); }
+        .role-superadmin { background: var(--text-primary); color: var(--bg-primary); }
 
-    .notes {
-      display: grid;
-      gap: 14px;
-    }
+        /* ── Content ────────────────────────────────────────────── */
+        .content {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto auto auto;
+            min-width: 0;
+            min-height: 0;
+        }
 
-    .empty {
-      color: var(--muted);
-      font-size: .9rem;
-      padding: 18px;
-      text-align: center;
-      background: var(--surface);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-    }
+        .scroll { min-height: 0; overflow-y: auto; padding: var(--space-5); }
 
-    /* ============================ Note card ============================ */
-    .note {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 18px;
-    }
+        .section { margin-bottom: var(--space-6); }
+        .section:last-child { margin-bottom: 0; }
 
-    .note__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
+        .section h2 {
+            margin: 0 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
 
-    .note__title {
-      font-weight: 600;
-      font-size: 1rem;
-    }
+        .hint { margin: 0 0 var(--space-3); font-size: 13px; color: var(--text-secondary); }
+        .hint code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+        .hint.waiting { color: var(--warn); }
 
-    .note__content {
-      width: 100%;
-      min-height: 64px;
-      resize: vertical;
-      font: inherit;
-      font-size: .92rem;
-      color: var(--text);
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px;
-      outline: none;
-    }
+        .note-title { margin: 0 0 var(--space-2); font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
 
-    .note__content:focus {
-      border-color: var(--accent);
-    }
+        /* Frameless: the note is the page's subject, so it gets no box. A
+           read-only note says so by being dimmed, not by growing a lock. */
+        #note-body {
+            width: 100%;
+            min-height: 160px;
+            padding: 0;
+            font-family: inherit;
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: none;
+            border: none;
+            outline: none;
+            resize: vertical;
+        }
 
-    .note__content:disabled {
-      color: var(--muted);
-      cursor: not-allowed;
-    }
+        #note-body:disabled { color: var(--text-tertiary); }
 
-    .note__foot {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      margin-top: 12px;
-    }
+        /* ── Permission as data ─────────────────────────────────── */
+        /* The whole point of this bench. An application shows sharing as an
+           action — "share with…" — and hides what it wrote. Here the ACL is a
+           table: one row per address, the level it holds, and the four writes
+           that can change it. */
+        .acl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
-    .badge {
-      font-size: .72rem;
-      font-weight: 600;
-      padding: 3px 9px;
-      border-radius: var(--radius-pill);
-      background: var(--surface-2);
-      color: var(--muted);
-    }
+        .acl th {
+            padding: 0 var(--space-3) var(--space-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            text-align: left;
+            color: var(--text-tertiary);
+        }
 
-    .badge--read {
-      color: #fff;
-      background: var(--read);
-    }
+        .acl td { padding: var(--space-3) var(--space-3) var(--space-3) 0; border-bottom: 1px solid var(--border-subtle); }
+        .acl tr:last-child td { border-bottom: none; }
+        .acl .who { white-space: nowrap; }
+        .acl .addr { font-family: var(--mono); font-size: 11px; color: var(--text-tertiary); }
+        .acl .actions { display: flex; gap: var(--space-2); justify-content: flex-end; flex-wrap: wrap; }
 
-    .badge--write {
-      color: #fff;
-      background: var(--success);
-    }
+        /* The three levels as one control, so the ladder read → write → delete
+           is visible rather than implied by three loose buttons. */
+        .levels { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
 
-    .badge--delete {
-      color: #fff;
-      background: var(--danger);
-    }
+        .levels button {
+            border: none;
+            border-radius: 0;
+            border-right: 1px solid var(--border-strong);
+            background: none;
+            padding: 5px var(--space-3);
+            font-size: 12px;
+        }
 
-    .badge--none {
-      color: var(--muted);
-      background: var(--surface-2);
-    }
+        .levels button:last-child { border-right: none; }
+        .levels button.on { background: var(--bg-tertiary); color: var(--text-primary); }
+        .levels button.on:hover:not(:disabled) { color: var(--text-primary); }
 
-    .spacer {
-      flex: 1;
-    }
+        /* ── The activity log ───────────────────────────────────── */
+        .splitter {
+            position: relative;
+            height: 11px;
+            cursor: row-resize;
+            touch-action: none; /* or a touch drag scrolls the page instead */
+        }
 
-    /* ============================ Governance console (superadmin) ============================ */
-    .user-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 16px;
-    }
+        .splitter::before {
+            content: "";
+            position: absolute;
+            inset: 5px 0 auto;
+            height: 1px;
+            background: var(--border-subtle);
+        }
 
-    .user-row .who {
-      font-weight: 600;
-    }
+        .splitter::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 28px;
+            height: 5px;
+            transform: translate(-50%, -50%);
+            border-top: 1px solid var(--border-strong);
+            border-bottom: 1px solid var(--border-strong);
+            background: var(--bg-secondary);
+        }
 
-    .gov-log {
-      background: #1a1d24;
-      color: #d6dae2;
-      font-family: var(--font-mono);
-      font-size: .8rem;
-      border-radius: var(--radius);
-      padding: 14px;
-      max-height: 240px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+        .splitter:hover::after,
+        .splitter:focus-visible::after { border-color: var(--accent); }
+        .splitter:focus-visible { outline: none; }
 
-    /* ============================ Toast ============================ */
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 22px;
-      transform: translateX(-50%);
-      max-width: 90vw;
-      padding: 11px 18px;
-      border-radius: var(--radius-pill);
-      background: #1a1d24;
-      color: #fff;
-      font-size: .88rem;
-      font-weight: 500;
-      box-shadow: var(--shadow);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--transition);
-    }
+        .console {
+            height: var(--console-height, 130px);
+            overflow-y: auto;
+            padding: 0 var(--space-5) var(--space-3);
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
 
-    .toast--show {
-      opacity: 1;
-    }
+        .console div { padding: 1px 0; }
+        .console .ok { color: var(--ok); }
+        .console .warn { color: var(--warn); }
+        .console .error { color: var(--danger); }
 
-    .toast--error {
-      background: var(--danger);
-    }
-  </style>
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .standing { display: flex; align-items: center; gap: var(--space-3); min-width: 0; font-family: var(--mono); }
+        .peers { font-family: var(--mono); white-space: nowrap; }
+
+        /* ── Buttons and fields ─────────────────────────────────── */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+        button:disabled { opacity: .45; cursor: not-allowed; }
+
+        button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+        button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+        button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+        /* The root of trust, told apart by a fill of its own rather than by the
+           accent — blue would say "the usual choice", which it is not. */
+        button.root { background: var(--ok); border-color: var(--ok); color: var(--bg-primary); }
+        button.root:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--ok) 88%, var(--text-primary));
+            border-color: transparent;
+            color: var(--bg-primary);
+        }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: transparent; }
+        .icon-btn svg { width: 16px; height: 16px; }
+        .topbar-end .icon-btn:last-child { margin-right: -6px; } /* the mark lands on the edge, not the hit area */
+
+        .icon-moon, .icon-system { display: none; }
+        [data-pref="dark"] .icon-sun { display: none; }
+        [data-pref="dark"] .icon-moon { display: block; }
+        [data-pref="system"] .icon-sun { display: none; }
+        [data-pref="system"] .icon-system { display: block; }
+
+        /* ── Toasts ─────────────────────────────────────────────── */
+        .toast-stack {
+            position: fixed;
+            inset: auto var(--space-5) var(--space-5) auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            width: min(360px, calc(100vw - var(--space-6)));
+            padding: 0;
+            margin: 0;
+            background: none;
+            border: none;
+            overflow: visible;
+        }
+
+        .toast {
+            display: flex;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-elevated);
+            /* Not inherited: the UA sheet paints [popover] with CanvasText,
+               which is black whatever the page is doing. */
+            color: var(--text-primary);
+            border: 1px solid var(--border-strong);
+            border-left: 3px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            font-size: 13px;
+            transition: opacity .25s, transform .25s;
+        }
+
+        .toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
+        .toast-text { flex: 1; min-width: 0; }
+
+        .toast.success { border-left-color: var(--ok); }
+        .toast.success .toast-icon { color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.error .toast-icon { color: var(--danger); }
+
+        .toast:not(:last-child) { opacity: .6; }
+        .toast.out { opacity: 0; transform: translateX(20px); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast { transition: none; }
+        }
+
+        /* ── The identity door ──────────────────────────────────── */
+        dialog {
+            width: min(500px, calc(100vw - var(--space-6)));
+            padding: var(--space-6);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+        .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .modal-title[tabindex] { outline: none; }
+        .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); text-align: left; }
+        .modal-hint b { color: var(--text-primary); }
+
+        .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+        .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+        /* Only one button carries a fill, so the eye lands on the root of trust. */
+        .modal-actions button:not(.root) { background: transparent; }
+
+        /* One more button in the stack, told apart by being quiet rather than by
+           a rule and extra air above it. */
+        .modal-reset {
+            width: 100%;
+            margin-top: var(--space-2);
+            padding: 13px var(--space-4);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .modal-foot { margin: var(--space-5) 0 0; font-size: 12px; color: var(--warn); text-align: left; }
+
+        @media (max-width: 900px) {
+            .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40%) minmax(0, 60%); }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .topbar, .scroll, .statusbar { padding-inline: var(--space-4); }
+            .acl .actions { justify-content: flex-start; }
+        }
+    </style>
 </head>
 
 <body>
-  <!-- ============================ Login ============================ -->
-  <div id="login" class="screen">
-    <div class="login-card">
-      <h1>ACLs + Governance Testbed</h1>
-      <div class="muted">
-        The full GenosDB security model in one demo — zero-trust, governance and node-level ACLs:
-        <li>Open this page in <strong>two or three windows</strong>.</li>
-        <li>In one, press <strong>🛡️ Superadmin</strong> — it runs the governance engine that promotes guests.</li>
-        <li>In the others, log in as <strong>Alice</strong> / <strong>Bob</strong>: they start as <code>guest</code> (no write
-          access) and are promoted to <code>user</code> by the superadmin in ~5 seconds.</li>
-        <li>Once promoted, create notes and grant / revoke <strong>read, write or delete</strong> per note — the owner can even delegate <strong>delete</strong>, so Bob can remove a note Alice shared with him.</li>
-      </div>
-      <div class="login-row">
-        <button id="login-superadmin" class="btn btn--dark">🛡️ Superadmin (demo)</button>
-      </div>
-      <div class="login-row">
-        <button id="login-alice" class="btn">👩‍🦰 Login as Alice</button>
-        <button id="login-bob" class="btn btn--ghost">👨‍🦱 Login as Bob</button>
-      </div>
-      <button id="reset" class="btn btn--ghost btn--sm">Reset demo DB</button>
+
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">ACLs</h1>
+
+            <div class="topbar-end">
+                <span class="me" id="me"></span>
+
+                <button id="theme-btn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+
+                <button id="logout-btn" class="icon-btn hidden" title="Log out" aria-label="Log out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M15 17l5-5-5-5M20 12H9M12 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="body">
+            <aside class="sidebar">
+                <div class="sidebar-head">
+                    <span id="list-label">Notes</span>
+                    <button id="new-note" disabled>New note</button>
+                </div>
+
+                <ul class="list" id="list"></ul>
+            </aside>
+
+            <section class="content">
+                <div class="scroll" id="detail"></div>
+
+                <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal"
+                    aria-label="Resize the activity log" tabindex="0"></div>
+
+                <div class="console" id="console"></div>
+
+                <footer class="statusbar">
+                    <span class="standing" id="standing"></span>
+                    <span class="peers" id="peers">0 peers</span>
+                </footer>
+            </section>
+        </div>
     </div>
-  </div>
 
-  <!-- ============================ App ============================ -->
-  <div id="app" class="is-hidden">
-    <header class="topbar">
-      <div class="me" id="me"></div>
-      <button id="logout" class="btn btn--ghost btn--sm">Logout</button>
-    </header>
-    <main class="main">
-      <!-- Role banner (Alice / Bob): reflects the governance promotion in real time -->
-      <div id="role-banner" class="banner is-hidden"></div>
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
-      <!-- Notes app (Alice / Bob) -->
-      <section id="notes-owned-section" class="is-hidden">
-        <div class="section-head">
-          <h2>My notes</h2>
-          <button id="new-note" class="btn btn--sm">+ New note</button>
-        </div>
-        <div id="owned" class="notes"></div>
-      </section>
-      <section id="notes-shared-section" class="is-hidden">
-        <div class="section-head">
-          <h2>Shared with me</h2>
-        </div>
-        <div id="shared" class="notes"></div>
-      </section>
+    <!-- The door. Three public identities, one click each. -->
+    <dialog id="identity-modal">
+        <h2 class="modal-title" tabindex="-1" autofocus>Pick an identity</h2>
+        <p class="modal-hint">
+            Open this in <b>two or three windows</b>. Sign in as <b>Superadmin</b> in one: its window runs the
+            engine that promotes guests. Sign in as <b>Alice</b> and <b>Bob</b> in the others — they arrive as
+            zero-trust guests, are promoted to <code>user</code> after five seconds, and can then create notes and
+            grant each other <code>read</code>, <code>write</code> or <code>delete</code> on them, one note at a time.
+        </p>
+        <div class="modal-actions" id="identity-actions"></div>
 
-      <!-- Governance console (superadmin) -->
-      <section id="console-section" class="is-hidden">
-        <div class="section-head">
-          <h2>Users &amp; roles <span class="muted">(live)</span></h2>
-        </div>
-        <div id="user-list" class="notes"></div>
-        <div class="section-head" style="margin-top:14px">
-          <h2>Governance activity</h2>
-        </div>
-        <pre id="gov-log" class="gov-log">Waiting for governance events…</pre>
-      </section>
-    </main>
-  </div>
+        <!-- Preparation, not an action of the session: you reset before starting,
+             in each window, and then pick who you are. -->
+        <button id="reset-btn" class="ghost modal-reset">Reset the testbed</button>
 
-  <div id="toast" class="toast"></div>
+        <p class="modal-foot">
+            Throwaway identities with their phrases in the source, shared with the other security examples.
+            Never do this in a real application.
+        </p>
+    </dialog>
 
-  <script type="module">
-    import { gdb } from '../dist/index.js';
+    <script type="module">
+        /**
+         * Permission as data.
+         *
+         * `docs.html` shows the same module as a product: you press Share, some-
+         * one gains access, and what got written stays out of sight. This bench
+         * shows the other half — the ACL itself. Pick a note and you get the
+         * table: one row per address, the level it holds, and the four writes
+         * that can change it (`grant` three ways, `revoke`).
+         *
+         * Three mechanisms stack up here, which is why this one is worth having:
+         *   1. zero-trust — a new identity is a `guest` and cannot write at all
+         *   2. governance — the superadmin's engine promotes guests to `user`
+         *   3. ACLs — a `user` still only touches the nodes it owns or was granted
+         *
+         * So a promotion is not permission to edit your note, and owning a note
+         * is not permission to assign roles. Watch the third one refuse: sign in
+         * as Bob, open a note Alice granted `read`, and the field is inert — not
+         * because this page disabled it, but because the middleware on every
+         * peer would reject the write.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { sm: { acls: true, customRoles, governanceRules } })
+         *   · db.sm.acls.set(value, id?)          — create or update, gated
+         *   · db.sm.acls.grant(id, address, level)
+         *   · db.sm.acls.revoke(id, address)
+         *   · db.sm.acls.delete(id)
+         */
+        import { gdb } from "../dist/index.js"
 
-    /** Database / room name for this testbed. */
-    const DB_NAME = 'genosdb-acls-governance-demo';
+        const DB_NAME = "genosdb-acls-testbed"
 
-    // ────────────────────────────────────────────────────────────────────────────
-    // ⚠️ TESTING ONLY — fixed demo identities.
-    // Embedding mnemonics in source code is NEVER acceptable in a real application.
-    // These are public, throwaway identities (they protect nothing) included so each
-    // window of this demo can log in with a single click.
-    // ────────────────────────────────────────────────────────────────────────────
-    const SUPERADMIN = {
-      name: 'Superadmin', emoji: '🛡️',
-      // TESTING ONLY: one-button governance authority for this demo.
-      mnemonic: 'panic now afford carbon donate lecture drift excite collect essay stuff prosper',
-      address: '0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA',
-    };
-    const ALICE = {
-      name: 'Alice', emoji: '👩‍🦰',
-      mnemonic: 'prosper fossil kitten crisp view spread jeans shield prosper myself awake usage',
-      address: '0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931',
-    };
-    const BOB = {
-      name: 'Bob', emoji: '👨‍🦱',
-      mnemonic: 'salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus',
-      address: '0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC',
-    };
-    const IDENTITIES = [SUPERADMIN, ALICE, BOB];
+        // ⚠️ TESTING ONLY — fixed demo identities, shared with sm-testbed.html and
+        // governance.html. Embedding mnemonics in source is never acceptable in a
+        // real app; these are public and protect nothing.
+        const SUPERADMIN = {
+            name: "Superadmin",
+            mnemonic: "panic now afford carbon donate lecture drift excite collect essay stuff prosper",
+            address: "0xbfDe0eCEC5332Fd86D2570085571D6051Df098dA"
+        }
+        const ALICE = {
+            name: "Alice",
+            mnemonic: "prosper fossil kitten crisp view spread jeans shield prosper myself awake usage",
+            address: "0x3546D4BA0ac3bfDea3F1511F82a078DDdb3F4931"
+        }
+        const BOB = {
+            name: "Bob",
+            mnemonic: "salmon grant recall neutral banner glow pluck divert cactus theory rally ship captain shaft cactus",
+            address: "0x8089C0480139d85D82c1E20eeF08a77EF8cD7DEC"
+        }
+        const IDENTITIES = [SUPERADMIN, ALICE, BOB]
 
-    /** @type {object} GDB instance (created on first login). */
-    let db;
-    /** @type {object|null} The identity selected in this tab. */
-    let currentUser = null;
-    /** @type {string|null} Active Ethereum address, taken from the Security Manager (source of truth). */
-    let myAddress = null;
-    /** @type {string|null} My current role, tracked live from my user node. */
-    let myRole = null;
-    /** @type {Map<string, object>} Live cache of note nodes, keyed by id. */
-    const notesCache = new Map();
-    /** Unsubscribe handles. */
-    let unsubscribeNotes = null, unsubscribeRole = null, unsubscribeConsole = null;
+        const LEVELS = ["read", "write", "delete"]
 
-    const $ = (id) => document.getElementById(id);
-    const loginScreen = $('login'), appScreen = $('app');
-    const meEl = $('me'), ownedEl = $('owned'), sharedEl = $('shared'), toastEl = $('toast');
-    const bannerEl = $('role-banner'), userListEl = $('user-list'), govLogEl = $('gov-log');
+        const $ = (id) => document.getElementById(id)
+        const el = {
+            themeBtn: $("theme-btn"),
+            logout: $("logout-btn"),
+            me: $("me"),
+            listLabel: $("list-label"),
+            newNote: $("new-note"),
+            list: $("list"),
+            detail: $("detail"),
+            splitter: $("splitter"),
+            console: $("console"),
+            standing: $("standing"),
+            peers: $("peers"),
+            toasts: $("toasts"),
+            identityModal: $("identity-modal"),
+            identityActions: $("identity-actions"),
+            reset: $("reset-btn")
+        }
 
-    const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
-    const isSuperadmin = (a) => eqAddr(a, SUPERADMIN.address);
-    const whoIs = (addr) => IDENTITIES.find((i) => eqAddr(i.address, addr));
-    const label = (addr) => { const i = whoIs(addr); return i ? `${i.emoji} ${i.name}` : db.sm.abbrAddr(addr); };
-    /** Read a collaborator's permission case-insensitively. */
-    const permFor = (collaborators = {}, address) => {
-      const key = Object.keys(collaborators).find((k) => eqAddr(k, address));
-      return key ? collaborators[key] : undefined;
-    };
-    /** The collaborator that is NOT the current user (notes are shared between Alice and Bob). */
-    const other = () => (currentUser === ALICE ? BOB : ALICE);
+        const eqAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+        const whoIs = (address) => IDENTITIES.find((identity) => eqAddr(identity.address, address))
+        const nameOf = (address) => whoIs(address)?.name ?? db.sm.abbrAddr(address)
 
-    let toastTimer;
-    /** Show a transient message. @param {string} msg @param {boolean} [isError] */
-    const toast = (msg, isError = false) => {
-      toastEl.textContent = msg;
-      toastEl.className = `toast toast--show${isError ? ' toast--error' : ''}`;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => (toastEl.className = 'toast'), 2600);
-    };
+        /**
+         * A collaborator's level, read case-insensitively.
+         *
+         * Addresses arrive in whatever case their source used, and an ACL keyed
+         * by the checksummed form does not answer to the lowercase one. Comparing
+         * with `===` here is a bug that only shows up for some identities.
+         */
+        const permFor = (collaborators = {}, address) => {
+            const key = Object.keys(collaborators).find((candidate) => eqAddr(candidate, address))
+            return key ? collaborators[key] : undefined
+        }
 
-    /* ============================ Auth ============================ */
-    /** Log in with one of the fixed demo identities. */
-    const login = async (identity) => {
-      currentUser = identity;
-      try {
-        if (!db) {
-          db = await gdb(DB_NAME, {
-            debug: true,
+        /** One line in the activity log. */
+        const log = (message, tone = "") => {
+            const line = document.createElement("div")
+            line.className = tone
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+            el.console.append(line)
+            el.console.scrollTop = el.console.scrollHeight
+        }
+
+        const TOAST_ICONS = { info: "ⓘ", success: "✓", error: "✕" }
+
+        /** Events belong here; the status bar keeps what is TRUE. */
+        const toast = (message, kind = "info") => {
+            const item = document.createElement("div")
+            item.className = `toast ${kind}`
+
+            const icon = document.createElement("span")
+            icon.className = "toast-icon"
+            icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info
+
+            const text = document.createElement("span")
+            text.className = "toast-text"
+            text.textContent = message
+
+            item.append(icon, text)
+            el.toasts.append(item)
+
+            // Re-enter the top layer on every toast: order there is order of
+            // entry, so a dialog opened later would sit above the stack.
+            if (el.toasts.matches(":popover-open")) el.toasts.hidePopover()
+            el.toasts.showPopover?.()
+
+            setTimeout(() => {
+                item.classList.add("out")
+                item.addEventListener("transitionend", () => {
+                    item.remove()
+                    if (!el.toasts.children.length) el.toasts.hidePopover?.()
+                }, { once: true })
+            }, 3200)
+        }
+
+        // ── The activity divider ────────────────────────────────────
+        const MIN_CONSOLE = 60
+        const MIN_CONTENT = 240
+
+        const setConsoleHeight = (px, persist = true) => {
+            // A content column with no height yet cannot say what is too tall,
+            // and that is the state of the first paint: clamping against it would
+            // pin the log to its minimum and store that as the preference.
+            const available = document.querySelector(".content").clientHeight
+            const ceiling = available ? Math.max(available - MIN_CONTENT, MIN_CONSOLE) : Infinity
+            const height = Math.round(Math.min(Math.max(px, MIN_CONSOLE), ceiling))
+            document.documentElement.style.setProperty("--console-height", `${height}px`)
+            if (persist) localStorage.aclsConsole = height
+        }
+
+        el.splitter.addEventListener("pointerdown", (event) => {
+            event.preventDefault() // no text selection while dragging
+            el.splitter.setPointerCapture(event.pointerId)
+
+            const startY = event.clientY
+            const startHeight = el.console.getBoundingClientRect().height
+            // Dragging up grows the log: it sits below the line.
+            const onMove = (move) => setConsoleHeight(startHeight - (move.clientY - startY))
+
+            el.splitter.addEventListener("pointermove", onMove)
+            el.splitter.addEventListener(
+                "pointerup",
+                () => el.splitter.removeEventListener("pointermove", onMove),
+                { once: true }
+            )
+        })
+
+        el.splitter.addEventListener("keydown", (event) => {
+            const step = { ArrowUp: 16, ArrowDown: -16, PageUp: 64, PageDown: -64 }[event.key]
+            if (!step) return
+            event.preventDefault()
+            setConsoleHeight(el.console.getBoundingClientRect().height + step)
+        })
+
+        setConsoleHeight(Number(localStorage.aclsConsole) || 130, false)
+
+        /**
+         * Theme: values only. `data-theme` is the palette in force, which the CSS
+         * paints from; `data-pref` is what the reader asked for, and only it can
+         * tell "dark because I chose it" from "dark because the OS is".
+         */
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.aclsTheme = pref
+            el.themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.aclsTheme ?? "system")
+        el.themeBtn.addEventListener("click", () => {
+            const next = (THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length
+            applyTheme(THEME_ORDER[next])
+        })
+
+        // ── Boot ────────────────────────────────────────────────────
+        /**
+         * The constitution, and the three mechanisms in one object.
+         *
+         * `customRoles` is the default ladder with one change: a promoted `user`
+         * may also `delete`. That is a capability, not a licence — the ACL
+         * middleware still refuses a deletion of someone else's note unless the
+         * owner granted it. Two gates in a row, and both have to open.
+         */
+        const db = await gdb(DB_NAME, {
             rtc: true,
             sm: {
-              // Only the demo superadmin holds the root of trust. Alice and Bob are NOT
-              // superadmins anymore: they join as zero-trust guests and must be promoted.
-              superAdmins: [SUPERADMIN.address],
+                superAdmins: [SUPERADMIN.address],
+                customRoles: {
+                    superadmin: { can: ["assignRole", "deleteAny"], inherits: ["admin"] },
+                    admin: { can: ["delete"], inherits: ["manager"] },
+                    manager: { can: ["publish"], inherits: ["user"] },
+                    user: { can: ["write", "link", "delete", "sync"], inherits: ["guest"] },
+                    guest: { can: ["read", "sync"] }
+                },
+                governanceRules: [
+                    { if: { role: "guest" }, offsetTimestamp: 5000, then: { assignRole: "user" } }
+                ],
+                acls: true
+            }
+        })
 
-              // Same hierarchy as the default roles, with one addition: a promoted `user`
-              // can also `delete`, so members can remove their own notes (the ACLs
-              // middleware still restricts deletion to the note's owner).
-              customRoles: {
-                superadmin: { can: ['assignRole', 'deleteAny'], inherits: ['admin'] },
-                admin: { can: ['delete'], inherits: ['manager'] },
-                manager: { can: ['publish'], inherits: ['user'] },
-                user: { can: ['write', 'link', 'delete', 'sync'], inherits: ['guest'] },
-                guest: { can: ['read', 'sync'] },
-              },
+        let myAddress = null
+        let myRole = null
+        let selectedId = null
+        const notes = new Map()  // id -> value
+        const roles = new Map()  // user:<address> -> role
 
-              // Governance: while the superadmin is online, its engine promotes every
-              // guest to `user` after 5 seconds — the superadmin's key signs each
-              // promotion, and every peer verifies it (zero-trust).
-              governanceRules: [
-                { if: { role: 'guest' }, offsetTimestamp: 5000, then: { assignRole: 'user' } },
-              ],
+        const isSuperadmin = () => eqAddr(myAddress, SUPERADMIN.address)
 
-              acls: true,
-            },
-          });
-          db.sm.setSecurityStateChangeCallback(onSecurityState);
+        const updatePeers = () => {
+            // getPeers() returns an object keyed by peer id, not a Map.
+            const count = Object.keys(db.room?.getPeers() ?? {}).length
+            el.peers.textContent = `${count} ${count === 1 ? "peer" : "peers"}`
         }
-        await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic);
-      } catch (err) {
-        toast(err.message, true);
-      }
-    };
 
-    // Single source of truth for the UI: the Security Manager state callback.
-    // NOTE: the SM creates this identity's `user:<address>` node automatically on login
-    // (role `guest`, or `superadmin` if listed in the config) — no manual bootstrap needed.
-    /** @param {object} state securityState */
-    const onSecurityState = (state) => {
-      if (state.isActive) {
-        myAddress = state.activeAddress;
-        loginScreen.classList.add('is-hidden');
-        appScreen.classList.remove('is-hidden');
-        if (isSuperadmin(myAddress)) setupConsoleView();
-        else setupNotesView();
-        return;
-      }
-      // Signed out
-      unsubscribeNotes?.(); unsubscribeRole?.(); unsubscribeConsole?.();
-      unsubscribeNotes = unsubscribeRole = unsubscribeConsole = null;
-      notesCache.clear();
-      myAddress = myRole = null;
-      appScreen.classList.add('is-hidden');
-      loginScreen.classList.remove('is-hidden');
-    };
+        db.room?.on("peer:join", updatePeers)
+        db.room?.on("peer:leave", updatePeers)
+        setInterval(updatePeers, 2500)
 
-    /* ============================ Superadmin: governance console ============================ */
-    const setupConsoleView = async () => {
-      meEl.innerHTML = `<span>${SUPERADMIN.emoji} ${SUPERADMIN.name}</span><span class="addr">${db.sm.abbrAddr(myAddress)}</span><span class="role-chip role-chip--superadmin">superadmin</span>`;
-      $('console-section').classList.remove('is-hidden');
-      $('notes-owned-section').classList.add('is-hidden');
-      $('notes-shared-section').classList.add('is-hidden');
-      bannerEl.className = 'banner banner--ok';
-      bannerEl.textContent = '🛡️ Governance engine is running in this window — guests are promoted to user after 5 seconds.';
+        // ── What I can see ──────────────────────────────────────────
+        const myLevel = (value) =>
+            eqAddr(value.owner, myAddress) ? "owner" : permFor(value.collaborators, myAddress)
 
-      // Live view of every user node + log of role transitions signed by this window.
-      const roles = new Map();
-      const govLog = (m) => {
-        if (govLogEl.textContent.startsWith('Waiting')) govLogEl.textContent = '';
-        govLogEl.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`;
-        govLogEl.scrollTop = govLogEl.scrollHeight;
-      };
-      const renderUsers = () => {
-        userListEl.innerHTML = [...roles.entries()].map(([id, role]) => {
-          const addr = id.slice(5);
-          return `<div class="user-row"><span class="who">${label(addr)}</span>
-            <span class="addr mono muted">${db.sm.abbrAddr(addr)}</span>
-            <span class="spacer"></span>
-            <span class="role-chip role-chip--${role}">${role}</span></div>`;
-        }).join('') || `<div class="empty">No users yet — log in as Alice or Bob in another window.</div>`;
-      };
-      const onUser = ({ id, value }) => {
-        if (!id?.startsWith('user:') || !value?.role) return;
-        const prev = roles.get(id);
-        roles.set(id, value.role);
-        if (prev && prev !== value.role) govLog(`📜 ${label(id.slice(5))}: ${prev} → ${value.role}`);
-        renderUsers();
-      };
-      const { results, unsubscribe } = await db.map({ query: { role: { $exists: true } } }, onUser);
-      unsubscribeConsole = unsubscribe;
-      for (const { id, value } of results) if (id.startsWith('user:') && value?.role) roles.set(id, value.role);
-      renderUsers();
-    };
+        const visibleNotes = () =>
+            [...notes].filter(([, value]) => myLevel(value)).map(([id, value]) => ({ id, value }))
 
-    /* ============================ Alice / Bob: notes app ============================ */
-    const setupNotesView = async () => {
-      $('console-section').classList.add('is-hidden');
-      $('notes-owned-section').classList.remove('is-hidden');
-      $('notes-shared-section').classList.remove('is-hidden');
-      renderIdentity();
-      subscribeOwnRole();
-      await subscribeNotes();
-    };
+        // ── The list ────────────────────────────────────────────────
+        const renderList = () => {
+            if (isSuperadmin()) return renderRoster()
 
-    const renderIdentity = () => {
-      const chipClass = myRole === 'guest' || !myRole ? 'role-chip--guest' : 'role-chip--user';
-      meEl.innerHTML = `<span>${currentUser.emoji} ${currentUser.name}</span><span class="addr">${db.sm.abbrAddr(myAddress)}</span><span class="role-chip ${chipClass}">${myRole ?? 'guest'}</span>`;
-    };
+            el.listLabel.textContent = "Notes"
+            const visible = visibleNotes()
+            const mine = visible.filter(({ value }) => eqAddr(value.owner, myAddress))
+            const shared = visible.filter(({ value }) => !eqAddr(value.owner, myAddress))
 
-    /** Track my own role live: the governance promotion arrives here as a node update. */
-    const subscribeOwnRole = async () => {
-      unsubscribeRole?.();
-      const { unsubscribe } = await db.get(`user:${myAddress}`, (node) => {
-        const role = node?.value?.role ?? 'guest';
-        if (role === myRole) return;
-        const prev = myRole;
-        myRole = role;
-        renderIdentity();
-        renderRoleBanner();
-        render();
-        if (prev && prev !== role) toast(`📜 Governance: ${prev} → ${role}`);
-      });
-      unsubscribeRole = unsubscribe;
-    };
+            const rows = []
+            const section = (label, entries, empty) => {
+                const heading = document.createElement("li")
+                heading.className = "group"
+                heading.textContent = label
+                rows.push(heading)
 
-    const renderRoleBanner = () => {
-      bannerEl.classList.remove('is-hidden');
-      if (!myRole || myRole === 'guest') {
-        bannerEl.className = 'banner banner--wait';
-        bannerEl.textContent = '⏳ You are a zero-trust guest: you cannot write yet. Keep the Superadmin window open — its governance engine will promote you to user in ~5 seconds.';
-      } else {
-        bannerEl.className = 'banner banner--ok';
-        bannerEl.textContent = `✅ Promoted to ${myRole} by governance — you can now create and share notes.`;
-      }
-      $('new-note').disabled = !myRole || myRole === 'guest';
-    };
+                if (!entries.length) {
+                    const none = document.createElement("li")
+                    none.className = "list-empty"
+                    none.textContent = empty
+                    rows.push(none)
+                    return
+                }
 
-    /** Subscribe to all note nodes; `results` seeds the initial view, the callback keeps it live. */
-    const subscribeNotes = async () => {
-      unsubscribeNotes?.();
-      const onNote = ({ id, value, action }) => {
-        if (action === 'removed') notesCache.delete(id);
-        else if (value) notesCache.set(id, { id, value });
-        render();
-      };
-      const { results, unsubscribe } = await db.map({ query: { type: 'note' } }, onNote);
-      unsubscribeNotes = unsubscribe;
-      for (const { id, value } of results) notesCache.set(id, { id, value });
-      render();
-    };
+                for (const { id, value } of entries) {
+                    const li = document.createElement("li")
+                    li.className = "item"
+                    li.dataset.id = id
+                    li.classList.toggle("selected", id === selectedId)
 
-    /* ============================ Render (notes) ============================ */
-    const render = () => {
-      if (!myAddress || isSuperadmin(myAddress)) return;
-      const notes = [...notesCache.values()];
-      const owned = notes.filter((n) => eqAddr(n.value.owner, myAddress));
-      const shared = notes.filter((n) => !eqAddr(n.value.owner, myAddress) && permFor(n.value.collaborators, myAddress));
+                    const title = document.createElement("span")
+                    title.className = "title"
+                    title.textContent = value.title ?? "Untitled"
 
-      ownedEl.innerHTML = owned.length
-        ? owned.map(renderOwned).join('')
-        : `<div class="empty">${myRole === 'guest' ? 'Notes will unlock once governance promotes you.' : 'No notes yet. Click “New note” to create one.'}</div>`;
-      sharedEl.innerHTML = shared.length
-        ? shared.map(renderShared).join('')
-        : `<div class="empty">Nothing shared with you yet.</div>`;
-      attachListeners();
-    };
+                    const spacer = document.createElement("span")
+                    spacer.className = "spacer"
 
-    /** A note owned by the current user, with sharing controls for the other identity. */
-    const renderOwned = ({ id, value }) => {
-      const o = other();
-      const perm = permFor(value.collaborators, o.address);
-      const badge = perm
-        ? `<span class="badge badge--${perm}">${o.emoji} ${o.name}: ${perm}</span>`
-        : `<span class="badge badge--none">${o.emoji} ${o.name}: no access</span>`;
-      return `
-        <article class="note" data-id="${id}">
-          <div class="note__head"><span class="note__title">${value.title ?? 'Untitled'}</span>${badge}</div>
-          <textarea class="note__content" data-field="content">${value.content ?? ''}</textarea>
-          <div class="note__foot">
-            <button class="btn btn--sm" data-action="save">Save</button>
-            <span class="spacer"></span>
-            <button class="btn btn--ghost btn--sm" data-action="grant-read" ${perm === 'read' ? 'disabled' : ''}>Grant read</button>
-            <button class="btn btn--ghost btn--sm" data-action="grant-write" ${perm === 'write' ? 'disabled' : ''}>Grant write</button>
-            <button class="btn btn--ghost btn--sm" data-action="grant-delete" ${perm === 'delete' ? 'disabled' : ''}>Grant delete</button>
-            <button class="btn btn--ghost btn--sm" data-action="revoke" ${!perm ? 'disabled' : ''}>Revoke</button>
-            <button class="btn btn--danger btn--sm" data-action="delete">Delete</button>
-          </div>
-        </article>`;
-    };
+                    // On my own notes the badge reports what I granted away; on a
+                    // shared one, what I was granted. Same column, two questions.
+                    const level = eqAddr(value.owner, myAddress)
+                        ? permFor(value.collaborators, other().address)
+                        : permFor(value.collaborators, myAddress)
 
-    /** A note shared with the current user; editable only with `write` permission. */
-    const renderShared = ({ id, value }) => {
-      const perm = permFor(value.collaborators, myAddress);
-      const canWrite = perm === 'write' || perm === 'delete';
-      return `
-        <article class="note" data-id="${id}">
-          <div class="note__head">
-            <span class="note__title">${value.title ?? 'Untitled'}</span>
-            <span class="badge badge--${perm}">your access: ${perm}</span>
-          </div>
-          <textarea class="note__content" data-field="content" ${canWrite ? '' : 'disabled'}>${value.content ?? ''}</textarea>
-          <div class="note__foot">
-            <span class="badge">from ${label(value.owner)}</span>
-            <span class="spacer"></span>
-            ${canWrite ? '<button class="btn btn--sm" data-action="save">Save</button>' : ''}
-            ${perm === 'delete' ? '<button class="btn btn--danger btn--sm" data-action="delete">Delete</button>' : ''}
-          </div>
-        </article>`;
-    };
+                    const perm = document.createElement("span")
+                    perm.className = `perm perm-${level ?? "none"}`
+                    perm.textContent = level ?? "—"
 
-    /* ============================ Actions ============================ */
-    const attachListeners = () => {
-      for (const btn of document.querySelectorAll('[data-action]')) {
-        btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.closest('.note').dataset.id));
-      }
-    };
+                    li.append(title, spacer, perm)
+                    rows.push(li)
+                }
+            }
 
-    /** Run an ACL action; the middleware enforces permissions and rejects unauthorized ops. */
-    const handleAction = async (action, id) => {
-      try {
-        if (action === 'save') {
-          const note = notesCache.get(id);
-          const content = document.querySelector(`.note[data-id="${id}"] [data-field="content"]`).value;
-          // Spread the existing value to preserve owner + collaborators; the middleware checks write access.
-          await db.sm.acls.set({ ...note.value, content }, id);
-          toast('Saved');
-        } else if (action === 'grant-read') {
-          await db.sm.acls.grant(id, other().address, 'read');
-          toast(`Granted read to ${other().name}`);
-        } else if (action === 'grant-write') {
-          await db.sm.acls.grant(id, other().address, 'write');
-          toast(`Granted write to ${other().name}`);
-        } else if (action === 'grant-delete') {
-          await db.sm.acls.grant(id, other().address, 'delete');
-          toast(`Granted delete to ${other().name}`);
-        } else if (action === 'revoke') {
-          await db.sm.acls.revoke(id, other().address);
-          toast(`Revoked ${other().name}'s access`);
-        } else if (action === 'delete') {
-          await db.sm.acls.delete(id);
-          toast('Note deleted');
+            section("My notes", mine, myRole === "guest" ? "Notes unlock once you are promoted." : "None yet.")
+            section("Shared with me", shared, "Nothing yet.")
+            el.list.replaceChildren(...rows)
         }
-        // Refresh the affected node directly to keep this tab's UI immediate.
-        if (action === 'delete') {
-          notesCache.delete(id);
-        } else {
-          const { result } = await db.get(id);
-          if (result) notesCache.set(id, { id: result.id, value: result.value });
+
+        /** The superadmin sees the network instead: identities and their roles. */
+        const renderRoster = () => {
+            el.listLabel.textContent = "Network"
+
+            if (!roles.size) {
+                el.list.replaceChildren(Object.assign(document.createElement("li"), {
+                    className: "list-empty", textContent: "No identities yet."
+                }))
+                return
+            }
+
+            el.list.replaceChildren(...[...roles].map(([id, role]) => {
+                const address = id.slice(5)
+                const li = document.createElement("li")
+                li.className = "item"
+
+                const who = document.createElement("span")
+                who.className = "title"
+                who.textContent = nameOf(address)
+
+                const spacer = document.createElement("span")
+                spacer.className = "spacer"
+
+                const chip = document.createElement("span")
+                chip.className = `role role-${role}`
+                chip.textContent = role
+
+                li.append(who, spacer, chip)
+                return li
+            }))
         }
-        render();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    };
 
-    /** Create a new ACL-protected note owned by the current user (requires governance promotion). */
-    const createNote = async () => {
-      if (!myRole || myRole === 'guest') {
-        return toast('You are still a guest — wait for the governance promotion.', true);
-      }
-      const n = [...notesCache.values()].filter((x) => eqAddr(x.value.owner, myAddress)).length + 1;
-      try {
-        const id = await db.sm.acls.set({ type: 'note', title: `${currentUser.name}'s note #${n}`, content: 'Edit me…' });
-        const { result } = await db.get(id);
-        if (result) notesCache.set(id, { id: result.id, value: result.value });
-        render();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    };
+        /** Notes are shared between the two members, so "the other" is unambiguous. */
+        const other = () => (eqAddr(myAddress, ALICE.address) ? BOB : ALICE)
 
-    /* ============================ Wiring ============================ */
-    $('login-superadmin').onclick = () => login(SUPERADMIN);
-    $('login-alice').onclick = () => login(ALICE);
-    $('login-bob').onclick = () => login(BOB);
-    $('new-note').onclick = createNote;
-    $('logout').onclick = () => db?.sm.clearSecurity();
-    $('reset').onclick = async () => {
-      const inst = db ?? await gdb(DB_NAME);
-      await inst.clear();
-      location.reload();
-    };
+        // ── The detail: the note, and its ACL as a table ─────────────
+        const renderDetail = () => {
+            el.detail.replaceChildren()
 
-    addEventListener('beforeunload', () => {
-      unsubscribeNotes?.(); unsubscribeRole?.(); unsubscribeConsole?.();
-    });
-  </script>
+            if (isSuperadmin()) {
+                const section = document.createElement("section")
+                section.className = "section"
+                const heading = document.createElement("h2")
+                heading.textContent = "Governance"
+                const hint = document.createElement("p")
+                hint.className = "hint"
+                hint.textContent = "This window runs the engine: every guest is promoted to user five seconds after joining, signed with your key. Notes and their ACLs belong to Alice and Bob — sign in as one of them in another window to see the table."
+                section.append(heading, hint)
+                el.detail.append(section)
+                return
+            }
+
+            const note = selectedId ? notes.get(selectedId) : null
+            if (!note || !myLevel(note)) {
+                const hint = document.createElement("p")
+                hint.className = myRole === "guest" ? "hint waiting" : "hint"
+                hint.textContent = myRole === "guest"
+                    ? "You are a zero-trust guest: you cannot write anything yet. Keep the superadmin's window open — its engine promotes you in about five seconds."
+                    : "Pick a note on the left, or create one."
+                el.detail.append(hint)
+                return
+            }
+
+            const level = myLevel(note)
+            const canWrite = level === "owner" || level === "write" || level === "delete"
+
+            const title = document.createElement("h2")
+            title.className = "note-title"
+            title.textContent = note.title ?? "Untitled"
+
+            const body = document.createElement("textarea")
+            body.id = "note-body"
+            body.value = note.content ?? ""
+            body.disabled = !canWrite
+            body.setAttribute("aria-label", "Note body")
+
+            const save = document.createElement("button")
+            save.textContent = "Save"
+            save.disabled = !canWrite
+            save.addEventListener("click", () => saveNote(selectedId, body.value))
+
+            const noteSection = document.createElement("section")
+            noteSection.className = "section"
+            noteSection.append(title, body, save)
+            el.detail.append(noteSection)
+
+            // The ACL, as a table. This is the part an application hides.
+            const aclSection = document.createElement("section")
+            aclSection.className = "section"
+
+            const aclHeading = document.createElement("h2")
+            aclHeading.textContent = "Who can do what"
+
+            const hint = document.createElement("p")
+            hint.className = "hint"
+            hint.textContent = level === "owner"
+                ? "Grant and revoke per address. Every change is a write to this node, checked by the middleware on every peer — not by this page."
+                : `You hold ${level} on this note. Only its owner can change the table below.`
+
+            const table = document.createElement("table")
+            table.className = "acl"
+
+            const head = document.createElement("tr")
+            for (const label of ["Address", "Level", ""]) {
+                const th = document.createElement("th")
+                th.textContent = label
+                head.append(th)
+            }
+            table.append(head)
+
+            const rows = [
+                { address: note.owner, level: "owner", isOwner: true },
+                { address: other().address, level: permFor(note.collaborators, other().address) }
+            ]
+
+            // Anyone else the owner granted — the demo shares between two, but the
+            // node's ACL is a map and may hold more.
+            for (const key of Object.keys(note.collaborators ?? {})) {
+                if (eqAddr(key, other().address) || eqAddr(key, note.owner)) continue
+                rows.push({ address: key, level: note.collaborators[key] })
+            }
+
+            for (const row of rows) {
+                const tr = document.createElement("tr")
+
+                const who = document.createElement("td")
+                who.className = "who"
+                const name = document.createElement("div")
+                name.textContent = nameOf(row.address)
+                const addr = document.createElement("div")
+                addr.className = "addr"
+                addr.textContent = db.sm.abbrAddr(row.address)
+                who.append(name, addr)
+
+                const held = document.createElement("td")
+                const perm = document.createElement("span")
+                perm.className = `perm perm-${row.level ?? "none"}`
+                perm.textContent = row.level ?? "no access"
+                held.append(perm)
+
+                const actions = document.createElement("td")
+                const wrap = document.createElement("div")
+                wrap.className = "actions"
+
+                if (!row.isOwner && level === "owner") {
+                    const levels = document.createElement("div")
+                    levels.className = "levels"
+                    for (const name of LEVELS) {
+                        const button = document.createElement("button")
+                        button.textContent = name
+                        button.classList.toggle("on", row.level === name)
+                        button.disabled = row.level === name
+                        button.addEventListener("click", () => grant(selectedId, row.address, name))
+                        levels.append(button)
+                    }
+
+                    const revoke = document.createElement("button")
+                    revoke.className = "ghost"
+                    revoke.textContent = "Revoke"
+                    revoke.disabled = !row.level
+                    revoke.addEventListener("click", () => revokeAccess(selectedId, row.address))
+
+                    wrap.append(levels, revoke)
+                }
+
+                actions.append(wrap)
+                tr.append(who, held, actions)
+                table.append(tr)
+            }
+
+            aclSection.append(aclHeading, hint, table)
+
+            // Deleting is offered to whoever the ACL says may delete — the engine
+            // is what enforces it, and it will refuse anyone else.
+            if (level === "owner" || level === "delete") {
+                const remove = document.createElement("button")
+                remove.className = "danger"
+                remove.textContent = "Delete this note"
+                remove.addEventListener("click", () => deleteNote(selectedId))
+                aclSection.append(remove)
+            }
+
+            el.detail.append(aclSection)
+        }
+
+        const renderStanding = () => {
+            el.standing.replaceChildren()
+            if (!myAddress) return
+
+            const role = document.createElement("span")
+            role.className = `role role-${myRole ?? "guest"}`
+            role.textContent = myRole ?? "guest"
+
+            const note = document.createElement("span")
+            const selected = selectedId ? notes.get(selectedId) : null
+            const level = selected ? myLevel(selected) : null
+            note.className = `perm perm-${level ?? "none"}`
+            note.textContent = selected ? `${level} on this note` : ""
+
+            el.standing.append(role, note)
+        }
+
+        const render = () => {
+            renderList()
+            renderDetail()
+            renderStanding()
+        }
+
+        // ── Acting ──────────────────────────────────────────────────
+        /**
+         * Every one of these can be refused, and the refusal is the lesson: the
+         * middleware runs on every peer, so a write nobody authorised is rejected
+         * even if this page had offered the button.
+         */
+        const run = async (what, action) => {
+            try {
+                await action()
+                log(what, "ok")
+            } catch (error) {
+                log(`${what} — refused: ${error.message}`, "error")
+                toast(error.message, "error")
+            }
+            await refresh(selectedId)
+        }
+
+        /** Reads the node back so this window updates without waiting for a peer. */
+        const refresh = async (id) => {
+            if (!id) return render()
+            const { result } = await db.get(id)
+            if (result) notes.set(id, result.value)
+            else { notes.delete(id); if (selectedId === id) selectedId = null }
+            render()
+        }
+
+        const saveNote = (id, content) => run("Saved the note", async () => {
+            // Spread the stored value: db.put replaces, so a partial write would
+            // drop `owner` and `collaborators` — and with them the whole ACL.
+            await db.sm.acls.set({ ...notes.get(id), content }, id)
+            toast("Saved", "success")
+        })
+
+        const grant = (id, address, level) => run(`Granted ${level} to ${nameOf(address)}`, async () => {
+            await db.sm.acls.grant(id, address, level)
+            toast(`${nameOf(address)} can now ${level}`, "success")
+        })
+
+        const revokeAccess = (id, address) => run(`Revoked ${nameOf(address)}`, async () => {
+            await db.sm.acls.revoke(id, address)
+            toast(`${nameOf(address)} no longer has access`, "success")
+        })
+
+        const deleteNote = (id) => run("Deleted the note", async () => {
+            await db.sm.acls.delete(id)
+            notes.delete(id)
+            if (selectedId === id) selectedId = null
+            toast("Note deleted", "success")
+        })
+
+        const createNote = () => run("Created a note", async () => {
+            const mine = [...notes.values()].filter((value) => eqAddr(value.owner, myAddress)).length
+            const id = await db.sm.acls.set({
+                type: "note",
+                title: `${nameOf(myAddress)}'s note #${mine + 1}`,
+                content: "Edit me…"
+            })
+            selectedId = id
+        })
+
+        el.newNote.addEventListener("click", createNote)
+
+        el.list.addEventListener("click", (event) => {
+            const item = event.target.closest("li.item")
+            if (!item?.dataset.id) return
+            selectedId = item.dataset.id
+            render()
+        })
+
+        // ── Subscriptions ───────────────────────────────────────────
+        // Every note in the graph arrives here; what this identity may see is
+        // decided when rendering, from the node's own ACL.
+        await db.map({ query: { type: "note" } }, ({ id, value, action }) => {
+            if (action === "removed") {
+                notes.delete(id)
+                if (selectedId === id) selectedId = null
+            } else if (value) notes.set(id, value)
+            render()
+        })
+
+        await db.map({ query: { role: { $exists: true } } }, ({ id, value, action }) => {
+            if (!id?.startsWith("user:")) return
+            if (action === "removed") roles.delete(id)
+            else if (value?.role) roles.set(id, value.role)
+            if (isSuperadmin()) render()
+        })
+
+        // ── Session ─────────────────────────────────────────────────
+        let unsubscribeRole = null
+
+        const onSecurityState = (state) => {
+            el.logout.classList.toggle("hidden", !state.isActive)
+            el.me.textContent = state.isActive ? `${nameOf(state.activeAddress)} · ${state.abbrAddr}` : ""
+
+            if (!state.isActive) {
+                unsubscribeRole?.()
+                unsubscribeRole = null
+                myAddress = myRole = selectedId = null
+                el.newNote.disabled = true
+                el.list.replaceChildren()
+                el.detail.replaceChildren()
+                el.standing.replaceChildren()
+                el.identityModal.showModal()
+                return
+            }
+
+            el.identityModal.close()
+            myAddress = state.activeAddress
+
+            // Paint at once with what is already cached. Waiting for the role
+            // subscription leaves the list empty when an identity is swapped in
+            // a window that was already open — the notes are there, they were
+            // simply being filtered against the previous address.
+            render()
+
+            if (isSuperadmin()) {
+                myRole = "superadmin"
+                el.newNote.disabled = true
+                render()
+                return
+            }
+
+            // My own role, live: the governance promotion arrives here as an
+            // ordinary node update, and unlocks the New note button by itself.
+            unsubscribeRole?.()
+            db.get(`user:${myAddress}`, (node) => {
+                const role = node?.value?.role ?? "guest"
+                if (role === myRole) return
+                const previous = myRole
+                myRole = role
+                el.newNote.disabled = role === "guest"
+                render()
+                if (previous) {
+                    log(`Governance: ${previous} → ${role}`, "ok")
+                    toast(`Promoted to ${role}`, "success")
+                }
+            }).then(({ unsubscribe }) => { unsubscribeRole = unsubscribe })
+        }
+
+        for (const identity of IDENTITIES) {
+            const button = document.createElement("button")
+            button.className = identity === SUPERADMIN ? "root" : ""
+            button.textContent = `Sign in as ${identity.name}`
+            button.addEventListener("click", async () => {
+                try {
+                    await db.sm.loginOrRecoverUserWithMnemonic(identity.mnemonic)
+                } catch (error) {
+                    toast(error.message, "error")
+                }
+            })
+            el.identityActions.append(button)
+        }
+
+        el.logout.addEventListener("click", () => db.sm.clearSecurity())
+
+        el.reset.addEventListener("click", async () => {
+            // No confirmation: these are throwaway demo records, and the button
+            // only exists in the door — before anything is under way.
+            el.reset.disabled = true
+            await db.clear()
+            notes.clear()
+            roles.clear()
+            selectedId = null
+            toast("Testbed cleared.", "success")
+            el.reset.disabled = false
+        })
+
+        updatePeers()
+        db.sm.setSecurityStateChangeCallback(onSecurityState)
+    </script>
 </body>
 
 </html>
