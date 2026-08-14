@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.4] - 2026-08-14
+
+### Fixed
+
+- **Rapid delete or write bursts no longer degrade into an endless resync loop.** The bundled GenosRTC is rebuilt at 0.25.3. The 0.23.3 watchdog could kill a peer that was merely busy: its proof-of-life pong was produced inside the room's sequential receive chain, so a peer digesting a heavy op burst answered too late, was destroyed mid-sync, and every kill forced a bigger resync — rapidly deleting many items left two browsers endlessly swapping their lists. Pongs now bypass the chain entirely, answered the moment the frame is identified. Verified live: mass-delete bursts converge cleanly, and the wifi-cut self-healing and 12-tab cellular mesh roster remain intact. Update every peer in a room together, and redeploy the Fallback Server alongside your clients.
+
 ## [0.23.3] - 2026-08-14
 
 ### Fixed
