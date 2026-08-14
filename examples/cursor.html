@@ -4,130 +4,185 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real-Time Cursors with GDB & GenosRTC</title>
+  <title>GenosDB — Live cursors</title>
   <style>
-    body,
-    html {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background-color: #1e1e1e;
-      cursor: none;
-      /* Hide system cursor */
+    /* Minimal profile: only the tokens this canvas actually paints, with the
+       guide's exact values. Dark, fixed: the page is a surface cursors move
+       on, not an interface to be read. */
+    :root {
+      --bg-primary: #0d0f12;
+      --text-primary: #e8eaed;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-5: 24px;
     }
 
-    .cursor {
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      position: absolute;
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+      cursor: none; /* the accent dot below replaces the system cursor */
+    }
+
+    .brand {
+      position: fixed;
+      top: var(--space-5);
+      left: var(--space-5);
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+    }
+
+    /* Ambient connection state: bottom right, far from the content, like every
+       other GenosDB app. */
+    .presence {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* Doubles as the empty state: alone in the room, this line is the lesson. */
+    .hint {
+      margin: 0;
+      max-width: 420px;
+      text-align: center;
+      color: var(--text-tertiary);
       pointer-events: none;
-      transform: translate(-50%, -50%);
-      transition: transform 0.05s ease-out;
-      /* Movimiento súper suave */
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    }
+
+    /* Positioned with `transform`, not `left`/`top`: those two are layout
+       properties, so animating them makes the browser reflow the page on every
+       frame, while a transform is handed to the compositor. `left: 0; top: 0`
+       because the transform carries the whole position. */
+    .cursor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    /* Only the remote ones are smoothed. Your own cursor must land exactly
+       where the mouse is: with the system cursor hidden, any easing on it is
+       felt as the page lagging behind your hand. */
+    .cursor:not(.local) { transition: transform .05s linear; }
+
+    .cursor.local {
+      background: var(--accent);
+    }
+
+    /* A remote cursor carries its peer's colour; the tag hangs under the dot. */
+    .cursor .tag {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--mono);
       font-size: 10px;
-      color: white;
-      font-family: monospace;
+      color: var(--text-tertiary);
+      white-space: nowrap;
     }
   </style>
 </head>
 
 <body>
-  <!-- Container for other participants' cursors -->
-  <div id="remote-cursors-container"></div>
+  <h1 class="brand">Live cursors · GenosDB</h1>
+  <p class="hint">Move your mouse. Open this page in a second window and each
+    peer's cursor appears here, live, over an ephemeral channel.</p>
+  <span class="presence" id="presence">0 peers</span>
 
-  <!-- Your own cursor, managed separately -->
-  <div class="cursor" id="local-cursor" style="background-color: rgba(255, 255, 255, 0.5);"></div>
+  <div id="remote-cursors"></div>
+  <div class="cursor local" id="local-cursor"></div>
 
   <script type="module">
-    // Import GDB library
-    import { gdb } from "../dist/index.js";
+    // Demonstrates GenosRTC's ephemeral channels, the presence layer next to
+    // the graph: db.room.channel(), channel.send(), channel.on('message'),
+    // and the room's 'peer:join' / 'peer:leave' events. Channel traffic never
+    // touches the database — nothing here is persisted or synced.
+    import { gdb } from "../dist/index.js"
 
-    // Object to keep track of other participants' cursors
-    const remoteCursors = {};
+    const db = await gdb("cursormove", { rtc: true })
+    const cursorChannel = db.room.channel("cursor")
 
-    // --- MAIN ASYNC FUNCTION ---
-    // Wrap everything in an async function for initialization
-    async function main() {
-      try {
-        // 1. INITIALIZATION
-        // Use async factory for GDB
-        const db = await gdb('cursormove', { rtc: true });
+    const remoteCursors = new Map() // peerId -> element
+    const localCursor = document.getElementById("local-cursor")
+    const container = document.getElementById("remote-cursors")
+    const presence = document.getElementById("presence")
 
-        // 2. CHANNEL API
-        // Get the channel object, use db.room for the app
-        const cursorChannel = db.room.channel("cursor");
+    // Same peer, same colour in every window: derive the hue from the peer id.
+    // A random colour would disagree from one window to the next.
+    const hueOf = id => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+    const colorOf = id => `hsl(${hueOf(id)} 75% 70%)`
 
-        // --- PARTICIPANT AND CURSOR MANAGEMENT ---
-
-        // When a new participant joins
-        db.room.on('peer:join', peerId => {
-          console.log(`✅ Peer joined: ${peerId.slice(0, 8)}...`);
-
-          // Create a new div for their cursor
-          const newCursor = document.createElement('div');
-          newCursor.className = 'cursor';
-          newCursor.style.backgroundColor = getRandomColor();
-          newCursor.textContent = peerId.slice(0, 4); // Show part of their ID
-          document.getElementById('remote-cursors-container').appendChild(newCursor);
-
-          // Save reference to this peer's cursor
-          remoteCursors[peerId] = newCursor;
-        });
-
-        // When a participant leaves
-        db.room.on('peer:leave', peerId => {
-          console.log(`❌ Peer left: ${peerId.slice(0, 8)}...`);
-
-          // Remove their cursor from DOM and our registry
-          if (remoteCursors[peerId]) {
-            remoteCursors[peerId].remove();
-            delete remoteCursors[peerId];
-          }
-        });
-
-        // --- APP LOGIC ---
-
-        const localCursor = document.getElementById('local-cursor');
-
-        // Move your own cursor and send position to others
-        window.addEventListener('mousemove', e => {
-          localCursor.style.left = `${e.clientX}px`;
-          localCursor.style.top = `${e.clientY}px`;
-
-          // Use .send() method of channel object
-          cursorChannel.send({ x: e.clientX, y: e.clientY });
-        });
-
-        // Receive data from channel and move the correct participant's cursor
-        cursorChannel.on('message', (data, fromPeerId) => {
-          const peerCursor = remoteCursors[fromPeerId];
-
-          // If that peer's cursor exists, update its position
-          if (peerCursor) {
-            peerCursor.style.left = `${data.x}px`;
-            peerCursor.style.top = `${data.y}px`;
-          }
-        });
-
-      } catch (error) {
-        console.error("Fatal error initializing the app:", error);
-      }
+    const updatePresence = () => {
+      const count = remoteCursors.size
+      presence.textContent = `${count} peer${count === 1 ? "" : "s"}`
     }
 
-    // --- HELPER FUNCTIONS ---
-    function getRandomColor() {
-      const h = Math.floor(Math.random() * 360);
-      return `hsla(${h}, 90%, 70%, 0.8)`;
+    db.room.on("peer:join", peerId => {
+      const cursor = document.createElement("div")
+      cursor.className = "cursor"
+      cursor.style.background = colorOf(peerId)
+
+      const tag = document.createElement("span")
+      tag.className = "tag"
+      tag.textContent = peerId.slice(0, 4)
+      cursor.append(tag)
+
+      container.append(cursor)
+      remoteCursors.set(peerId, cursor)
+      updatePresence()
+    })
+
+    db.room.on("peer:leave", peerId => {
+      remoteCursors.get(peerId)?.remove()
+      remoteCursors.delete(peerId)
+      updatePresence()
+    })
+
+    // One send per frame, coalesced to the latest position. mousemove fires
+    // faster than the display refreshes, and channel.send() serializes and
+    // writes to every peer's data channel each call — unthrottled, that is
+    // hundreds of messages per second into the room.
+    let queued = null
+    const flushPosition = () => {
+      cursorChannel.send(queued)
+      queued = null
     }
 
-    // Start the app
-    main();
+    /** The dot is 12px wide, so it is pulled back half its size to sit on the point. */
+    const place = (cursor, x, y) => { cursor.style.transform = `translate(${x - 6}px, ${y - 6}px)` }
+
+    addEventListener("mousemove", e => {
+      // Painted straight from the event: the local dot stands in for the system
+      // cursor, so it cannot wait for a frame or ease into position.
+      place(localCursor, e.clientX, e.clientY)
+      if (!queued) requestAnimationFrame(flushPosition)
+      queued = { x: e.clientX, y: e.clientY }
+    })
+
+    cursorChannel.on("message", (position, fromPeerId) => {
+      const cursor = remoteCursors.get(fromPeerId)
+      if (!cursor) return
+      place(cursor, position.x, position.y)
+    })
   </script>
 </body>
 
