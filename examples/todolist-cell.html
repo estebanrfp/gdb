@@ -2,262 +2,1009 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GenosDB To-Do List · Cellular Mesh</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 400px;
-      margin: auto;
-      padding: 20px;
-      background-color: #f4f7fc;
-      color: #333;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — To-do list on Cellular Mesh</title>
 
-    h2 {
-      text-align: center;
-      color: #444;
-    }
+    <style>
+        /* Dark, because this is an example application rather than a page about
+           one. Same token names as every other example — only the values differ. */
+        :root {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
 
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 12px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-    }
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
 
-    button {
-      background: none;
-      border: none;
-      padding: 8px;
-      cursor: pointer;
-      font-size: 18px;
-      transition: transform 0.2s;
-    }
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
 
-    button:hover {
-      transform: scale(1.1);
-    }
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
 
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+            --text-on-accent: #ffffff;
 
-    li {
-      padding: 12px;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: transparent;
-      margin-bottom: 6px;
-    }
+            /* Roles in the overlay, named once and shared with
+               mesh-cells-monitor.html so a colour means the same thing on both. */
+            --node-self: var(--accent);
+            --node-peer: var(--text-secondary);
+            --node-bridge: var(--warn);
+            --node-server: var(--violet);
+            --node-cell: var(--ok);
 
-    li span {
-      flex: 1;
-      cursor: pointer;
-    }
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
 
-    .completed {
-      text-decoration: line-through;
-      color: gray;
-    }
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
 
-    .edit-mode {
-      display: inline-block;
-      width: 70%;
-    }
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
 
-    .edit-buttons {
-      display: flex;
-      gap: 5px;
-    }
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
 
-    .hidden {
-      display: none;
-    }
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
 
-    .icon-container {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-  </style>
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* Chrome at the edges, and between them two panels: the app on the left
+           with the room to grow, what configures it on the right. The page
+           never scrolls — each panel scrolls itself. */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 400px;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            height: 100%;
+        }
+
+        .topbar,
+        .stats,
+        .statusbar {
+            grid-column: 1 / -1;
+        }
+
+        /* Every chrome band is 48px, so top bar and status bar read as one
+           system. The stats row is deliberately taller: two lines per figure. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            margin-right: -6px;
+            /* aligns the mark with the edge, not the hit area */
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            color: var(--text-primary);
+            border-color: transparent;
+        }
+
+        .icon-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .icon-moon,
+        .icon-system {
+            display: none;
+        }
+
+        [data-pref="dark"] .icon-sun {
+            display: none;
+        }
+
+        [data-pref="dark"] .icon-moon {
+            display: block;
+        }
+
+        [data-pref="system"] .icon-sun {
+            display: none;
+        }
+
+        [data-pref="system"] .icon-system {
+            display: block;
+        }
+
+        /* ── What the overlay decides ───────────────────────────── */
+        /* The figures the engine computes, in the chrome: this app's whole
+           point is that they change while the code below stays still. */
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-6);
+            padding: var(--space-3) var(--space-5);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        .stat b {
+            font-family: var(--mono);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .stat span {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .stat.cells b {
+            color: var(--ok);
+        }
+
+        .stat.bridges b {
+            color: var(--warn);
+        }
+
+        /* ── The app ────────────────────────────────────────────── */
+        /* The panel takes whatever width is left, but the list inside it does
+           not stretch: a task is a line of text, and a line of text at 900px
+           stops being readable. */
+        .content {
+            min-width: 0;
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-6) var(--space-5);
+        }
+
+        .column {
+            width: min(560px, 100%);
+            margin: 0 auto;
+        }
+
+        #taskList {
+            list-style: none;
+            margin: var(--space-4) 0 0;
+            padding: 0;
+        }
+
+        /* Rows separated by one rule and the space around them — a bordered,
+           rounded block per task would be a second surface on a page that
+           has one. */
+        #taskList li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .task-text {
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+            overflow-wrap: anywhere;
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .task-edit {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 2px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .empty {
+            margin: var(--space-5) 0 0;
+            color: var(--text-tertiary);
+        }
+
+        /* ── The right panel ───────────────────────────────────── */
+        /* One job: show the overlay assembling itself. The configuration that
+           shaped it is a comment in the source, not a panel on screen — this
+           page is for watching peers connect, and anything else competes. */
+        .sidebar {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr);
+            min-width: 0;
+            min-height: 0;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+        }
+
+        .roster {
+            min-height: 0;
+            overflow-y: auto;
+            padding: var(--space-5);
+        }
+
+
+        /* Sticky, because a label that scrolls away stops labelling. */
+        .roster h2 {
+            position: sticky;
+            top: calc(var(--space-5) * -1);
+            margin: calc(var(--space-5) * -1) 0 var(--space-3);
+            padding: var(--space-5) 0 var(--space-2);
+            background: var(--bg-secondary);
+        }
+
+        /* A cell is a heading and its members, separated by space and one rule —
+           not a tinted, rounded block, which would be a second surface. */
+        .cell-group+.cell-group {
+            margin-top: var(--space-4);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .cell-head {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-2);
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ok);
+        }
+
+        .cell-head span:last-child {
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        .peer-row {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-2);
+            padding: 2px 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Coloured by role, exactly like the graph in the monitor — the legend
+           above is the only thing that has to be read. */
+        .peer-row.role-peer {
+            color: var(--node-peer);
+        }
+
+        .peer-row.role-self {
+            color: var(--node-self);
+        }
+
+        .peer-row.role-bridge {
+            color: var(--node-bridge);
+        }
+
+        .peer-row.role-server {
+            color: var(--node-server);
+        }
+
+        /* The id takes the slack, so everything after it lands on the right edge
+           — the same column the peer count and the role marks already use. */
+        .peer-id {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Role marks are text, not pills: at 10px a rounded fill is a smudge. */
+        .peer-row b {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+        }
+
+        /* The cells a bridge was elected to reach, beside the peer rather than
+           under it: it is a property of that peer, not a note about it. */
+        .peer-serves {
+            font-size: 11px;
+            white-space: nowrap;
+            color: var(--node-bridge);
+        }
+
+        .roster h2 {
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* The same key as mesh-cells-monitor.html, and the same colours: a role
+           means one thing across every GenosDB page that draws this overlay. */
+        /* Columns sized to the labels, not to the panel: stretched to full width
+           the key reads as scattered dots rather than one block. And it gets its
+           own rule, or the colours run straight into the data below. */
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(2, max-content);
+            gap: 2px var(--space-5);
+            margin: 0 0 var(--space-4);
+            padding: 0 0 var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            list-style: none;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .legend li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .legend i {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .legend .self {
+            color: var(--node-self);
+        }
+
+        .legend .peer {
+            color: var(--node-peer);
+        }
+
+        .legend .bridge {
+            color: var(--node-bridge);
+        }
+
+        .legend .server {
+            color: var(--node-server);
+        }
+
+        .legend .cell {
+            color: var(--node-cell);
+        }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .run-state,
+        .position {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin: 0;
+            font-family: var(--mono);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-tertiary);
+        }
+
+        .live .dot {
+            background: var(--ok);
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            50% {
+                opacity: .25;
+            }
+        }
+
+        .role-bridge {
+            color: var(--warn);
+            font-weight: 600;
+        }
+
+        /* ── Buttons & fields ───────────────────────────────────── */
+        /* Secondary is the default and blue is opt-in: make `button` itself the
+           primary one and `button:hover` paints a fill that outranks every
+           `.icon-btn:hover`. */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        /* Row actions are icons, not chrome buttons: they sit inside content and
+           only earn colour on hover. */
+        .row-actions button {
+            display: flex;
+            padding: 6px;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+        }
+
+        .row-actions button:hover:not(:disabled) {
+            color: var(--text-primary);
+        }
+
+        .row-actions button.danger:hover:not(:disabled) {
+            color: var(--danger);
+        }
+
+        .row-actions svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .live .dot {
+                animation: none;
+            }
+        }
+
+        /* Stacking is still one screen: the panels become rows inside the same
+           full-height layout, so the status bar never falls below the fold. */
+        @media (max-width: 820px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 42%) auto;
+            }
+
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid var(--border-subtle);
+            }
+
+            .roster {
+                padding: var(--space-4);
+            }
+
+            .content {
+                padding: var(--space-5) var(--space-4);
+            }
+
+            .stats {
+                gap: var(--space-5);
+            }
+        }
+    </style>
 </head>
 
 <body>
-  <h2>To-Do List · Cellular Mesh</h2>
-  <input type="text" id="taskInput" placeholder="New task">
-  <ul id="taskList"></ul>
-  <script type="module">
-    import { gdb } from "../dist/index.js";
 
-    // Same app as todolist.html — the ONLY change is enabling Cellular Mesh:
-    // the transport partitions into cells + bridges (O(cellSize) connections
-    // per peer instead of full mesh), while db.map/put/remove stay identical.
-    const db = await gdb('todoList-cell', {
-      rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } }
-    });
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">To-do list</h1>
 
-    const currentNodeIds = new Set();
+            <button id="themeBtn" class="icon-btn" title="Theme" aria-label="Theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path
+                        d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+                <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M9 21h6" />
+                </svg>
+            </button>
+        </header>
 
-    // Create DOM elements for each task
-    function createTaskElements(li, id, { text, completed }) {
-      const taskTextSpan = document.createElement('span');
-      taskTextSpan.className = completed ? 'completed' : '';
-      taskTextSpan.textContent = text;
-      taskTextSpan.onclick = () => toggleTask(id);
+        <div class="stats">
+            <p class="stat"><b id="statPeers">1</b><span>Peers known</span></p>
+            <p class="stat links"><b id="statLinks">0</b><span>Direct links</span></p>
+            <p class="stat cells"><b id="statCells">—</b><span>Cells</span></p>
+            <p class="stat bridges"><b id="statBridges">0</b><span>Bridges</span></p>
+            <p class="stat"><b id="statCellSize">—</b><span>Cell size in force</span></p>
+            <p class="stat"><b id="statTTL">—</b><span>Dynamic TTL</span></p>
+        </div>
 
-      const taskEditTextInput = document.createElement('input');
-      taskEditTextInput.type = 'text';
-      taskEditTextInput.value = text;
-      taskEditTextInput.className = 'edit-mode hidden';
-      taskEditTextInput.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') await saveEdit(id, taskEditTextInput.value);
-      });
+        <main class="content">
+            <div class="column">
+                <input type="text" id="taskInput" placeholder="New task" aria-label="New task">
+                <ul id="taskList"></ul>
+                <p class="empty" id="emptyState">No tasks yet. Add one, then open this page in another tab.</p>
+            </div>
+        </main>
 
-      const iconContainer = document.createElement('div');
-      iconContainer.className = 'icon-container';
+        <aside class="sidebar">
+            <section class="roster" aria-live="polite">
+                <h2>Cells forming</h2>
+                <ul class="legend">
+                    <li class="self"><i></i>You</li>
+                    <li class="peer"><i></i>Peer</li>
+                    <li class="bridge"><i></i>Bridge</li>
+                    <li class="server"><i></i>Server</li>
+                    <li class="cell"><i></i>Cell</li>
+                </ul>
+                <div id="cellList"></div>
+            </section>
+        </aside>
 
-      const editButton = document.createElement('button');
-      editButton.innerHTML = '✏️';
-      editButton.onclick = () => enableEditMode(li);
+        <footer class="statusbar">
+            <p class="run-state" id="runState">
+                <span class="dot"></span>
+                <span id="connState">connecting…</span>
+            </p>
+            <p class="position">
+                <span id="selfCell">—</span>
+                <span id="selfRole"></span>
+            </p>
+        </footer>
+    </div>
 
-      const deleteButton = document.createElement('button');
-      deleteButton.innerHTML = '🗑️';
-      deleteButton.onclick = () => deleteTask(id);
+    <script type="module">
+        import { gdb } from "../dist/index.js"
 
-      const editButtonsContainer = document.createElement('div');
-      editButtonsContainer.className = 'edit-buttons hidden';
+        // ════════════════════════════════════════════════════════════════
+        // THEME
+        // ════════════════════════════════════════════════════════════════
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+        const themeBtn = document.getElementById("themeBtn")
 
-      const saveButton = document.createElement('button');
-      saveButton.innerHTML = '💾';
-      saveButton.onclick = () => saveEdit(id, taskEditTextInput.value);
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.todolistCellTheme = pref
+            themeBtn.title = `Theme: ${pref}`
+        }
 
-      const cancelButton = document.createElement('button');
-      cancelButton.innerHTML = '❌';
-      cancelButton.onclick = () => cancelEdit(li);
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
 
-      editButtonsContainer.append(saveButton, cancelButton);
-      iconContainer.append(editButton, editButtonsContainer, deleteButton);
-      li.append(taskTextSpan, taskEditTextInput, iconContainer);
-    }
+        applyTheme(localStorage.todolistCellTheme ?? "system")
+        themeBtn.onclick = () =>
+            applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length])
 
-    // Add task handler
-    function handleAddTask(id, value) {
-      if (!value || typeof value !== 'object') return;
-      const { text, completed } = value;
-      const li = document.createElement('li');
-      li.id = id;
-      createTaskElements(li, id, { text, completed });
-      document.getElementById('taskList').appendChild(li);
-      currentNodeIds.add(id);
-    }
+        // ════════════════════════════════════════════════════════════════
+        // THE ONE THING THAT DIFFERS FROM todolist.html
+        // ════════════════════════════════════════════════════════════════
+        // cellSize is 5 rather than the 'auto' default so the partition is
+        // visible on a laptop: in auto mode everything stays in one cell until
+        // the eleventh peer, which is a lot of tabs to open before anything
+        // happens. Everything below this object is the plain to-do app.
+        // The other two options keep their defaults — maxCellSize: 50 and
+        // targetCells: 100 — which only matter in 'auto' mode. See
+        // docs/genosrtc-cells.md.
+        const CELLS = { cellSize: 3, bridgesPerEdge: 2 }
 
-    // Update task handler
-    function handleUpdateTask(id, { text, completed }) {
-      const li = document.getElementById(id);
-      if (!li) return;
+        const db = await gdb("todoList-cell", { rtc: { cells: CELLS } })
 
-      const taskTextSpan = li.querySelector('span');
-      const taskEditTextInput = li.querySelector('input');
+        const room = db.room
+        const mesh = room.mesh
 
-      taskTextSpan.textContent = text;
-      taskTextSpan.className = completed ? 'completed' : '';
-      taskEditTextInput.value = text;
+        // ════════════════════════════════════════════════════════════════
+        // THE APP — identical to todolist.html
+        // ════════════════════════════════════════════════════════════════
+        const $ = (id) => document.getElementById(id)
+        const taskList = $("taskList")
 
-      // Exit edit mode if active
-      if (!taskEditTextInput.classList.contains('hidden')) {
-        cancelEdit(li);
-      }
-    }
+        const ICONS = {
+            edit: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z",
+            save: "M20 6 9 17l-5-5",
+            cancel: "M18 6 6 18M6 6l12 12",
+            remove: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
+        }
 
-    // Delete task handler
-    function handleDeleteTask(id) {
-      const li = document.getElementById(id);
-      if (li) {
-        li.remove();
-        currentNodeIds.delete(id);
-      }
-    }
+        const iconButton = (name, label, onClick, className = "") => {
+            const button = document.createElement("button")
+            button.className = className
+            button.title = label
+            button.setAttribute("aria-label", label)
+            button.onclick = onClick
+            button.innerHTML =
+                `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[name]}"/></svg>`
+            return button
+        }
 
-    // UI logic: enable edit mode
-    function enableEditMode(li) {
-      li.querySelector('span').classList.add('hidden'); // Hide task text
-      li.querySelector('input').classList.remove('hidden'); // Show input field
-      li.querySelector('.edit-buttons').classList.remove('hidden'); // Show save/cancel buttons
-      li.querySelector('button:first-child').style.display = 'none'; // Hide edit button
-    }
+        function createTaskElements(li, id, { text, completed }) {
+            const taskText = document.createElement("span")
+            taskText.className = `task-text ${completed ? "completed" : ""}`
+            taskText.textContent = text
+            taskText.onclick = () => toggleTask(id)
 
-    // UI logic: cancel edit mode
-    function cancelEdit(li) {
-      li.querySelector('span').classList.remove('hidden'); // Show task text
-      li.querySelector('input').classList.add('hidden'); // Hide input field
-      li.querySelector('.edit-buttons').classList.add('hidden'); // Hide save/cancel buttons
-      li.querySelector('button:first-child').style.display = 'inline-block'; // Show edit button
-    }
+            const editField = document.createElement("input")
+            editField.type = "text"
+            editField.className = "task-edit hidden"
+            editField.value = text
+            editField.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") saveEdit(id, editField.value)
+                if (e.key === "Escape") cancelEdit(li)
+            })
 
-    // DB operation: toggle task completion
-    async function toggleTask(id) {
-      const li = document.getElementById(id);
-      if (!li) return;
+            const actions = document.createElement("div")
+            actions.className = "row-actions"
 
-      const taskTextSpan = li.querySelector('span');
-      const completed = !taskTextSpan.classList.contains('completed');
-      taskTextSpan.classList.toggle('completed');
-      await db.put({
-        text: taskTextSpan.textContent,
-        completed
-      }, id);
-    }
+            const editButtons = document.createElement("div")
+            editButtons.className = "edit-buttons row-actions hidden"
+            editButtons.append(
+                iconButton("save", "Save", () => saveEdit(id, editField.value)),
+                iconButton("cancel", "Cancel", () => cancelEdit(li))
+            )
 
-    // DB operation: save edited task
-    async function saveEdit(id, newText) {
-      if (!newText.trim()) return;
+            actions.append(
+                iconButton("edit", "Edit", () => enableEditMode(li)),
+                editButtons,
+                iconButton("remove", "Delete", () => deleteTask(id), "danger")
+            )
 
-      const li = document.getElementById(id);
-      if (!li) return;
+            li.append(taskText, editField, actions)
+        }
 
-      const taskTextSpan = li.querySelector('span');
-      const completed = taskTextSpan.classList.contains('completed');
-      await db.put({ text: newText.trim(), completed }, id);
-      cancelEdit(li);
-    }
+        function handleAddTask(id, value) {
+            if (!value || typeof value !== "object") return
 
-    // DB operation: delete task
-    async function deleteTask(id) {
-      await db.remove(id);
-    }
+            const li = document.createElement("li")
+            li.id = id
+            createTaskElements(li, id, value)
+            taskList.append(li)
+            $("emptyState").classList.add("hidden")
+        }
 
-    // DB operation: add new task
-    async function addTask() {
-      const input = document.getElementById('taskInput');
-      if (!input.value.trim()) return;
+        function handleUpdateTask(id, { text, completed }) {
+            const li = $(id)
+            if (!li) return
 
-      await db.put({
-        text: input.value,
-        completed: false
-      });
-      input.value = '';
-    }
+            const taskText = li.querySelector(".task-text")
+            const editField = li.querySelector(".task-edit")
 
-    // Subscribe to real-time database changes
-    const { unsubscribe } = await db.map(({ id, value, action }) => {
-      if (action === "initial" || action === "added") handleAddTask(id, value);
-      if (action === "updated") handleUpdateTask(id, value);
-      if (action === "removed") handleDeleteTask(id);
-    });
+            taskText.textContent = text
+            taskText.className = `task-text ${completed ? "completed" : ""}`
+            editField.value = text
 
-    // Add task on Enter key press
-    document.getElementById('taskInput').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addTask();
-    });
-  </script>
+            if (!editField.classList.contains("hidden")) cancelEdit(li)
+        }
+
+        function handleDeleteTask(id) {
+            $(id)?.remove()
+            if (!taskList.children.length) $("emptyState").classList.remove("hidden")
+        }
+
+        function enableEditMode(li) {
+            li.querySelector(".task-text").classList.add("hidden")
+            li.querySelector(".task-edit").classList.remove("hidden")
+            li.querySelector(".edit-buttons").classList.remove("hidden")
+            li.querySelector(".row-actions button").classList.add("hidden")
+            li.querySelector(".task-edit").focus()
+        }
+
+        function cancelEdit(li) {
+            li.querySelector(".task-text").classList.remove("hidden")
+            li.querySelector(".task-edit").classList.add("hidden")
+            li.querySelector(".edit-buttons").classList.add("hidden")
+            li.querySelector(".row-actions button").classList.remove("hidden")
+        }
+
+        async function toggleTask(id) {
+            const li = $(id)
+            if (!li) return
+
+            const taskText = li.querySelector(".task-text")
+            await db.put({ text: taskText.textContent, completed: !taskText.classList.contains("completed") }, id)
+        }
+
+        async function saveEdit(id, newText) {
+            if (!newText.trim()) return
+
+            const li = $(id)
+            if (!li) return
+
+            const completed = li.querySelector(".task-text").classList.contains("completed")
+            await db.put({ text: newText.trim(), completed }, id)
+            cancelEdit(li)
+        }
+
+        const deleteTask = (id) => db.remove(id)
+
+        async function addTask() {
+            const input = $("taskInput")
+            if (!input.value.trim()) return
+
+            await db.put({ text: input.value.trim(), completed: false })
+            input.value = ""
+        }
+
+        // One reactive query drives the list: 'initial' replays what is already
+        // stored, and every later peer's write arrives through the same callback.
+        await db.map(({ id, value, action }) => {
+            if (action === "initial" || action === "added") handleAddTask(id, value)
+            if (action === "updated") handleUpdateTask(id, value)
+            if (action === "removed") handleDeleteTask(id)
+        })
+
+        $("taskInput").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") addTask()
+        })
+
+        // ════════════════════════════════════════════════════════════════
+        // WHAT THE OVERLAY IS DOING
+        // ════════════════════════════════════════════════════════════════
+        // Read, never inferred: own position arrives on `mesh:state`, every
+        // other peer's on the gossiped `mesh:peer-state`, and the summary from
+        // mesh.getState(). Bridge election is a deterministic function of the
+        // shared roster, so a second opinion computed here could only be wrong.
+        const remotePeers = new Map()
+        // peer:join's 2nd argument — 'superpeer' marks a Fallback Server
+        // (GenosSRV). Informational only: never a trust decision.
+        const peerTypes = new Map()
+        let selfState = {}
+
+        const shortId = (id) => (id?.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id)
+        const isBridgePeer = (st) => !!(st?.isBridge || st?.bridges?.length)
+
+        const el = (tag, text, className) => {
+            const node = document.createElement(tag)
+            node.textContent = text
+            if (className) node.className = className
+            return node
+        }
+
+        // Peers known through gossip never emit peer:leave, so anyone silent for
+        // 90s with no live connection is dropped — otherwise a closed tab would
+        // hold its place in a cell forever.
+        function getAllPeers() {
+            const all = new Map()
+            const cutoff = Date.now() - 90000
+            const connected = room.getPeers?.() ?? {}
+
+            for (const [pid, state] of remotePeers) {
+                if ((state.at ?? 0) < cutoff && !(pid in connected)) {
+                    remotePeers.delete(pid)
+                    continue
+                }
+                all.set(pid, state)
+            }
+
+            // A peer can be dialled before it has gossiped where it sits, so a
+            // live connection counts as known even with no cell yet — otherwise
+            // "peers known" would read lower than "direct links".
+            for (const pid of Object.keys(connected)) {
+                if (!all.has(pid)) all.set(pid, { cellId: null, bridges: [] })
+            }
+
+            all.set(db.selfId, {
+                cellId: selfState.cellId,
+                isBridge: selfState.isBridge,
+                bridges: selfState.bridges ?? []
+            })
+            return all
+        }
+
+        const paint = () => {
+            // getState() is the overlay's own summary; the engine is the only
+            // thing that knows how many cells the roster currently spans.
+            const state = mesh?.getState?.() ?? {}
+            const peers = getAllPeers()
+            const cellSize = state.cellSize ?? selfState.cellSize
+            const isBridge = selfState.isBridge === true
+
+            $("statPeers").textContent = peers.size
+            // The figure the whole overlay exists for: connections this peer
+            // actually holds, which stops growing with the network.
+            $("statLinks").textContent = Object.keys(room.getPeers() ?? {}).length
+            $("statCells").textContent = state.totalCells ?? "—"
+            $("statBridges").textContent = [...peers.values()].filter(isBridgePeer).length
+            $("statCellSize").textContent = cellSize ?? "—"
+            $("statTTL").textContent = state.dynamicTTL ?? selfState.dynamicTTL ?? "—"
+
+            $("selfCell").textContent = selfState.cellId ?? "—"
+            $("selfRole").textContent = isBridge ? "bridge" : ""
+            $("selfRole").className = isBridge ? "role-bridge" : ""
+
+            renderCellList(peers)
+        }
+
+        // The point of the panel: who is in which cell, changing as tabs open
+        // and close. Cells are keyed by index so they stay in a stable order
+        // rather than jumping around as gossip arrives.
+        function renderCellList(peers) {
+            const cellIndex = (cid) => Number(String(cid).match(/cell-(\d+)/)?.[1] ?? NaN)
+            const structure = new Map()
+
+            for (const [pid, st] of peers) {
+                const cell = st.cellId ?? "unassigned"
+                if (!structure.has(cell)) structure.set(cell, new Set())
+                structure.get(cell).add(pid)
+            }
+
+            const list = $("cellList")
+            list.replaceChildren()
+
+            if (!structure.size) {
+                list.append(el("p", "Waiting for the overlay…", "empty"))
+                return
+            }
+
+            for (const cell of [...structure.keys()].sort((a, b) => cellIndex(a) - cellIndex(b))) {
+                const members = structure.get(cell)
+
+                const group = document.createElement("div")
+                group.className = "cell-group"
+
+                const head = document.createElement("div")
+                head.className = "cell-head"
+                head.append(el("span", cell), el("span", `${members.size} ${members.size === 1 ? "peer" : "peers"}`))
+                group.append(head)
+
+                for (const pid of [...members].sort()) {
+                    const state = peers.get(pid)
+                    const isSelf = pid === db.selfId
+                    const isServer = peerTypes.get(pid) === "superpeer"
+                    const isBridge = isBridgePeer(state)
+
+                    const row = document.createElement("div")
+                    row.className = `peer-row role-${isSelf ? "self" : isServer ? "server" : isBridge ? "bridge" : "peer"}`
+                    row.append(el("span", shortId(pid), "peer-id"))
+
+                    // A bridge names the cells it was elected to reach, on its
+                    // own line. Marked plainly when the engine says bridge but
+                    // has not gossiped the edges yet.
+                    if (isBridge && state.bridges?.length) {
+                        row.append(el("span", `→ ${state.bridges.join(", ")}`, "peer-serves"))
+                    } else if (isBridge) {
+                        row.append(el("b", "BRIDGE"))
+                    }
+
+                    if (isSelf) row.append(el("b", "YOU"))
+                    if (isServer) row.append(el("b", "SRV"))
+                    group.append(row)
+                }
+
+                list.append(group)
+            }
+        }
+
+        room.on("mesh:state", (state) => {
+            selfState = state
+            paint()
+        })
+
+        // Gossiped state of a remote peer: `{ id, cell, bridges, … }` — note
+        // `cell`, not `cellId`, which is the self-state's name for it.
+        room.on("mesh:peer-state", (data) => {
+            if (data.id === db.selfId) return
+            remotePeers.set(data.id, {
+                cellId: data.cell,
+                bridges: Array.isArray(data.bridges) ? data.bridges : [],
+                at: Date.now()
+            })
+            paint()
+        })
+
+        room.on("peer:join", paint)
+        room.on("peer:leave", (id) => {
+            remotePeers.delete(id)
+            paint()
+        })
+
+        // Ghost sweep: nothing announces a peer going quiet, so repaint on a
+        // timer and let getAllPeers() expire whoever stopped gossiping.
+        setInterval(paint, 15000)
+
+        $("runState").classList.add("live")
+        $("connState").textContent = `joined as ${db.selfId.slice(0, 4)}…${db.selfId.slice(-4)}`
+
+        paint()
+    </script>
 </body>
 
 </html>

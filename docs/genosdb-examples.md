@@ -17,6 +17,9 @@ A simple real-time app to manage pending tasks. Ideal as a minimal example.
 ### [Advanced To-Do List](https://estebanrfp.github.io/gdb/examples/advanced-todolist.html)
 A complete task management app, featuring real-time syncing, task filtering (all/active/completed), inline editing, persistent storage, and a clean responsive UI. Ideal for showcasing reactive CRUD operations.
 
+### [To-Do List on Cellular Mesh](https://estebanrfp.github.io/gdb/examples/todolist-cell.html)
+The same to-do app, with one option added: `rtc: { cells: { cellSize: 5 } }`. Beside it, the overlay reorganising itself in real time — peers landing in cells, bridges being elected and naming the cells they reach, and the count of connections this peer actually holds staying flat while the number of peers it knows keeps climbing. That gap is what cells buy you, and `db.put`, `db.map` and `db.remove` never change. Open it in six tabs to watch a second cell appear.
+
 ### [One Node, Live in Every Tab](https://estebanrfp.github.io/gdb/examples/singleNode.html)
 The smallest thing GenosDB does, and the shape of everything else: `db.get(id, callback)` is a subscription rather than a fetch, so the callback fires again on every change to that node — from this tab, another tab, or a peer. The input never writes to the screen; it writes to the graph, and the screen is redrawn by the same path a remote change takes. Open it twice to watch it.
 
