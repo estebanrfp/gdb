@@ -9,7 +9,7 @@
     margin: 0;
   }
 </style>
-<textarea id="paste" placeholder="Pega aquí!"></textarea>
+<textarea id="paste" placeholder="Paste here!"></textarea>
 <script type="module">
   // Import gdb
   import { gdb } from "../dist/index.js";
@@ -23,21 +23,14 @@
   // Unique ID for the textarea content
   const TEXTAREA_ID = "textarea-content";
 
-  // Function to save textarea content to GDB
-  const saveContent = async () => {
-    const content = paste.value; // Get current textarea content
-    await db.put({ content }, TEXTAREA_ID); // Save content to GDB
-  };
+  // Save on every keystroke: the write IS the sync
+  paste.oninput = () => db.put({ content: paste.value }, TEXTAREA_ID);
 
-  // Event to save content in real time
-  paste.oninput = async () => {
-    await saveContent(); // Save content every time user types
-  };
-
-  // Listen for database changes (real-time synchronization)
-  db.map(({ id, value }) => {
-    if (id === TEXTAREA_ID) {
-      paste.value = value.content;
-    }
+  // Subscribe to that one node. The callback fires again on every change to it,
+  // from this tab or from a peer — so the screen is drawn by the same path a
+  // remote edit takes. Assigning an unchanged value would move the caret.
+  db.get(TEXTAREA_ID, (node) => {
+    const content = node?.value?.content ?? "";
+    if (content !== paste.value) paste.value = content;
   });
 </script>

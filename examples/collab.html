@@ -6,33 +6,203 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GenosDB Collab Doc</title>
   <style>
+    /* Design tokens (docs/genosdb-design-guide.md §2). Every colour in this
+       file now comes from here — the only literals left are the six of the
+       code syntax theme, which is a palette of its own. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --bg-tertiary: #1c2026;
+      --bg-elevated: #22262d;
+
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+
+      --accent: #4c8dff;
+      --accent-hover: #6ba1ff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --danger: #ef5350;
+      --violet: #a78bfa;
+
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+
+      --text-on-accent: #ffffff;
+      --backdrop: rgba(0, 0, 0, .6);
+      --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    }
+
+    /* The light palette redefines VALUES ONLY — not one component rule below
+       changes with it. If a theme toggle forced you to touch a component, the
+       token system would be broken. */
+    [data-theme="light"] {
+      --bg-primary: #f4f6fa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f3f7;
+      --bg-elevated: #ffffff;
+
+      --text-primary: #1a1d24;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9aa1ad;
+
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --ok: #16a34a;
+      --warn: #b45309;
+      --danger: #dc2626;
+      --violet: #7c3aed;
+
+      --border-subtle: #e4e7ee;
+      --border-strong: #d4d9e3;
+
+      --backdrop: rgba(26, 29, 36, .45);
+      --shadow: 0 6px 24px rgba(26, 29, 36, .07);
+    }
+
+    /* Code colours are a syntax theme rather than chrome, and they are tuned
+       for a dark ground — so the light palette restates them instead of
+       inheriting six values that would read as glare on white. */
+    [data-theme="light"] .hl-kw { color: #0000ff; }
+    [data-theme="light"] .hl-str { color: #a31515; }
+    [data-theme="light"] .hl-num { color: #098658; }
+    [data-theme="light"] .hl-text { color: var(--text-primary); }
+    [data-theme="light"] .hl-comment { color: #008000; }
+    [data-theme="light"] .hl-punct { color: var(--text-secondary); }
+
     body {
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #000;
-      color: #fff;
+      font-family: var(--font);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
       height: 100vh;
+      height: 100dvh; /* the mobile address bar is not part of the viewport */
       overflow: hidden;
     }
 
-    header {
-      background-color: #1a1a1a;
-      padding: 1rem;
-      text-align: left;
-      border-bottom: 1px solid #333;
+    .hidden { display: none !important; }
+
+    /* ── Top bar ────────────────────────────────────────────────
+       The app and the session, nothing else: brand left, session right.
+       48px, the height every chrome band in a GenosDB app shares. */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      min-height: 48px;
+      padding: var(--space-2) var(--space-5);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    header h1 {
+    .brand {
+      min-width: 0;
       margin: 0;
-      font-size: 1.5rem;
-      color: #0ea5e9;
+      overflow: hidden;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      letter-spacing: -.01em;
+      color: var(--text-primary);
     }
+
+    .brand span { font-weight: 400; color: var(--text-tertiary); }
+
+    .session { display: flex; align-items: center; gap: var(--space-3); flex: 0 0 auto; }
+
+    /* Abbreviated address first, role second — the canonical session format. */
+    .session-addr {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .session-addr:hover:not(:disabled) { color: var(--text-primary); }
+    .session-addr:empty { display: none; }
+
+    /* Tier colour on the text, never a filled pill: the session area is
+       chrome, not content. */
+    .role-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--tier, var(--text-tertiary));
+    }
+
+    .role-badge:empty { display: none; }
+    .role-badge[data-role="guest"]      { --tier: var(--text-tertiary); }
+    .role-badge[data-role="editor"]     { --tier: var(--ok); }
+    .role-badge[data-role="admin"]      { --tier: var(--warn); }
+    .role-badge[data-role="superadmin"] { --tier: var(--violet); }
+
+    .topbar .icon-btn {
+      display: flex;
+      padding: 6px;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .topbar .icon-btn:hover:not(:disabled) { background: none; color: var(--text-primary); }
+    .topbar .icon-btn svg { width: 17px; height: 17px; }
+
+    /* One icon shows at a time, picked by the stored preference. */
+    [data-pref="system"] .icon-sun, [data-pref="system"] .icon-moon,
+    [data-pref="light"] .icon-system, [data-pref="light"] .icon-moon,
+    [data-pref="dark"] .icon-system, [data-pref="dark"] .icon-sun { display: none; }
+
+    /* ── Status bar ─────────────────────────────────────────────
+       What is true, never what you can do: the open document's standing on
+       the left, the network on the right. */
+    .statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      min-height: 48px;
+      padding: var(--space-2) var(--space-5);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .status-left { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+
+    /* Signed out, the hint is the way back to the door — re-entry is
+       contextual, never a standing Sign-in button in the chrome. */
+    .statusbar .reopen { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .statusbar .reopen:hover { color: var(--text-secondary); }
+
+    #statusSaved { color: var(--ok); }
 
     #toolbar {
-      background-color: #1a1a1a;
+      background-color: var(--bg-secondary);
       padding: 0.5rem;
       display: flex;
       gap: 0.5rem;
@@ -41,23 +211,23 @@
     }
 
     #toolbar button {
-      background: #0ea5e9;
+      background: var(--accent);
       border: none;
-      color: #fff;
+      color: var(--text-on-accent);
       padding: 0.5rem;
       border-radius: 4px;
       cursor: pointer;
     }
 
     #toolbar button:hover {
-      background: #0284c7;
+      background: var(--accent-hover);
     }
 
     #toolbar select,
     #toolbar input[type="color"] {
-      background: #0b1220;
-      color: #e5e7eb;
-      border: 1px solid #334155;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
       border-radius: 6px;
       padding: 0.35rem 0.4rem;
       height: 30px;
@@ -99,7 +269,7 @@
     #toolbar .divider {
       width: 1px;
       height: 24px;
-      background: #2a2a2a;
+      background: var(--bg-tertiary);
       margin: 0 6px;
       align-self: center;
     }
@@ -111,45 +281,45 @@
     /* Orange accent for the last two toolbar buttons */
     #toolbar #togglePreview,
     #toolbar #resetSplit {
-      background: #f59e0b;
+      background: var(--warn);
       /* amber-500 */
-      color: #fff;
+      color: var(--text-on-accent);
     }
 
     #toolbar #togglePreview:hover,
     #toolbar #resetSplit:hover {
-      background: #d97706;
+      background: var(--warn);
       /* amber-600 */
     }
 
     #toolbar #togglePreview[aria-pressed="true"] {
-      background: #b45309;
+      background: var(--warn);
       /* amber-700 */
     }
 
     /* Green accent for file and video buttons */
     #toolbar #btnFile,
     #toolbar #startVideo {
-      background: #22c55e;
+      background: var(--ok);
       /* green-500 */
-      color: #fff;
+      color: var(--text-on-accent);
     }
 
     #toolbar #btnFile:hover,
     #toolbar #startVideo:hover {
-      background: #16a34a;
+      background: var(--ok);
       /* green-600 */
     }
 
     /* Blue accent for save version button */
     #toolbar #saveVersion {
-      background: #3b82f6;
+      background: var(--accent);
       /* blue-500 */
-      color: #fff;
+      color: var(--text-on-accent);
     }
 
     #toolbar #saveVersion:hover {
-      background: #2563eb;
+      background: var(--accent-hover);
       /* blue-600 */
     }
 
@@ -163,8 +333,8 @@
     /* Left vertical toolbar */
     #sideToolbar {
       width: 44px;
-      background: #0b0b0b;
-      border-right: 1px solid #1f2937;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border-subtle);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -177,8 +347,8 @@
     #sideToolbar button {
       width: 30px;
       height: 30px;
-      background: #0ea5e9;
-      color: #fff;
+      background: var(--accent);
+      color: var(--text-on-accent);
       border: none;
       border-radius: 8px;
       display: inline-flex;
@@ -191,7 +361,7 @@
     #sideToolbar .icon-btn:hover,
     #sideToolbar button:hover,
     #sideToolbar .color-btn:hover {
-      background: #0284c7;
+      background: var(--accent-hover);
     }
 
     #sideToolbar .icon-btn svg {
@@ -215,7 +385,7 @@
       align-items: center;
       justify-content: center;
       border-radius: 8px;
-      background: #0ea5e9;
+      background: var(--accent);
       border: none;
       cursor: pointer;
       position: relative;
@@ -246,7 +416,7 @@
     }
 
     #sideToolbar .color-btn input[type="color"]::-webkit-color-swatch {
-      border: 2px solid rgba(255, 255, 255, 0.8);
+      border: 2px solid var(--border-strong);
       border-radius: 4px;
     }
 
@@ -255,9 +425,9 @@
       flex: 1;
       width: 100%;
       padding: 1rem;
-      background-color: #0d0d0d;
+      background-color: var(--bg-primary);
       border: none;
-      color: #fff;
+      color: var(--text-primary);
       font-size: 1rem;
       line-height: 1.5;
       outline: none;
@@ -282,9 +452,9 @@
       align-items: center;
       gap: 8px;
       padding: 6px 10px;
-      background: #111827;
-      border-bottom: 1px solid #1f2937;
-      color: #9ca3af;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       font-size: 0.85rem;
       min-height: 42px;
     }
@@ -294,7 +464,7 @@
     }
 
     #editorHeader .metric {
-      color: #e5e7eb;
+      color: var(--text-primary);
     }
 
     /* Right-side preview */
@@ -303,8 +473,8 @@
       max-width: none;
       /* allow JS to set px widths */
       min-width: 280px;
-      border-left: 1px solid #1f2937;
-      background: #0d0d0d;
+      border-left: 1px solid var(--border-subtle);
+      background: var(--bg-primary);
       display: flex;
       flex-direction: column;
     }
@@ -313,13 +483,13 @@
     #splitter {
       width: 6px;
       cursor: col-resize;
-      background: #1f2937;
+      background: var(--bg-tertiary);
       flex: 0 0 6px;
     }
 
     #splitter:hover,
     #splitter.dragging {
-      background: #374151;
+      background: var(--bg-tertiary);
     }
 
     #previewHeader {
@@ -327,17 +497,17 @@
       align-items: center;
       gap: 8px;
       padding: 6px 10px;
-      background: #111827;
-      border-bottom: 1px solid #1f2937;
-      color: #9ca3af;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       font-size: 0.85rem;
       min-height: 42px;
     }
 
     #previewHeader select {
-      background: #0b1220;
-      color: #e5e7eb;
-      border: 1px solid #334155;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
       border-radius: 6px;
       padding: 0.25rem 0.35rem;
       height: 30px;
@@ -368,283 +538,200 @@
     /* Placeholder for contenteditable */
     #editor:empty:before {
       content: attr(data-placeholder);
-      color: #6b7280;
+      color: var(--text-tertiary);
     }
 
-    #status {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      background-color: #1a1a1a;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      font-size: 0.875rem;
-      color: #9ca3af;
-      display: none;
-    }
 
-    #status.active {
-      display: block;
-    }
-
-    /* Status segments: the peers counter toggles the versions panel, and the
-       signed-out hint re-opens the identity modal — text-shaped buttons. */
-    #statusPeers {
-      background: none;
-      border: none;
-      font: inherit;
-      color: inherit;
-      padding: 0;
-      cursor: pointer;
-    }
-
-    #statusPeers:hover,
-    #statusRole.signin-cta:hover {
-      color: #0ea5e9;
-    }
-
-    #statusRole.signin-cta {
-      cursor: pointer;
-    }
-
-    /* Top-right identity area: a single Sign-in button, or the session chip.
-       All identity flows live in the centered #identityModal dialog. */
-    #auth {
-      position: fixed;
-      top: 0.5rem;
-      right: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      z-index: 1300;
-    }
-
-    #auth .summary {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: #0b0b0b;
-      border: 1px solid #1f2937;
-      border-radius: 6px;
-      color: #e5e7eb;
-      font-size: 0.8rem;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    #auth .summary:focus {
-      outline: 2px solid #0ea5e9;
-      outline-offset: 2px;
-    }
-
-    #auth .summary .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 9999px;
-      background: #22c55e;
-      display: inline-block;
-    }
-
-    #auth .summary .addr {
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-
-    /* Live role tag: color only on the text, one tier one color */
-    .role-tag {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.75rem;
-      color: #9ca3af;
-    }
-
-    .role-tag[data-role="editor"] { color: #0ea5e9; }
-    .role-tag[data-role="admin"] { color: #f59e0b; }
-    .role-tag[data-role="superadmin"] { color: #a78bfa; }
-
-    #identityModal .label {
-      font-size: 0.8rem;
-      color: #9ca3af;
-    }
-
-    #identityModal .value {
-      font-size: 0.85rem;
-      color: #e5e7eb;
-      word-break: break-all;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-
-    #identityModal .actions {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 0.5rem;
-    }
-
-    #identityModal .hint {
-      font-size: 0.78rem;
-      color: #9ca3af;
-      margin: 0.25rem 0 0.5rem;
-      line-height: 1.4;
-    }
-
-    #identityModal .hint.warn {
-      color: #fbbf24;
-    }
-
-    #identityModal .msg {
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      display: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #identityModal .msg.show {
-      display: block;
-    }
-
-    #identityModal .msg.ok {
-      background: #072;
-      color: #d1fae5;
-      border: 1px solid #065f46;
-    }
-
-    #identityModal .msg.err {
-      background: #3b0d0d;
-      color: #fecaca;
-      border: 1px solid #7f1d1d;
-    }
-
-    #identityModal .textarea {
-      width: 100%;
-      background: #0b1220;
-      border: 1px solid #334155;
-      color: #e5e7eb;
-      border-radius: 6px;
-      padding: 0.4rem 0.5rem;
-      box-sizing: border-box;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.75rem;
-      resize: vertical;
-    }
-
-    #auth .btn,
-    #identityModal .btn,
+    /* Buttons of the middle toolbar (unchanged in this pass). */
     #fileInput,
     #saveVersion,
     #startVideo {
-      background: #0ea5e9;
+      background: var(--accent);
       border: none;
-      color: #fff;
+      color: var(--text-on-accent);
       padding: 0.5rem;
       border-radius: 4px;
       cursor: pointer;
     }
 
-    #auth .btn:hover,
-    #identityModal .btn:hover,
     #fileInput:hover,
     #saveVersion:hover,
     #startVideo:hover {
-      background: #0284c7;
+      background: var(--accent-hover);
     }
 
-    #identityModal .btn.secondary {
-      background: #374151;
-    }
-
-    #identityModal .btn.secondary:hover {
-      background: #4b5563;
-    }
-
-    #identityModal .btn.ghost {
-      background: transparent;
-      border: 1px solid #374151;
-    }
-
-    #identityModal .btn.ghost:hover {
-      background: #111827;
-    }
-
-    /* Centered identity dialog (three-phase flow, see the Design Guide) */
+    /* ── Identity door ──────────────────────────────────────────
+       The canonical implementation (§4.1), copied from docs.html rather than
+       redesigned: one field that both accepts and shows a phrase, full-width
+       actions stacked, and everything that needs a paragraph at the foot. The
+       three-phase state machine it replaces tracked in markup what the SM
+       already publishes in its state. */
     #identityModal {
-      background: #111827;
-      color: #e5e7eb;
-      border: 1px solid #27272a;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-      width: min(92vw, 400px);
-      padding: 1rem;
-      position: relative;
+      width: min(440px, calc(100vw - var(--space-6)));
+      padding: var(--space-6);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      color: var(--text-primary);
+      text-align: center;
     }
 
-    #identityModal::backdrop {
-      background: rgba(0, 0, 0, 0.65);
-    }
+    #identityModal::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 
-    #identityModal h3 {
-      margin: 0 0 0.25rem;
-      color: #0ea5e9;
-      font-size: 1.05rem;
-    }
+    #identityModal .modal-title { margin: 0 0 var(--space-3); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+    #identityModal .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
 
-    /* Phase gating: elements tagged .ph-w/.ph-b/.ph-s show only in their phase
-       (welcome / backup / session). Untagged elements show in every phase. */
-    #identityModal[data-phase="welcome"] :is(.ph-b, .ph-s):not(.ph-w) { display: none; }
-    #identityModal[data-phase="backup"] :is(.ph-w, .ph-s):not(.ph-b) { display: none; }
-    #identityModal[data-phase="session"] :is(.ph-w, .ph-b):not(.ph-s) { display: none; }
+    .mnemonic-field { position: relative; }
 
-    #identityModal .superadmin-btn {
-      margin-top: 0.75rem;
+    /* Grows with the phrase: compact while empty, and a 24-word phrase is
+       fully visible — you must be able to check a recovery phrase without
+       scrolling it. */
+    #mnemonic-input {
+      min-height: 45px;   /* the exact height of an action button */
+      display: block;     /* an inline-block textarea leaves 6px of descender below it */
       width: 100%;
-      background: transparent;
-      border: 1px dashed #3f3f46;
-      color: #a78bfa;
-      padding: 0.4rem;
-      border-radius: 4px;
+      padding: var(--space-2) var(--space-3);
+      padding-right: 32px; /* the copy icon never sits on the last word */
+      overflow: hidden;
+      box-sizing: border-box;
+      font-family: var(--mono);
+      font-size: 13px;
+      text-align: left;
+      color: var(--text-primary);
+      background: none;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      outline: none;
+      resize: none;
+    }
+
+    /* Keeps its ordinary grey border on focus: the dialog focuses it on open,
+       and an accent ring would spotlight the one element that should stay
+       quiet. In a text field the caret already says where you are. */
+    #mnemonic-input:focus { border-color: var(--border-strong); }
+    #mnemonic-input::placeholder { color: var(--text-tertiary); }
+    #mnemonic-input[readonly] { color: var(--text-tertiary); background: var(--bg-primary); }
+
+    .field-action {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      display: flex;
+      padding: 5px;
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
       cursor: pointer;
-      font-size: 0.8rem;
     }
 
-    #identityModal .superadmin-btn:hover {
-      border-color: #a78bfa;
+    .field-action svg { width: 15px; height: 15px; }
+    .field-action:hover:not(:disabled) { background: none; color: var(--text-primary); }
+
+    /* The gap above matches the gap between the buttons: the field is the
+       first step of the same stack, not a separate block. */
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
     }
 
-    /* Toast for feedback outside the modal (never alert()) */
-    #toast {
+    .modal-actions button {
+      width: 100%;
+      padding: 13px var(--space-4);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .modal-actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
+
+    .modal-actions button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+    .modal-actions button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--text-on-accent); }
+
+    .modal-actions button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+    .modal-actions button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+
+    /* Sized like a button, taking over the slot the demo shortcut vacates when
+       a phrase is generated, so the modal keeps its height across phases
+       instead of jumping under the cursor. */
+    .modal-warn {
+      display: grid;
+      place-items: center;
+      min-height: 45px;
+      margin: var(--space-2) 0 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--warn);
+    }
+
+    /* ── Toasts ─────────────────────────────────────────────────
+       The canonical component (§6). The stack itself is the popover, so it
+       joins the top layer once and paints above a modal dialog's ::backdrop —
+       which no z-index can beat. */
+    .toast-stack {
       position: fixed;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(10px);
-      background: #111827;
-      color: #e5e7eb;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      padding: 0.5rem 0.9rem;
-      font-size: 0.8rem;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 1400;
-      max-width: 80vw;
+      inset: auto;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      overflow: visible;
     }
 
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 280px;
+      max-width: 360px;
+      padding: 14px 18px;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--text-tertiary);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      animation: toast-in .3s ease;
+      transition: opacity .4s, transform .4s;
     }
 
-    #toast.error {
-      border-color: #7f1d1d;
-      color: #fecaca;
+    .toast-icon { flex: 0 0 18px; text-align: center; font-size: 18px; line-height: 1; color: var(--text-tertiary); }
+    .toast.success .toast-icon { color: var(--ok); }
+    .toast.error   .toast-icon { color: var(--danger); }
+    .toast.warning .toast-icon { color: var(--warn); }
+    .toast-text { flex: 1; min-width: 0; }
+
+    .toast.success { border-left-color: var(--ok); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warn); }
+
+    /* The newest reads at full strength; every older one steps back equally. */
+    .toast:not(:last-child) { opacity: .6; }
+    .toast.out { opacity: 0; transform: translateX(20px); }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .toast { animation: none; }
+      .toast.out { transform: none; }
     }
 
     /* Role-gated tools: guests see the editing UI disabled, not hidden */
@@ -666,73 +753,146 @@
     .version-row .version-del {
       background: none;
       border: none;
-      color: #ef4444;
+      color: var(--danger);
       cursor: pointer;
       padding: 0 0.2rem;
       font-size: 0.85rem;
     }
 
+    /* ── Video strip ────────────────────────────────────────────
+       Cameras float over a corner instead of taking a column: the document is
+       what the app is for, and giving video its own band would narrow the
+       text for something that is empty most of the time. It clears the status
+       bar (48px) rather than sitting on top of it, and disappears entirely
+       when nobody is on camera. */
     #videoContainer {
       position: fixed;
-      bottom: 1rem;
-      left: 1rem;
+      right: var(--space-5);
+      bottom: calc(48px + var(--space-4));
       display: flex;
-      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      max-width: min(420px, calc(100vw - var(--space-6)));
+      z-index: 1100;
     }
 
-    #videoContainer video {
+    #videoContainer:empty { display: none; }
+
+    .video-tile { position: relative; }
+
+    .video-tile video {
+      display: block;
       width: 150px;
-      border-radius: 4px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
     }
 
-    #versionsPanel #versionList a,
-    #versionsPanel #versionList button {
-      color: #0ea5e9;
+    /* Who you are looking at, over the picture rather than beside it — the
+       tile is small enough that a caption underneath would double its height. */
+    .video-tile .tag {
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--backdrop);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 10px;
+      pointer-events: none;
+    }
+
+    /* Your own camera is mirrored, the way every video app shows it: raising
+       your left hand should raise the hand on the left of the picture. */
+    .video-tile.is-self video { transform: scaleX(-1); }
+
+    /* Rows read as text, not as controls: one per line, separated by space
+       alone, with the destructive action revealed on hover like any row
+       action. */
+    #historyModal .version-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    #historyModal .version-row button,
+    #historyModal a.file-item {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      padding: 6px 0;
+      font: inherit;
+      font-size: 13px;
+      text-align: left;
       text-decoration: none;
       background: none;
       border: none;
+      color: var(--text-primary);
       cursor: pointer;
-      display: block;
-      margin: 0.2rem 0.1rem;
-      padding: 0.2rem 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #historyModal .version-row button:hover,
+    #historyModal a.file-item:hover { color: var(--accent); }
+
+    #historyModal .version-row .version-del {
+      flex: 0 0 auto;
+      padding: 0 4px;
+      font-size: 15px;
+      color: var(--text-tertiary);
+      opacity: 0;
+      transition: opacity .15s, color .15s;
+    }
+
+    #historyModal .version-row:hover .version-del,
+    #historyModal .version-del:focus-visible { opacity: 1; }
+    #historyModal .version-del:hover { color: var(--danger); }
+
+    /* ── History dialog ─────────────────────────────────────────
+       Wider than the identity door and left-aligned, because it carries real
+       content rather than a short focused flow. */
+    #historyModal {
+      width: min(520px, calc(100vw - var(--space-6)));
+      padding: var(--space-6);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      color: var(--text-primary);
       text-align: left;
     }
 
-    #versionsPanel #versionList a.file-item {
-      color: #22c55e;
+    #historyModal::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+    #historyModal .modal-title { margin: 0 0 var(--space-5); font-size: 20px; font-weight: 700; }
+
+    /* A rule under the label, and the list itself stays bare: what separates
+       is a 1px line and the space around it, never a card. */
+    .history-section h3 {
+      margin: 0 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
     }
 
-    /* green for files */
-    /* Versions panel (hidden by default) */
-    #versionsPanel[hidden] {
-      display: none;
-    }
+    .history-section { margin-bottom: var(--space-5); }
+    .history-section > div { max-height: 180px; overflow-y: auto; }
 
-    #versionsPanel {
-      position: fixed;
-      right: 1rem;
-      bottom: 3.4rem;
-      /* sit above the status bar, which toggles it */
-      width: 280px;
-      max-height: 240px;
-      background: #0b0b0b;
-      border: 1px solid #1f2937;
-      border-radius: 8px;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
-      padding: 0.5rem;
-      z-index: 1200;
-    }
-
-    #versionsPanel #versionList {
-      max-height: 200px;
-      overflow-y: auto;
-    }
+    /* Says what will appear there, so an empty list reads as waiting rather
+       than as something that failed to load. */
+    .history-empty { margin: 0; font-size: 13px; color: var(--text-tertiary); }
+    .history-section > div:not(:empty) + .history-empty { display: none; }
 
     .cursor {
       position: absolute;
       width: 2px;
       height: 1.5rem;
-      background-color: #0ea5e9;
+      background-color: var(--accent);
       opacity: 0.8;
       pointer-events: none;
       z-index: 2;
@@ -740,7 +900,7 @@
 
     .selection-rect {
       position: absolute;
-      background-color: rgba(14, 165, 233, 0.25);
+      background-color: color-mix(in srgb, var(--accent) 25%, transparent);
       /* default; overridden per-peer */
       border-radius: 2px;
       pointer-events: none;
@@ -761,8 +921,36 @@
 </head>
 
 <body>
-  <header>
-    <h1>GenosDB Collab Doc</h1>
+  <header class="topbar">
+    <h1 class="brand">Collab Doc <span>· collaborative editing over a signed graph</span></h1>
+    <div class="session">
+      <button id="session-addr" class="session-addr" title="Copy your full address"></button>
+      <span id="role-badge" class="role-badge"></span>
+      <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+        </svg>
+        <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="13" rx="2" />
+          <path d="M9 21h6" />
+        </svg>
+      </button>
+      <button id="logout-btn" class="icon-btn hidden" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
+    </div>
   </header>
   <div id="toolbar">
     <button id="btnBold" class="icon-btn" title="Bold" aria-label="Bold"><strong>B</strong></button>
@@ -806,6 +994,20 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       <span class="fallback" aria-hidden="true">⏱</span>
+    </button>
+    <button id="toggleVersions" class="icon-btn" title="Saved versions &amp; shared files"
+      aria-label="Saved versions and shared files" aria-expanded="false">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Feather list -->
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      <span class="fallback" aria-hidden="true">🗒️</span>
     </button>
     <button id="togglePreview" class="icon-btn" title="Toggle preview" aria-label="Toggle preview" aria-pressed="false">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
@@ -918,56 +1120,76 @@
       <div id="previewContent" aria-live="polite"></div>
     </div>
   </div>
-  <!-- Status bar: each segment is its own affordance — the peers counter
-       toggles the versions/files panel, the read-only hint opens the modal. -->
-  <div id="status"><button id="statusPeers" aria-expanded="false"
-      title="Show saved versions &amp; shared files">Connected peers: 0</button><span id="statusRole"></span><span
-      id="statusSaved"></span></div>
-  <div id="versionsPanel" hidden aria-label="Saved versions">
-    <div id="versionList"></div>
-  </div>
-  <!-- Identity top-right: the live session chip (address + role) — and nothing
-       while signed out: the auto-opened identity modal IS the door.
-       Clicking the chip opens the modal in its session phase. -->
-  <div id="auth">
-    <div id="sessionChip" class="summary" role="button" tabindex="0" title="Account options">
-      <span class="dot" aria-hidden="true"></span>
-      <span id="chipAddr" class="addr">—</span>
-      <span id="chipRole" class="role-tag" data-role="guest">[guest]</span>
-    </div>
-  </div>
+  <!-- Status bar: what is true, never what you can do. The document's standing
+       on the left, the network on the right. -->
+  <footer class="statusbar">
+    <span class="status-left">
+      <span id="statusRole"></span>
+      <span id="statusSaved"></span>
+    </span>
+    <span id="statusPeers">0 peers</span>
+  </footer>
 
-  <!-- Centered identity modal — three-phase state machine (Design Guide):
-       welcome (paste or generate) → backup (save the phrase) → session (manage). -->
-  <dialog id="identityModal" data-phase="welcome">
-    <h3>Your identity</h3>
-    <p class="hint ph-w">Everyone can read and watch live edits. Sign in and the governance
-      rules promote you to <em>editor</em> (~10&nbsp;s while a superadmin is online);
-      saving 3 versions earns <em>admin</em>.</p>
-    <p class="hint warn ph-b">Save this phrase — it is the ONLY way back into this identity.</p>
-    <div class="ph-s">
-      <div class="label">Signed in as</div>
-      <div id="sessionAddr" class="value">—</div>
-      <p class="hint" id="sessionPasskeyHint">Protect this identity with a passkey for passwordless login on this
-        device.</p>
-    </div>
-    <textarea id="mnemonicBox" class="textarea ph-w ph-b" rows="3" spellcheck="false"
-      placeholder="Paste your mnemonic phrase — or generate a new identity"></textarea>
-    <div class="actions">
-      <button id="generateBtn" class="btn ph-w">Generate identity</button>
-      <button id="loginBtn" class="btn ph-w ph-b">Login with mnemonic</button>
-      <button id="webauthnLoginBtn" class="btn secondary ph-w">Login with passkey</button>
-      <button id="copyBtn" class="btn secondary ph-b">Copy</button>
-      <button id="downloadBtn" class="btn secondary ph-b">Download .txt</button>
-      <button id="protectBtn" class="btn ph-b ph-s">Protect with passkey</button>
-      <button id="logoutBtn" class="btn ghost ph-s">Sign out</button>
-    </div>
-    <div id="authMsg" class="msg"></div>
-    <button id="superadminBtn" class="superadmin-btn ph-w" title="Runs the governance engine in this browser">🛡️ Demo
-      superadmin</button>
+  <!-- History and shared files. A dialog rather than a panel that unfolds
+       inside the view: anything opening in the content column shifts the text
+       the reader is in the middle of. It also lets the two lists be two
+       lists — they used to share one container, versions and files
+       interleaved by arrival time. -->
+  <dialog id="historyModal">
+    <h2 class="modal-title">History &amp; files</h2>
+
+    <section class="history-section">
+      <h3>Saved versions</h3>
+      <div id="versionRows"></div>
+      <p class="history-empty" id="versionsEmpty">No versions saved yet.</p>
+    </section>
+
+    <section class="history-section">
+      <h3>Shared files</h3>
+      <div id="fileRows"></div>
+      <p class="history-empty" id="filesEmpty">Files a peer shares arrive here.</p>
+    </section>
+
+    <form method="dialog" class="modal-actions">
+      <button class="ghost">Close</button>
+    </form>
   </dialog>
 
-  <div id="toast"></div>
+  <!-- The identity door (§4.1). Four blocks, in this order; anything that
+       needs a paragraph goes to the foot, under the fold of attention. -->
+  <dialog id="identityModal">
+    <h2 class="modal-title">Collab Doc</h2>
+    <p class="modal-hint">Collaborative editing on a serverless P2P graph.</p>
+
+    <div class="mnemonic-field">
+      <textarea id="mnemonic-input"
+        placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
+      <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-actions">
+      <button id="generate-btn" class="primary">Generate new identity</button>
+      <button id="login-btn" class="primary">Login with mnemonic</button>
+      <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
+      <button id="passkey-login-btn" class="hidden">Login with passkey</button>
+      <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
+    </div>
+
+    <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
+
+    <!-- Guidance for whoever reads this file, deliberately not on screen:
+         the demo superadmin runs the governance engine in this browser, which
+         is what promotes a signed-in guest to `editor` a few seconds later.
+         Without one online, nobody is promoted — governance.html shows why. -->
+  </dialog>
+
+  <div id="toasts" class="toast-stack" role="status" aria-live="polite" popover="manual"></div>
 
   <div id="videoContainer"></div>
 
@@ -1024,25 +1246,46 @@
     const splitter = document.getElementById('splitter');
     const editorWrap = document.getElementById('editorWrap');
     const togglePreviewBtn = document.getElementById('togglePreview');
+    const toggleVersionsBtn = document.getElementById('toggleVersions');
     const resetSplitBtn = document.getElementById('resetSplit');
-    const status = document.getElementById('status');
-    const sessionChip = document.getElementById('sessionChip');
-    const chipAddr = document.getElementById('chipAddr');
-    const chipRole = document.getElementById('chipRole');
+    // Session chrome (top bar) and the identity door.
+    const sessionAddrBtn = document.getElementById('session-addr');
+    const roleBadge = document.getElementById('role-badge');
+    const logoutBtn = document.getElementById('logout-btn');
     const identityModal = document.getElementById('identityModal');
-    const sessionAddr = document.getElementById('sessionAddr');
-    const sessionPasskeyHint = document.getElementById('sessionPasskeyHint');
-    const mnemonicBox = document.getElementById('mnemonicBox');
-    const generateBtn = document.getElementById('generateBtn');
-    const loginBtn = document.getElementById('loginBtn');
-    const webauthnLoginBtn = document.getElementById('webauthnLoginBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const protectBtn = document.getElementById('protectBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const authMsg = document.getElementById('authMsg');
-    const superadminBtn = document.getElementById('superadminBtn');
-    const toastEl = document.getElementById('toast');
+    const mnemonicBox = document.getElementById('mnemonic-input');
+    const mnemonicClip = document.getElementById('mnemonic-clip');
+    const generateBtn = document.getElementById('generate-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const passkeyProtectBtn = document.getElementById('passkey-protect-btn');
+    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+    const demoLoginBtn = document.getElementById('demo-login-btn');
+    const phraseWarning = document.getElementById('phrase-warning');
+    const toastsEl = document.getElementById('toasts');
+    const themeBtn = document.getElementById('theme-btn');
+
+    // ── Theme: three states (system / light / dark) ──────────────────────
+    const systemTheme = matchMedia('(prefers-color-scheme: light)');
+
+    const applyTheme = (pref) => {
+      const root = document.documentElement;
+      root.dataset.pref = pref;
+      root.dataset.theme = pref === 'system' ? (systemTheme.matches ? 'light' : 'dark') : pref;
+      localStorage.collabTheme = pref;
+      themeBtn.title = `Theme: ${pref}`;
+    };
+
+    // On `system` the OS can change under us — follow it without a reload.
+    systemTheme.addEventListener('change', () => {
+      if (document.documentElement.dataset.pref === 'system') applyTheme('system');
+    });
+
+    themeBtn.addEventListener('click', () => {
+      const order = ['system', 'light', 'dark'];
+      applyTheme(order[(order.indexOf(document.documentElement.dataset.pref) + 1) % order.length]);
+    });
+
+    applyTheme(localStorage.collabTheme ?? 'system');
     const fileInput = document.getElementById('fileInput');
     const saveVersionBtn = document.getElementById('saveVersion');
     const startVideoBtn = document.getElementById('startVideo');
@@ -1063,9 +1306,9 @@
     const btnUndo = document.getElementById('btnUndo');
     const btnRedo = document.getElementById('btnRedo');
     const btnClear = document.getElementById('btnClear');
-    const fileList = document.getElementById('fileList');
-    const versionList = document.getElementById('versionList');
-    const versionsPanel = document.getElementById('versionsPanel');
+    const historyModal = document.getElementById('historyModal');
+    const versionRowsHost = document.getElementById('versionRows');
+    const fileRowsHost = document.getElementById('fileRows');
     const statusPeers = document.getElementById('statusPeers');
     const statusRole = document.getElementById('statusRole');
     const statusSaved = document.getElementById('statusSaved');
@@ -1392,47 +1635,57 @@
     // affordance: peers (toggles the versions panel), role hint (opens the
     // identity modal while signed out), save flash (plain text).
     const updateStatus = () => {
-      statusPeers.textContent = `Connected peers: ${peerCount}`;
-      statusRole.textContent = !myAddress ? ' | read-only — sign in to edit'
-        : !can('write') ? ' | read-only (editor role pending)' : '';
-      statusSaved.textContent = Date.now() < showSavedUntil ? ' | Saved' : '';
+      statusPeers.textContent = `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`;
+      statusRole.textContent = !myAddress ? 'Read-only — sign in to edit'
+        : !can('write') ? `${myRole ?? 'guest'} — read-only while the editor role arrives`
+          : `${myRole} — may edit`;
+      // Signed out, the hint is the way back to the door.
+      statusRole.classList.toggle('reopen', !myAddress);
+      statusRole.title = myAddress ? '' : 'Open the identity door';
+      statusSaved.textContent = Date.now() < showSavedUntil ? 'Saved' : '';
     };
-    // Versions panel toggle
-    const setVersionsOpen = (open) => {
-      if (open) {
-        versionsPanel.removeAttribute('hidden');
-        statusPeers.setAttribute('aria-expanded', 'true');
-      } else {
-        versionsPanel.setAttribute('hidden', '');
-        statusPeers.setAttribute('aria-expanded', 'false');
-      }
-      try { localStorage.setItem('collab2.versions.open', open ? '1' : '0'); } catch { }
-    };
-    const initialOpen = (() => { try { return localStorage.getItem('collab2.versions.open') === '1'; } catch { return false; } })();
-    setVersionsOpen(initialOpen);
-    // The peers counter IS the versions toggle (no floating dot competing
-    // with the status bar for the same corner).
-    statusPeers.addEventListener('click', () => {
-      const isOpen = !versionsPanel.hasAttribute('hidden');
-      setVersionsOpen(!isOpen);
-    });
+    // History opens as a dialog from the toolbar — not from the peer counter,
+    // because the status bar reports what is true and never acts. Nothing is
+    // persisted about it: a dialog is opened when it is wanted, and restoring
+    // one on load would put a sheet over the document you came to read.
+    toggleVersionsBtn.addEventListener('click', () => historyModal.showModal());
+    historyModal.addEventListener('click', (e) => { if (e.target === historyModal) historyModal.close(); });
 
     // ============================== UI feedback ==============================
-    // Toast for feedback outside the modal (Design Guide: never alert()).
-    const toast = (msg, isError = false) => {
-      toastEl.textContent = msg;
-      toastEl.className = 'show' + (isError ? ' error' : '');
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => (toastEl.className = ''), 3200);
+    // The canonical toast (§6). Never alert(): it blocks the thread, which in a
+    // P2P app freezes the very sync being demonstrated, and a screen reader
+    // never hears it. Three, rotating — the oldest drops as newer ones arrive.
+    const MAX_TOASTS = 3;
+    const TOAST_ICONS = { info: 'ⓘ', success: '✓', error: '✕', warning: '!' };
+
+    const dropToast = (node) => {
+      node.classList.add('out');
+      setTimeout(() => {
+        node.remove();
+        if (!toastsEl.children.length && toastsEl.matches(':popover-open')) toastsEl.hidePopover();
+      }, 400);
     };
-    // Inline feedback inside the identity modal.
-    const modalMsg = (type, text) => {
-      authMsg.className = 'msg show ' + (type === 'ok' ? 'ok' : 'err');
-      authMsg.textContent = String(text || '');
-    };
-    const clearMsg = () => {
-      authMsg.className = 'msg';
-      authMsg.textContent = '';
+
+    /** @param {string} message @param {'info'|'success'|'error'|'warning'} [kind='info'] */
+    const toast = (message, kind = 'info') => {
+      const node = document.createElement('div');
+      node.className = `toast ${kind}`;
+
+      const icon = document.createElement('span');
+      icon.className = 'toast-icon';
+      icon.textContent = TOAST_ICONS[kind] ?? TOAST_ICONS.info;
+
+      const text = document.createElement('span');
+      text.className = 'toast-text';
+      text.textContent = message;
+
+      node.append(icon, text);
+      node.onclick = () => dropToast(node);
+
+      if (!toastsEl.matches(':popover-open')) toastsEl.showPopover();
+      toastsEl.appendChild(node);
+      while (toastsEl.children.length > MAX_TOASTS) dropToast(toastsEl.firstElementChild);
+      setTimeout(() => node.isConnected && dropToast(node), 3000);
     };
     // Minimalist "Saved" flash next to the peer counter.
     const flashSaved = () => {
@@ -1465,17 +1718,63 @@
       // broadcasting yourself (camera/mic) requires a signed-in identity.
       startVideoBtn.disabled = !myAddress;
       startVideoBtn.title = myAddress ? 'Start video' : 'Sign in to share your camera';
-      // Signed out, the status hint doubles as the re-entry point to the modal.
-      statusRole.classList.toggle('signin-cta', !myAddress);
-      statusRole.title = myAddress ? '' : 'Open the identity dialog';
       renderVersions(); // the admin-only delete affordance follows the live role
       updateStatus();
     };
 
-    const setPhase = (phase) => {
-      identityModal.dataset.phase = phase;
-      if (phase === 'welcome') mnemonicBox.readOnly = false;
-      clearMsg();
+    /**
+     * Passkeys need two things, and only the first is obvious: a secure
+     * context, and a valid Relying Party ID — which WebAuthn takes from the
+     * hostname and requires to be a *domain*. An IP is not, so 127.0.0.1
+     * passes every check you would think to make and then fails at
+     * registration with "This is an invalid domain".
+     */
+    const PASSKEYS_AVAILABLE =
+      window.isSecureContext &&
+      !!window.PublicKeyCredential &&
+      !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname); // an IP is never an RP ID
+
+    const show = (node, on) => node.classList.toggle('hidden', !on);
+
+    /** Grow to fit: compact when empty, whole phrase visible when filled. */
+    const autoGrow = () => {
+      mnemonicBox.style.height = 'auto';
+      // scrollHeight excludes borders, and box-sizing counts them in height.
+      const borders = mnemonicBox.offsetHeight - mnemonicBox.clientHeight;
+      mnemonicBox.style.height = `${mnemonicBox.scrollHeight + borders}px`;
+    };
+
+    /** Copy only, and only when there is something to copy: reading the
+        clipboard raises a permission prompt, writing does not. */
+    const syncClipAffordance = () => show(mnemonicClip, !!mnemonicBox.value.trim());
+
+    /**
+     * The door is drawn from the security state, never from local flags. The
+     * SM already publishes the phase, and the three-phase state machine this
+     * replaces was a second source of truth for the same thing.
+     */
+    const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+      // `hasVolatileIdentity` stays true after signing in with a fresh phrase —
+      // the identity lives in memory until a passkey secures it. Onboarding
+      // ends the moment you are in, and the phrase must not outlive it.
+      const onboarding = hasVolatileIdentity && !isActive;
+
+      show(generateBtn, !onboarding);
+      show(passkeyProtectBtn, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected);
+      show(passkeyLoginBtn, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration);
+      show(demoLoginBtn, !onboarding);   // never invite abandoning an unsaved phrase
+      show(phraseWarning, onboarding);   // only a fresh phrase can still be lost
+      mnemonicBox.readOnly = onboarding;
+
+      // The phrase is the SM's to hand over — the app never keeps a copy.
+      if (onboarding) {
+        mnemonicBox.value = db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery() ?? mnemonicBox.value;
+      } else if (isActive || document.activeElement !== mnemonicBox) {
+        mnemonicBox.value = ''; // signed in: always clear. Signed out: never mid-paste.
+      }
+
+      syncClipAffordance();
+      autoGrow();
     };
 
     // Reactive role watcher: db.get(user:<address>, cb) fires on every signed
@@ -1497,8 +1796,8 @@
       const hadWrite = can('write');
       const firstSight = myRole === null;
       myRole = next;
-      chipRole.textContent = `[${myRole}]`;
-      chipRole.dataset.role = myRole;
+      roleBadge.textContent = myRole;
+      roleBadge.dataset.role = myRole;
       applyPermissionsToUI();
       if (!hadWrite && can('write')) toast(`Write access unlocked — role: ${myRole}`);
       // Only announce "guest" once the node has actually arrived — a null
@@ -1507,124 +1806,115 @@
     };
     const watchMyRole = async () => {
       unsubRole?.();
-      if (SUPER_ADMINS.includes(myAddress)) applyRoleUpdate(null, false); // config-declared, no sync needed
+      if (SUPER_ADMINS.includes(myAddress)) applyRoleUpdate(null, 'info'); // config-declared, no sync needed
       ({ unsubscribe: unsubRole } = await db.get(`user:${myAddress}`, (node) =>
         applyRoleUpdate(node?.value?.role, !!node)));
     };
 
-    // Security state drives the top-right chip and the modal phase.
+    /**
+     * One callback draws the whole session: the top bar, the door, and every
+     * gated control. It is the single source of truth, and nothing else calls
+     * showModal() — not even at boot.
+     *
+     * Every branch is idempotent, which matters because the SM fires this
+     * several times while an identity is being generated: a callback that
+     * *remembers* would eventually act on a repeat and wipe a phrase that was
+     * never written down. One that only redraws cannot.
+     */
     const onSecurityState = (state) => {
-      if (state.isActive) {
-        myAddress = state.activeAddress;
-        sessionChip.style.display = 'flex';
-        chipAddr.textContent = state.abbrAddr || shortAddr(state.activeAddress) || '—';
-        sessionAddr.textContent = state.activeAddress || '—';
-        protectBtn.style.display = state.isWebAuthnProtected ? 'none' : '';
-        sessionPasskeyHint.style.display = state.isWebAuthnProtected ? 'none' : '';
-        identityModal.close();
+      const { isActive, activeAddress, abbrAddr } = state;
+
+      sessionAddrBtn.textContent = isActive ? (abbrAddr || shortAddr(activeAddress) || '') : '';
+      show(logoutBtn, isActive);
+
+      if (isActive) {
+        myAddress = activeAddress;
         watchMyRole();
       } else {
         unsubRole?.(); unsubRole = null;
         myAddress = null; myRole = null;
-        chipRole.textContent = '[guest]';
-        chipRole.dataset.role = 'guest';
-        sessionChip.style.display = 'none';
-        webauthnLoginBtn.style.display = state.hasWebAuthnHardwareRegistration ? '' : 'none';
-        protectBtn.style.display = '';
-        // While a freshly generated identity is pending (volatile), stay in the
-        // backup phase so the user saves that phrase instead of minting another.
-        if (!state.hasVolatileIdentity) {
-          setPhase('welcome');
-          mnemonicBox.value = ''; // never leave a signed-out mnemonic on display
-        }
+        roleBadge.textContent = '';
+        roleBadge.dataset.role = '';
         queueMicrotask(() => applyPermissionsToUI());
       }
+
+      renderIdentityModal(state);
+
+      // The document subscription is NOT touched here: it is subscribed once
+      // at boot and lives for the whole page.
+      if (isActive) return identityModal.close();
+      if (!identityModal.open) identityModal.showModal(); // signed out *is* the modal's state
     };
     db.sm.setSecurityStateChangeCallback(onSecurityState);
 
-    // --- Identity modal (three-phase state machine, see the Design Guide) ---
-    // No standing Sign-in button: the modal auto-opens while signed out (boot,
-    // logout), and the read-only status hint below re-opens it contextually.
+    // No standing Sign-in button: the door auto-opens while signed out, and
+    // re-entry is contextual — the read-only status hint re-opens it.
     statusRole.addEventListener('click', () => {
-      if (!myAddress) { setPhase('welcome'); identityModal.showModal(); }
+      if (!myAddress && !identityModal.open) identityModal.showModal();
     });
-    const openSessionPhase = () => { setPhase('session'); identityModal.showModal(); };
-    sessionChip.addEventListener('click', openSessionPhase);
-    sessionChip.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSessionPhase(); }
-    });
-    // No × close button: dismissal is the backdrop click or Esc (native to
-    // <dialog>) — the modal is a door, not a window.
-    identityModal.addEventListener('click', (e) => { if (e.target === identityModal) identityModal.close(); });
 
+    // Dismissible: everyone can read the document and watch live edits, so a
+    // visitor has something real behind the door. No × close button — a corner
+    // × reads as window chrome and invites closing before the phrase is saved.
+    identityModal.addEventListener('click', (e) => { if (e.target === identityModal) identityModal.close(); });
+    mnemonicBox.addEventListener('input', () => { syncClipAffordance(); autoGrow(); });
+
+    // Each action is a single SM call plus a toast on failure. The success path
+    // never toasts here — the session callback is what tells you that you are in.
     generateBtn.addEventListener('click', async () => {
       try {
-        clearMsg();
-        const identity = await db.sm.startNewUserRegistration();
-        if (!identity) return modalMsg('err', 'Could not create identity');
-        mnemonicBox.value = identity.mnemonic;
-        mnemonicBox.readOnly = true;
-        setPhase('backup');
-      } catch (error) {
-        modalMsg('err', 'Error creating identity: ' + (error?.message || error));
-      }
+        if (!await db.sm.startNewUserRegistration()) return toast('Could not generate an identity', 'error');
+        // No UI here: the state change fires and renderIdentityModal draws it.
+        toast('Identity generated — save the phrase before you leave', 'success');
+      } catch { toast('Could not generate an identity', 'error'); }
     });
 
     loginBtn.addEventListener('click', async () => {
       const mnemonic = mnemonicBox.value.trim();
-      if (!mnemonic) return modalMsg('err', 'Paste (or generate) a mnemonic first');
+      if (!mnemonic) return toast('Paste a mnemonic phrase first', 'error');
       try {
-        clearMsg();
-        const identity = await db.sm.loginOrRecoverUserWithMnemonic(mnemonic);
-        if (identity) toast(`Signed in as ${shortAddr(identity.address)}`);
-        else modalMsg('err', 'Invalid mnemonic');
-      } catch (error) {
-        modalMsg('err', 'Mnemonic login error: ' + (error?.message || error));
-      }
+        // One method for both cases: a phrase this device has never seen
+        // recovers the identity rather than failing.
+        if (!await db.sm.loginOrRecoverUserWithMnemonic(mnemonic)) toast('That mnemonic is not valid', 'error');
+      } catch { toast('That mnemonic is not valid', 'error'); }
     });
 
-    webauthnLoginBtn.addEventListener('click', async () => {
+    passkeyLoginBtn.addEventListener('click', async () => {
       try {
-        clearMsg();
-        const address = await db.sm.loginCurrentUserWithWebAuthn();
-        if (address) toast(`Signed in as ${shortAddr(address)}`);
-        else modalMsg('err', 'WebAuthn login failed');
-      } catch (error) {
-        modalMsg('err', 'WebAuthn login error: ' + (error?.message || error));
-      }
+        if (!await db.sm.loginCurrentUserWithWebAuthn()) toast('Passkey login cancelled', 'error');
+      } catch { toast('Could not sign in with the passkey', 'error'); }
     });
 
-    // Protect the current (or volatile) identity with a passkey.
-    protectBtn.addEventListener('click', async () => {
+    passkeyProtectBtn.addEventListener('click', async () => {
       try {
-        clearMsg();
-        const address = await db.sm.protectCurrentIdentityWithWebAuthn();
-        if (address) toast(`Identity ${shortAddr(address)} protected with a passkey`);
-        else modalMsg('err', 'Could not protect identity');
-      } catch (error) {
-        modalMsg('err', 'Passkey error (HTTPS required): ' + (error?.message || error));
-      }
+        if (!await db.sm.protectCurrentIdentityWithWebAuthn()) toast('Passkey registration cancelled', 'error');
+      } catch { toast('Could not register the passkey', 'error'); }
     });
 
-    copyBtn.addEventListener('click', async () => {
+    mnemonicClip.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(mnemonicBox.value);
-        modalMsg('ok', 'Mnemonic copied — store it safely');
-      } catch { modalMsg('err', 'Could not copy'); }
+        toast('Phrase copied to clipboard', 'success');
+      } catch {
+        // The phrase is already on screen; say so rather than failing silently.
+        toast('Clipboard unavailable — select the phrase and copy it', 'warning');
+      }
     });
 
-    downloadBtn.addEventListener('click', () => {
+    sessionAddrBtn.addEventListener('click', async () => {
+      if (!myAddress) return;
       try {
-        const blob = new Blob([mnemonicBox.value + "\n"], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'mnemonic.txt'; a.click();
-        URL.revokeObjectURL(url);
-      } catch { }
+        await navigator.clipboard.writeText(myAddress);
+        toast('Address copied to clipboard', 'success');
+      } catch { toast('Clipboard unavailable', 'warning'); }
     });
 
-    // One-click demo superadmin: runs the governance engine in this browser.
-    superadminBtn.addEventListener('click', () => db.sm.loginOrRecoverUserWithMnemonic(DEMO_SUPERADMIN.mnemonic));
+    // One-click demo superadmin: runs the governance engine in this browser,
+    // which is what promotes everyone else to `editor`.
+    demoLoginBtn.addEventListener('click', async () => {
+      try { await db.sm.loginOrRecoverUserWithMnemonic(DEMO_SUPERADMIN.mnemonic); }
+      catch { toast('Could not sign in as the demo superadmin', 'error'); }
+    });
 
     logoutBtn.addEventListener('click', async () => {
       try {
@@ -1632,7 +1922,7 @@
         // Signed-out IS the modal's welcome phase (the state callback set it);
         // dismiss (backdrop / Esc) to keep reading as a guest.
         toast('Signed out');
-      } catch { toast('Could not sign out', true); }
+      } catch { toast('Could not sign out', 'error'); }
     });
 
     // Handle peer joins/leaves
@@ -1655,7 +1945,9 @@
         delete cursorMap[peerId];
       }
       if (peerVideos[peerId]) {
-        peerVideos[peerId].remove();
+        // The tile, not just the <video>: removing the picture alone would
+        // leave its label floating in the strip.
+        peerVideos[peerId].closest('.video-tile')?.remove();
         delete peerVideos[peerId];
       }
     });
@@ -1676,14 +1968,57 @@
     });
 
     // Video chat — broadcasting yourself requires a signed-in identity
+    /** One tile per camera: the picture, and a label saying whose it is. */
+    const makeVideoTile = (label, isSelf) => {
+      const tile = document.createElement('div');
+      tile.className = isSelf ? 'video-tile is-self' : 'video-tile';
+
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsInline = true;
+      if (isSelf) video.muted = true; // never play your own microphone back at you
+
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = label;
+
+      tile.append(video, tag);
+      videoContainer.appendChild(tile);
+      return video;
+    };
+
+    // Broadcasting is a toggle, not a one-way door. It used to hide its own
+    // button on start, which left the camera light on with no way to turn it
+    // off short of reloading the page.
+    let localStream = null;
+    let selfTile = null;
+
+    const stopBroadcast = () => {
+      if (!localStream) return;
+      db.room.removeStream(localStream);
+      localStream.getTracks().forEach(track => track.stop()); // releases the camera light
+      localStream = null;
+      selfTile?.closest('.video-tile')?.remove();
+      selfTile = null;
+      startVideoBtn.setAttribute('aria-pressed', 'false');
+      startVideoBtn.title = 'Start video';
+    };
+
     startVideoBtn.addEventListener('click', async () => {
-      if (!myAddress) return toast('Sign in to share your camera', true);
+      if (!myAddress) return toast('Sign in to share your camera', 'error');
+      if (localStream) return stopBroadcast();
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        db.room.addStream(stream);
-        startVideoBtn.style.display = 'none';
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        db.room.addStream(localStream);
+        // Show yourself too: without it there is no feedback that the camera
+        // is actually on, and the first thing anyone checks is their own frame.
+        selfTile = makeVideoTile('you', true);
+        selfTile.srcObject = localStream;
+        startVideoBtn.setAttribute('aria-pressed', 'true');
+          startVideoBtn.title = 'Stop video';
       } catch (error) {
-        toast('Could not access camera/microphone: ' + (error?.message || error), true);
+        localStream = null;
+        toast('Could not access camera/microphone: ' + (error?.message || error), 'error');
       }
     });
 
@@ -1691,10 +2026,7 @@
       if (stream.getVideoTracks().length === 0) return;
       let video = peerVideos[peerId];
       if (!video) {
-        video = document.createElement('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        videoContainer.appendChild(video);
+        video = makeVideoTile(shortAddr(peerId) || String(peerId).slice(0, 6), false);
         peerVideos[peerId] = video;
       }
       video.srcObject = stream; // always refresh — peers may restart their stream
@@ -1773,7 +2105,7 @@
           await db.put({ content: pendingContent }, docId);
           flashSaved();
         } catch {
-          toast('Not saved — the editor role is required to persist changes', true);
+          toast('Not saved — the editor role is required to persist changes', 'error');
         } finally {
           isSaving = false;
           updateStatus();
@@ -1919,10 +2251,9 @@
       }
     });
 
-    // File sharing
-    // Received files stack on top of the versions panel, styled in green.
-    // Only file items count against the rolling limit — the live version list
-    // below them manages its own cap.
+    // File sharing. Received files have their own list in the history dialog —
+    // newest first, with a rolling limit, since nothing here is persisted:
+    // a received file lives in this tab's memory as an object URL.
     const appendWithRollingLimit = (container, element, limit) => {
       container.insertBefore(element, container.firstChild);
       const files = container.querySelectorAll('.file-item');
@@ -1941,7 +2272,7 @@
       link.download = metadata.name;
       link.textContent = `File from ${peerId}: ${metadata.name}`;
       link.className = 'file-item';
-      appendWithRollingLimit(versionList, link, MAX_HISTORY_ITEMS);
+      appendWithRollingLimit(fileRowsHost, link, MAX_HISTORY_ITEMS);
     };
     fileChannel.on('message', (message, peerId) => {
       const { metadata, payload, chunk } = message || {};
@@ -1976,7 +2307,7 @@
           }
         }
       } catch (error) {
-        toast('Error sharing file: ' + (error?.message || error), true);
+        toast('Error sharing file: ' + (error?.message || error), 'error');
       }
     });
 
@@ -2008,12 +2339,12 @@
         await bumpVersionsSaved();
         flashSaved(); // the live subscription below renders the new row on every peer
       } catch (error) {
-        toast('Error saving version: ' + (error?.message || error), true);
+        toast('Error saving version: ' + (error?.message || error), 'error');
       }
     });
 
     const restoreVersion = async (versionId) => {
-      if (!can('write')) return toast('The editor role is required to restore versions', true);
+      if (!can('write')) return toast('The editor role is required to restore versions', 'error');
       const { result: node } = await db.get(versionId);
       if (!node?.value) return;
       setEditorHTML(node.value.content || '');
@@ -2027,7 +2358,7 @@
         await db.put({ content: getEditorHTML() }, docId); // restoring persists
         flashSaved();
       } catch {
-        toast('Not saved — the editor role is required', true);
+        toast('Not saved — the editor role is required', 'error');
       }
     };
 
@@ -2037,7 +2368,7 @@
         await db.remove(versionId);
         toast('Version deleted');
       } catch (error) {
-        toast(error?.message || 'Delete failed', true);
+        toast(error?.message || 'Delete failed', 'error');
       }
     };
 
@@ -2045,8 +2376,6 @@
     // $edge starting point and the sub-query filters its descendants. The
     // realtime engine re-evaluates the traversal on every graph change:
     // versions saved or deleted by ANY peer appear here instantly, no reload.
-    const versionRowsHost = document.createElement('div');
-    versionList.appendChild(versionRowsHost);
     const versions = new Map(); // id → value (fed by the live subscription)
 
     renderVersions = () => {
@@ -2087,31 +2416,25 @@
 
     // Initial status
     updateStatus();
-    status.classList.add('active');
+    autoGrow(); // the browser may restore field content across reloads
 
     // Initial auth state: if the SM silently resumed a session before our
     // callback was registered, hydrate the UI from the current state; otherwise
     // boot as a read-only guest. No interactive WebAuthn prompt on load.
+    //
+    // This one call also opens the door when there is no session — nothing else
+    // calls showModal(), so signed-out has exactly one code path.
     try {
       onSecurityState({
         isActive: db.sm.isSecurityActive(),
         activeAddress: db.sm.getActiveEthAddress?.() ?? null,
+        abbrAddr: db.sm.abbrAddr?.(db.sm.getActiveEthAddress?.() ?? '') ?? '',
+        hasVolatileIdentity: !!db.sm.getMnemonicForDisplayAfterRegistrationOrRecovery?.(),
         isWebAuthnProtected: db.sm.isCurrentSessionProtectedByWebAuthn?.() ?? false,
         hasWebAuthnHardwareRegistration: db.sm.hasExistingWebAuthnRegistration?.() ?? false
       });
     } catch { }
     applyPermissionsToUI();
-
-    // The modal IS the door: a distributed app has no server-side login page,
-    // so every load without an active session opens the identity dialog.
-    // Passkey users never see it (their session resumes silently and the
-    // security callback closes it); dismiss (backdrop / Esc) to read as a guest.
-    try {
-      if (!db.sm.isSecurityActive()) {
-        setPhase('welcome');
-        identityModal.showModal();
-      }
-    } catch { }
 
     // Leave the room on real unload only — never pagehide (tab-freeze fires it).
     addEventListener('beforeunload', () => db.room?.leave?.());
