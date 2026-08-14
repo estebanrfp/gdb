@@ -1,175 +1,402 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Simulación D3 P2PGraph (RT) · Cellular Mesh</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GenosDB — P2P mesh graph</title>
   <style>
+    /* Dark, because this page is a live topology rather than an interface to
+       be read. Same token names as every other example — only values differ. */
     :root {
-      --bg: #009dff;
-      --me: #FFFF00;
-      --peer: #00FF00;
-      --bridge: #FFA500;
-      --server: #E040FB;
-      --link: rgba(255, 255, 255, 0.7);
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+
+      --accent: #4c8dff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --violet: #a78bfa;
+
+      --border-subtle: #262b33;
+
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+      /* Graph scale — the same mapping mesh-cells-monitor uses, so the two
+         instruments read as one family. Nothing below names a colour. */
+      --node-self: var(--accent);
+      --node-peer: var(--text-secondary);
+      --node-bridge: var(--warn);
+      --node-server: var(--violet);
+      --link: var(--border-subtle);
     }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #f0f0f0; }
-    .graph-container { width: 400px; height: 400px; margin: 20px 20px 8px; background: var(--bg); border-radius: 8px; overflow: hidden; }
-    svg { width: 100%; height: 100%; }
-    line { stroke: var(--link); stroke-width: 1px; }
-    line.bridge { stroke: var(--bridge); stroke-width: 1.5px; stroke-dasharray: 4 3; }
-    circle.me { fill: var(--me); }
-    circle.me.bridge { stroke: var(--bridge); stroke-width: 3px; }
-    circle.peer { fill: var(--peer); }
-    circle.peer.bridge { fill: var(--bridge); }
-    circle.peer.server { fill: var(--server); }
-    text { font-size: 10px; fill: #000; pointer-events: none; }
-    .legend { display: flex; gap: 14px; margin: 0 20px 20px; font-size: 12px; color: #333; align-items: center; }
-    .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
-    .legend .dot.me { background: var(--me); }
-    .legend .dot.peer { background: var(--peer); }
-    .legend .dot.bridge { background: var(--bridge); }
-    .legend .dot.server { background: var(--server); }
-    .legend .dash { display: inline-block; width: 18px; border-top: 2px dashed var(--bridge); margin-right: 4px; vertical-align: 3px; }
+
+    /* Values only — no component rule changes with the theme. */
+    [data-theme="light"] {
+      --bg-primary: #f4f6fa;
+      --bg-secondary: #ffffff;
+      --text-primary: #1a1d24;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9aa1ad;
+
+      --accent: #2563eb;
+      --ok: #16a34a;
+      --warn: #b45309;
+      --violet: #7c3aed;
+
+      --border-subtle: #e4e7ee;
+      --link: #d4d9e3;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font: 14px/1.5 var(--font);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    /* An instrument: chrome at the edges, the graph edge to edge between them. */
+    .layout {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      height: 100%;
+    }
+
+    .topbar,
+    .statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      min-height: 48px;
+      padding: var(--space-2) var(--space-5);
+      background: var(--bg-secondary);
+    }
+
+    .topbar { border-bottom: 1px solid var(--border-subtle); }
+    .statusbar { border-top: 1px solid var(--border-subtle); }
+
+    .brand {
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .icon-btn {
+      display: flex;
+      padding: 6px;
+      margin-right: -6px; /* aligns the mark with the edge, not the hit area */
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .icon-btn:hover { color: var(--text-primary); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    /* One icon per preference — `system` must be able to draw itself. */
+    .icon-moon,
+    .icon-system { display: none; }
+    [data-pref="dark"] .icon-sun { display: none; }
+    [data-pref="dark"] .icon-moon { display: block; }
+    [data-pref="system"] .icon-sun { display: none; }
+    [data-pref="system"] .icon-system { display: block; }
+
+    /* ── The graph, edge to edge ────────────────────────────────── */
+    #graph {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--bg-primary);
+    }
+
+    #graph svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    line { stroke: var(--link); stroke-width: 1.5px; }
+    line.bridge { stroke: var(--node-bridge); stroke-dasharray: 4 3; }
+
+    circle.me { fill: var(--node-self); }
+    circle.me.bridge { stroke: var(--node-bridge); stroke-width: 3px; }
+    circle.peer { fill: var(--node-peer); }
+    circle.peer.bridge { fill: var(--node-bridge); }
+    circle.peer.server { fill: var(--node-server); }
+
+    text {
+      font-family: var(--mono);
+      font-size: 10px;
+      fill: var(--text-tertiary);
+      pointer-events: none;
+    }
+
+    /* ── The legend, in the status bar: state, never actions ────── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .legend li {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .legend i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .legend .self { color: var(--node-self); }
+    .legend .peer { color: var(--node-peer); }
+    .legend .bridge { color: var(--node-bridge); }
+    .legend .server { color: var(--node-server); }
+
+    .legend .cross i {
+      width: 18px;
+      height: 0;
+      border-radius: 0;
+      background: none;
+      border-top: 2px dashed var(--node-bridge);
+    }
+
+    .presence {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
   </style>
 </head>
+
 <body>
-  <div class="graph-container" id="graph"></div>
-  <div class="legend">
-    <span><i class="dot me"></i>You</span>
-    <span><i class="dot peer"></i>Peer</span>
-    <span><i class="dot bridge"></i>Bridge</span>
-    <span><i class="dot server"></i>Server</span>
-    <span><i class="dash"></i>Cross-cell link</span>
+  <div class="layout">
+    <header class="topbar">
+      <h1 class="brand">P2P mesh graph</h1>
+      <button id="themeBtn" class="icon-btn" title="Theme" aria-label="Theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+        </svg>
+        <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="13" rx="2" />
+          <path d="M9 21h6" />
+        </svg>
+      </button>
+    </header>
+
+    <main id="graph"></main>
+
+    <footer class="statusbar">
+      <ul class="legend">
+        <li class="self"><i></i>You</li>
+        <li class="peer"><i></i>Peer</li>
+        <li class="bridge"><i></i>Bridge</li>
+        <li class="server"><i></i>Server</li>
+        <li class="cross"><i></i>Cross-cell link</li>
+      </ul>
+      <span class="presence" id="presence">0 peers</span>
+    </footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script type="module">
     /**
-     * Real-time peers graph using GenosDB (GenosRTC Cellular Mesh) + D3.
+     * Real-time peers graph over GenosRTC's Cellular Mesh, drawn with D3.
+     * Demonstrates: gdb(name, { rtc: { cells } }), db.room's 'peer:join' /
+     * 'peer:leave', the mesh gossip events 'mesh:state' / 'mesh:peer-state',
+     * db.room.getPeers() and db.selfId.
      * - One local node ('me') and one link per connected peer.
      * - Bridge peers and cross-cell links are styled from the engine's
-     *   gossiped state (mesh:state / mesh:peer-state) — never recomputed.
-     * - Updates on 'peer:join' / 'peer:leave' / 'mesh:*' events.
+     *   gossiped state — never recomputed here.
      * - A Fallback Server announces type 'superpeer' on peer:join and is
      *   drawn as a bigger violet node.
-     * Compact ES2020+ style per your rules.
      */
-
-    // 1) Load GenosDB with RTC + Cellular Mesh enabled (room = db.room)
-
     import { gdb } from "../dist/index.js"
 
     const db = await gdb("p2pgraph-demo", {
       rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } }
-    }); // room id = db name
+    }) // room id = db name
 
-    // 2) D3 setup
-    const size = 400, rMe = 10, rPeer = 6, rServer = 8;
-    const svg = d3.select('#graph').append('svg').attr('viewBox', `0 0 ${size} ${size}`);
-    const linkG = svg.append('g'), nodeG = svg.append('g'), labelG = svg.append('g');
+    // 1) Theme, before anything paints — the guide's three-state toggle.
+    const themeBtn = document.getElementById('themeBtn')
+    const THEME_ORDER = ['system', 'light', 'dark']
+    const systemTheme = matchMedia('(prefers-color-scheme: light)')
+
+    const applyTheme = (pref) => {
+      const root = document.documentElement
+      root.dataset.pref = pref
+      root.dataset.theme = pref === 'system' ? (systemTheme.matches ? 'light' : 'dark') : pref
+      localStorage.theme = pref
+      themeBtn.title = `Theme: ${pref}`
+    }
+
+    systemTheme.addEventListener('change', () => {
+      if (document.documentElement.dataset.pref === 'system') applyTheme('system')
+    })
+
+    applyTheme(localStorage.theme ?? 'system')
+    themeBtn.onclick = () =>
+      applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length])
+
+    // 2) D3 setup — the svg fills the middle band and follows the window.
+    const graphEl = document.getElementById('graph')
+    const rMe = 10, rPeer = 6, rServer = 8
+    const svg = d3.select('#graph').append('svg')
+    const linkG = svg.append('g'), nodeG = svg.append('g'), labelG = svg.append('g')
 
     // 3) In-memory state (Maps for O(1) upserts)
-    const nodes = new Map([['me', { id: 'me', me: true }]]);
-    const links = new Map(); // key: `me->peerId`
+    const nodes = new Map([['me', { id: 'me', me: true }]])
+    const links = new Map() // key: `me->peerId`
 
     // Cellular state, straight from the engine (never recomputed here)
-    let selfState = { cellId: null, isBridge: false, bridges: [] };
-    const peerStates = new Map(); // peerId -> { cellId, bridges }
-    const peerTypes = new Map();  // peerId -> 'superpeer' (Fallback Server)
-    const isServer = d => peerTypes.get(d.id) === 'superpeer';
-    const isBridgePeer = st => !!(st?.isBridge || st?.bridges?.length);
-    const stateOf = d => d.me ? selfState : peerStates.get(d.id);
+    let selfState = { cellId: null, isBridge: false, bridges: [] }
+    const peerStates = new Map() // peerId -> { cellId, bridges }
+    const peerTypes = new Map()  // peerId -> 'superpeer' (Fallback Server)
+    const isServer = d => peerTypes.get(d.id) === 'superpeer'
+    const isBridgePeer = st => !!(st?.isBridge || st?.bridges?.length)
+    const stateOf = d => d.me ? selfState : peerStates.get(d.id)
     const isCrossCell = pid => {
-      const pc = peerStates.get(pid)?.cellId;
-      return !!(pc && selfState.cellId && pc !== selfState.cellId);
-    };
-    const cellTag = st => st?.cellId ? ` ${st.cellId.replace('cell-', 'C')}` : '';
+      const pc = peerStates.get(pid)?.cellId
+      return !!(pc && selfState.cellId && pc !== selfState.cellId)
+    }
+    const cellTag = st => st?.cellId ? ` ${st.cellId.replace('cell-', 'C')}` : ''
 
     // 4) D3 force simulation
     const sim = d3.forceSimulation([...nodes.values()])
       .force('link', d3.forceLink([...links.values()]).id(d => d.id).distance(80).strength(0.2))
       .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(size/2, size/2))
       .force('collide', d3.forceCollide().radius(20))
       .on('tick', () => {
         linkSel
           .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
         nodeSel
-          .attr('cx', d => d.x).attr('cy', d => d.y);
+          .attr('cx', d => d.x).attr('cy', d => d.y)
         labelSel
-          .attr('x', d => d.x).attr('y', d => d.y + 14);
-      });
+          .attr('x', d => d.x).attr('y', d => d.y + 14)
+      })
+
+    const fit = () => {
+      const { clientWidth: w, clientHeight: h } = graphEl
+      svg.attr('viewBox', `0 0 ${w} ${h}`)
+      sim.force('center', d3.forceCenter(w / 2, h / 2))
+      sim.alpha(0.3).restart()
+    }
+    addEventListener('resize', fit)
 
     // 5) Selections (initialized empty, joined in render())
-    let linkSel = linkG.selectAll('line'), nodeSel = nodeG.selectAll('circle'), labelSel = labelG.selectAll('text');
+    let linkSel = linkG.selectAll('line'), nodeSel = nodeG.selectAll('circle'), labelSel = labelG.selectAll('text')
 
     // 6) Helpers
-    const keyLink = pid => `me->${pid}`;
-    const short = id => id === 'me' ? 'You' : (id?.slice(0,6) ?? 'peer');
+    const keyLink = pid => `me->${pid}`
+    const short = id => id === 'me' ? 'You' : (id?.slice(0, 6) ?? 'peer')
+
+    const updatePresence = () => {
+      const count = nodes.size - 1
+      const cell = selfState.cellId ? ` · ${selfState.cellId.replace('cell-', 'C')}` : ''
+      document.getElementById('presence').textContent = `${count} peer${count === 1 ? '' : 's'}${cell}`
+    }
 
     const upsertPeer = peerId => {
-      if (!nodes.has(peerId)) nodes.set(peerId, { id: peerId });
-      links.set(keyLink(peerId), { source: 'me', target: peerId });
-      render(true);
-    };
+      if (!nodes.has(peerId)) nodes.set(peerId, { id: peerId })
+      links.set(keyLink(peerId), { source: 'me', target: peerId })
+      render(true)
+    }
 
     const removePeer = peerId => {
-      nodes.delete(peerId); links.delete(keyLink(peerId));
-      render(true);
-    };
+      nodes.delete(peerId); links.delete(keyLink(peerId))
+      render(true)
+    }
 
     const drag = d3.drag()
-      .on('start', (ev, d) => { if (!ev.active) sim.alpha(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
-      .on('end',  (_, d) => { d.fx = null; d.fy = null; });
+      .on('start', (ev, d) => { if (!ev.active) sim.alpha(0.3).restart(); d.fx = d.x; d.fy = d.y })
+      .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y })
+      .on('end', (_, d) => { d.fx = null; d.fy = null })
 
-    const render = (kick=false) => {
-      const N = [...nodes.values()], L = [...links.values()];
-      linkSel = linkG.selectAll('line').data(L, d => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
-      linkSel.exit().remove();
+    const render = (kick = false) => {
+      const N = [...nodes.values()], L = [...links.values()]
+      linkSel = linkG.selectAll('line').data(L, d => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`)
+      linkSel.exit().remove()
       linkSel = linkSel.enter().append('line').merge(linkSel)
-        .attr('class', d => isCrossCell(d.target.id ?? d.target) ? 'bridge' : null);
+        .attr('class', d => isCrossCell(d.target.id ?? d.target) ? 'bridge' : null)
 
-      nodeSel = nodeG.selectAll('circle').data(N, d => d.id);
-      nodeSel.exit().remove();
+      nodeSel = nodeG.selectAll('circle').data(N, d => d.id)
+      nodeSel.exit().remove()
       nodeSel = nodeSel.enter().append('circle')
         .call(drag)
         .merge(nodeSel)
         .attr('r', d => d.me ? rMe : isServer(d) ? rServer : rPeer)
-        .attr('class', d => (d.me ? 'me' : 'peer') + (isBridgePeer(stateOf(d)) ? ' bridge' : '') + (isServer(d) ? ' server' : ''));
+        .attr('class', d => (d.me ? 'me' : 'peer') + (isBridgePeer(stateOf(d)) ? ' bridge' : '') + (isServer(d) ? ' server' : ''))
 
-      labelSel = labelG.selectAll('text').data(N, d => d.id);
-      labelSel.exit().remove();
+      labelSel = labelG.selectAll('text').data(N, d => d.id)
+      labelSel.exit().remove()
       labelSel = labelSel.enter().append('text')
         .attr('dy', 4).attr('text-anchor', 'middle')
-        .merge(labelSel).text(d => short(d.id) + cellTag(stateOf(d)));
+        .merge(labelSel).text(d => short(d.id) + cellTag(stateOf(d)))
 
       // Rebind sim data efficiently
-      sim.nodes(N);
-      sim.force('link').links(L);
-      if (kick) sim.alpha(0.7).restart();
-    };
+      sim.nodes(N)
+      sim.force('link').links(L)
+      if (kick) sim.alpha(0.7).restart()
+      updatePresence()
+    }
 
     // 7) Seed with current peers (getPeers() returns a plain object)
-    Object.keys(db.room.getPeers?.() ?? {}).forEach(upsertPeer);
+    Object.keys(db.room.getPeers?.() ?? {}).forEach(upsertPeer)
 
     // 8) Real-time: peers join/leave + cellular state gossip
-    db.room.on?.('peer:join', (id, type) => { if (type) peerTypes.set(id, type); upsertPeer(id); });
-    db.room.on?.('peer:leave', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id); });
-    db.room.on?.('mesh:state', st => { selfState = st; render(); });
+    db.room.on?.('peer:join', (id, type) => { if (type) peerTypes.set(id, type); upsertPeer(id) })
+    db.room.on?.('peer:leave', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id) })
+    db.room.on?.('mesh:state', st => { selfState = st; render() })
     db.room.on?.('mesh:peer-state', st => {
-      if (st.id === db.selfId) return;
-      peerStates.set(st.id, { cellId: st.cell, bridges: st.bridges ?? [] });
-      render();
-    });
+      if (st.id === db.selfId) return
+      peerStates.set(st.id, { cellId: st.cell, bridges: st.bridges ?? [] })
+      render()
+    })
 
     // 9) First paint
-    render(true);
+    fit()
+    render(true)
 
     // 10) Cleanup (optional)
-    addEventListener('beforeunload', () => db.room?.leave?.());
+    addEventListener('beforeunload', () => db.room?.leave?.())
   </script>
 </body>
+
 </html>
