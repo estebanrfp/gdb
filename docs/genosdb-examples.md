@@ -117,10 +117,8 @@ A live viewer of GenosDB's governance engine, which resolves each user's role by
 
 ## Tools & Testbeds
 
-### [GenosDB - Mesh Network Monitor](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-d3.html)
-**The reference monitor** for GenosDB networks: an interactive force-directed graph (D3.js) of the Cellular Mesh topology — cells, bridges, peers you can drag — with live network metrics, dynamic TTL, a per-cell peer roster, and Fallback Servers identified as violet `SRV` nodes. Uniquely, it also taps the sync protocol itself (`db.use`): every real database operation (PUT / DEL / LINK) is animated traveling across cells and bridges, so you watch GenosDB work — not just its chat channel.
-
-**Visual variants** — same protocol, different aesthetics: [Lite](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-lite.html) (lightweight Canvas) · [Retro](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-retro.html) (ASCII CRT terminal) · [Modern](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-modern.html) (minimalist Canvas) · [3D Particles](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor-particles.html) (Three.js).
+### [GenosDB - Mesh Network Monitor](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor.html)
+**The reference monitor** for GenosDB networks: an interactive force-directed graph (D3.js) of the Cellular Mesh topology — cells, bridges, peers you can drag — with live network metrics, dynamic TTL, a per-cell peer roster, and Fallback Servers identified as violet `SRV` nodes. Uniquely, it also taps the sync protocol itself (`db.use`): every real database operation (PUT / DEL / LINK) is animated traveling across cells and bridges, so you watch GenosDB work — not just its chat channel. Messages and network events are logged side by side, so a burst of joins never buries the conversation.
 
 ### [GenosDB - Mesh Cells Reach Probe](https://estebanrfp.github.io/gdb/examples/mesh-cells-reach-probe.html)
 A minimal instrument for observing how peers partition into cells. Open it in several tabs — each is a peer; past 10 peers the mesh organizes into cells linked by elected bridges, and the panel reports how many peers land in each cell and who bridges them. Press **PING** to broadcast a `hello` that every peer answers with `world`, so **reach N/N** confirms the message still reaches every peer across the cells, with the coverage latency.

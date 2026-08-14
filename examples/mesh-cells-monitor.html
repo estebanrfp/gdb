@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>GenosDB — Cellular mesh monitor</title>
+
+    <style>
+        /* Dark, because this page is a live topology rather than an interface
+           to be read: the background disappears and the graph carries the page.
+           Same token names as every other example — only the values differ. */
+        :root {
+            --bg-primary: #0d0f12;
+            --bg-secondary: #14171c;
+            --bg-tertiary: #1c2026;
+            --bg-elevated: #22262d;
+
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa3ad;
+            --text-tertiary: #5c6570;
+
+            --accent: #4c8dff;
+            --accent-hover: #6ba1ff;
+            --ok: #34c77b;
+            --warn: #f5a623;
+            --danger: #ef5350;
+            --violet: #a78bfa;
+
+            --border-subtle: #262b33;
+            --border-strong: #333a44;
+
+            --text-on-accent: #ffffff;
+
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 24px;
+            --space-6: 32px;
+
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+            /* Graph scale. A topology needs a categorical ramp the base palette
+               does not define, so it gets its own tokens — derived from the
+               status colours wherever one already carries the right meaning.
+               Nothing below this block ever names a colour directly. */
+            --node-self: var(--accent);
+            --node-peer: var(--text-secondary);
+            --node-bridge: var(--warn);
+            --node-server: var(--violet);
+            --node-cell: var(--ok);
+            --signal: #39c5cf;
+            /* a message in flight — the one thing that is neither peer nor cell */
+        }
+
+        /* Values only — not one component rule below changes with the theme. */
+        [data-theme="light"] {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f7;
+            --bg-elevated: #ffffff;
+
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --ok: #16a34a;
+            --warn: #b45309;
+            --danger: #dc2626;
+            --violet: #7c3aed;
+
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+
+            --signal: #0891b2;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh;
+            /* the mobile address bar is not part of the viewport */
+            overflow: hidden;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* ── An instrument, not a page ──────────────────────────── */
+        /* Chrome at the edges, the graph edge to edge between them, and the
+           page itself never scrolls — only the roster and the stream do. */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+            height: 100%;
+        }
+
+        .topbar,
+        .stats,
+        .stream,
+        .statusbar {
+            grid-column: 1 / -1;
+        }
+
+        /* Every chrome band is 48px tall, so top bar and status bar read as one
+           system rather than two near-misses. */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand {
+            margin: 0;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        /* Chrome-sized, not content-sized: a band is 48px, and a control at its
+           default padding is 37px tall — which with the band's own padding
+           would push it to 54 and break the rhythm against the status bar. */
+        .controls button {
+            padding: 6px var(--space-3);
+        }
+
+        .controls input[type="text"] {
+            width: 220px;
+            padding: 6px var(--space-3);
+            background: var(--bg-tertiary);
+        }
+
+        .icon-btn {
+            display: flex;
+            padding: 6px;
+            margin-right: -6px;
+            /* aligns the mark with the edge, not the hit area */
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            color: var(--text-primary);
+            border-color: transparent;
+        }
+
+        .icon-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* One icon per preference, chosen by what was asked for — not by the
+           palette in force, or `system` could not draw itself. */
+        .icon-moon,
+        .icon-system {
+            display: none;
+        }
+
+        [data-pref="dark"] .icon-sun {
+            display: none;
+        }
+
+        [data-pref="dark"] .icon-moon {
+            display: block;
+        }
+
+        [data-pref="system"] .icon-sun {
+            display: none;
+        }
+
+        [data-pref="system"] .icon-system {
+            display: block;
+        }
+
+        /* ── The figures ────────────────────────────────────────── */
+        /* A row of stats with mono values — the vocabulary every GenosDB
+           instrument shares. No cards: a rule under the row separates it, and
+           the space around each figure does the rest. */
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-6);
+            padding: var(--space-3) var(--space-5);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        .stat b {
+            font-family: var(--mono);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .stat span {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .stat.cells b {
+            color: var(--node-cell);
+        }
+
+        .stat.bridges b {
+            color: var(--node-bridge);
+        }
+
+        /* ── The graph ──────────────────────────────────────────── */
+        /* Edge to edge: a live topology is the data, and boxing it would waste
+           exactly the space the data was going to occupy. */
+        #graph {
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        #graph svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── The roster ─────────────────────────────────────────── */
+        .sidebar {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            min-height: 0;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+        }
+
+        .side-section {
+            min-height: 0;
+            padding: var(--space-3) var(--space-4);
+        }
+
+        .roster {
+            overflow-y: auto;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* The rule goes under the section label and the block itself stays bare:
+           a bordered or tinted block would be a second surface on a page that
+           has one. */
+        .side-section h2 {
+            margin: 0 0 var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 2px var(--space-3);
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .legend li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .legend i {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .legend .self {
+            color: var(--node-self);
+        }
+
+        .legend .peer {
+            color: var(--node-peer);
+        }
+
+        .legend .bridge {
+            color: var(--node-bridge);
+        }
+
+        .legend .server {
+            color: var(--node-server);
+        }
+
+        .legend .cell {
+            color: var(--node-cell);
+        }
+
+        .legend .signal {
+            color: var(--signal);
+        }
+
+        /* A cell is a heading and its members, separated by space and one rule —
+           the tinted, rounded block this used to be read as a card. */
+        .cell-group+.cell-group {
+            margin-top: var(--space-4);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .cell-head {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-2);
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--node-cell);
+        }
+
+        .cell-head span:last-child {
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        .peer-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: 2px 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .peer-row.is-self {
+            color: var(--node-self);
+        }
+
+        /* Role marks are text, not pills: at 11px a rounded fill is a smudge,
+           and these sit in a column where alignment already separates them. */
+        .peer-row b {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+        }
+
+        .peer-row .is-bridge {
+            color: var(--node-bridge);
+        }
+
+        .peer-row .is-server {
+            color: var(--node-server);
+        }
+
+        /* Prose, so it says so: the stream around it is mono and a placeholder
+           set in it would read as another log line. */
+        .empty {
+            margin: 0;
+            font-family: var(--font);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* ── The stream ─────────────────────────────────────────── */
+        /* Two kinds of output, so two halves. What peers say and what the
+           network does arrive at completely different rates: interleaved, a
+           burst of joins buries the conversation and a chatty room hides the
+           topology changing. Each half scrolls itself and neither can hide the
+           other. Newest first in both — a running instrument is read at its top
+           edge, and following the tail of an autoscrolling list is a chore. */
+        .stream {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            height: 150px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+
+        .stream-half {
+            min-width: 0;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0 var(--space-5) var(--space-2);
+        }
+
+        .stream-half+.stream-half {
+            border-left: 1px solid var(--border-subtle);
+        }
+
+        /* Sticky, because a label that scrolls away stops labelling. */
+        .stream-half h2 {
+            position: sticky;
+            top: 0;
+            margin: 0 0 var(--space-2);
+            padding: var(--space-2) 0 var(--space-2);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+            font-family: var(--font);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* Three aligned columns instead of a sentence: when 50 lines scroll
+           past, the eye reads the column, never the line. No separators — the
+           alignment already does that job. */
+        .log-entry {
+            display: grid;
+            grid-template-columns: auto 56px minmax(0, 1fr);
+            gap: var(--space-3);
+            padding: 2px 0;
+        }
+
+        .log-time {
+            color: var(--text-tertiary);
+        }
+
+        .log-kind {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+        }
+
+        .log-detail {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+
+        .log-route {
+            margin-left: var(--space-2);
+            color: var(--text-tertiary);
+        }
+
+        .join .log-kind {
+            color: var(--ok);
+        }
+
+        .leave .log-kind {
+            color: var(--text-tertiary);
+        }
+
+        .msg .log-kind {
+            color: var(--signal);
+        }
+
+        .self .log-kind {
+            color: var(--accent);
+        }
+
+        .sync .log-kind {
+            color: var(--node-bridge);
+        }
+
+        .info .log-kind {
+            color: var(--text-tertiary);
+        }
+
+        .error .log-kind {
+            color: var(--danger);
+        }
+
+        /* ── Status bar — what is true, never what you can do ───── */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            min-height: 48px;
+            padding: var(--space-2) var(--space-5);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .run-state,
+        .position {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin: 0;
+            font-family: var(--mono);
+        }
+
+        /* The one thing an instrument must state without being read: whether it
+           is alive. Grey and still while connecting, green and breathing once
+           the room is joined. */
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-tertiary);
+        }
+
+        .live .dot {
+            background: var(--ok);
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            50% {
+                opacity: .25;
+            }
+        }
+
+        .role-bridge {
+            color: var(--node-bridge);
+            font-weight: 600;
+        }
+
+        /* ── Buttons & fields ───────────────────────────────────── */
+        /* Secondary is the default and blue is opt-in: make `button` itself the
+           primary one and `button:hover` paints a fill that outranks every
+           `.icon-btn:hover`, so the theme icon lights up as a blue square. */
+        button {
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--text-on-accent);
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--text-on-accent);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        input:disabled {
+            color: var(--text-tertiary);
+            background: var(--bg-primary);
+        }
+
+        /* ── Graph marks ────────────────────────────────────────── */
+        /* Fill comes from CSS, never from a `fill` attribute in JS: that is what
+           lets the theme toggle repaint the topology without a redraw. Only the
+           transient flashes set `style.fill`, which outranks a rule and then
+           returns to it when cleared. */
+        .node-cell {
+            fill: var(--node-cell);
+        }
+
+        .node-peer {
+            fill: var(--node-peer);
+        }
+
+        .node-bridge {
+            fill: var(--node-bridge);
+            filter: url(#glow);
+        }
+
+        .node-server {
+            fill: var(--node-server);
+        }
+
+        .node-self {
+            fill: var(--node-self);
+            stroke: var(--text-primary);
+            stroke-width: 3;
+        }
+
+        .link {
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        .link-cell {
+            stroke: var(--node-cell);
+            stroke-width: 3;
+            stroke-opacity: .6;
+        }
+
+        .link-bridge {
+            stroke: var(--node-bridge);
+            stroke-width: 2;
+            stroke-dasharray: 5, 3;
+            stroke-opacity: .8;
+        }
+
+        .link-membership {
+            stroke: var(--text-tertiary);
+            stroke-width: 1;
+            stroke-opacity: .5;
+        }
+
+        .node-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            fill: var(--text-secondary);
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .cell-label {
+            fill: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .message-particle {
+            fill: var(--signal);
+        }
+
+        .message-trail {
+            fill: none;
+            stroke: var(--signal);
+            stroke-width: 2;
+            stroke-opacity: .5;
+            stroke-linecap: round;
+            stroke-dasharray: 4, 2;
+        }
+
+        .message-label-bg {
+            fill: var(--signal);
+            rx: 6;
+            ry: 6;
+        }
+
+        .message-label-text {
+            fill: var(--bg-primary);
+            font-family: var(--mono);
+            font-size: 9px;
+            font-weight: 600;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .pulse-ring {
+            fill: none;
+            stroke-width: 3;
+            animation: ping 0.8s ease-out forwards;
+        }
+
+        @keyframes ping {
+            from {
+                r: 8;
+                opacity: 1;
+                stroke-width: 3;
+            }
+
+            to {
+                r: 45;
+                opacity: 0;
+                stroke-width: 1;
+            }
+        }
+
+        /* Nothing here is decoration: a moving graph that cannot be stilled is
+           unusable for anyone who needs it still. */
+        @media (prefers-reduced-motion: reduce) {
+
+            .live .dot,
+            .pulse-ring {
+                animation: none;
+            }
+
+            .pulse-ring {
+                display: none;
+            }
+        }
+
+        /* Stacking is still one screen: the layout keeps its full height and the
+           roster becomes a row, so the status bar never falls below the fold. */
+        @media (max-width: 820px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 30%) auto auto;
+            }
+
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid var(--border-subtle);
+            }
+
+            .controls input[type="text"] {
+                width: 120px;
+            }
+
+            .stream {
+                height: 116px;
+            }
+
+            .stream-half {
+                padding: 0 var(--space-3) var(--space-2);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <header class="topbar">
+            <h1 class="brand">Topology monitor</h1>
+
+            <div class="controls">
+                <input type="text" id="msgInput" placeholder="Broadcast a message…" aria-label="Message to broadcast"
+                    disabled />
+                <button id="sendBtn" class="primary" disabled>Send</button>
+
+                <button id="themeBtn" class="icon-btn" title="Theme" aria-label="Theme">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" />
+                        <path
+                            d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                    </svg>
+                    <svg class="icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="4" width="20" height="13" rx="2" />
+                        <path d="M9 21h6" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="stats">
+            <p class="stat">
+                <b id="metricPeers">1</b><span>Peers</span>
+            </p>
+            <p class="stat cells">
+                <b id="metricCells">0</b><span>Cells</span>
+            </p>
+            <p class="stat bridges">
+                <b id="metricBridges">0</b><span>Bridges</span>
+            </p>
+            <p class="stat">
+                <b id="metricCellSize">—</b><span>Cell size</span>
+            </p>
+            <p class="stat">
+                <b id="metricTTL">—</b><span>Dynamic TTL</span>
+            </p>
+        </div>
+
+        <main id="graph"></main>
+
+        <aside class="sidebar">
+            <section class="side-section">
+                <h2>Legend</h2>
+                <ul class="legend">
+                    <li class="self"><i></i>You</li>
+                    <li class="peer"><i></i>Peer</li>
+                    <li class="bridge"><i></i>Bridge</li>
+                    <li class="server"><i></i>Server</li>
+                    <li class="cell"><i></i>Cell</li>
+                    <li class="signal"><i></i>Message</li>
+                </ul>
+            </section>
+
+            <section class="side-section roster">
+                <h2>Cells</h2>
+                <div id="cellList"></div>
+            </section>
+        </aside>
+
+        <section class="stream">
+            <div class="stream-half" aria-live="polite">
+                <h2>Messages</h2>
+                <div id="msgLog">
+                    <p class="empty">Broadcasts sent and received appear here.</p>
+                </div>
+            </div>
+            <div class="stream-half" aria-live="polite">
+                <h2>Network</h2>
+                <div id="netLog">
+                    <p class="empty">Peers joining, leaving and syncing appear here.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="statusbar">
+            <p class="run-state" id="runState">
+                <span class="dot"></span>
+                <span id="connState">connecting…</span>
+            </p>
+            <p class="position">
+                <span id="selfCell">—</span>
+                <span id="selfRole"></span>
+            </p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script type="module">
+        import { gdb } from "../dist/index.js"
+
+        // ════════════════════════════════════════════════════════════════
+        // WHAT THIS PAGE IS
+        // ════════════════════════════════════════════════════════════════
+        // A monitor for the Cellular Mesh overlay (`rtc: { cells }`): it draws
+        // the cells this peer knows about, who sits in them, and which peers
+        // were elected as bridges — all of it read from the events the room
+        // emits, never inferred from the connection list.
+        //
+        // Read the animation as an illustration, not as a trace. GenosRTC does
+        // not report the route a message took, so the path drawn here is this
+        // page's own reconstruction of the topology's shape. The real overlay
+        // also keeps power-of-two skip links between cells (diameter O(log C)),
+        // which the walk below deliberately ignores in favour of the adjacent
+        // chain, because that is the picture that explains what a bridge is.
+        // See docs/genosrtc-cells.md.
+
+        // ════════════════════════════════════════════════════════════════
+        // THEME
+        // ════════════════════════════════════════════════════════════════
+        const THEME_ORDER = ["system", "light", "dark"]
+        const systemTheme = matchMedia("(prefers-color-scheme: light)")
+        const themeBtn = document.getElementById("themeBtn")
+
+        const applyTheme = (pref) => {
+            const root = document.documentElement
+            root.dataset.pref = pref
+            root.dataset.theme = pref === "system" ? (systemTheme.matches ? "light" : "dark") : pref
+            localStorage.meshMonitorTheme = pref
+            themeBtn.title = `Theme: ${pref}`
+        }
+
+        systemTheme.addEventListener("change", () => {
+            if (document.documentElement.dataset.pref === "system") applyTheme("system")
+        })
+
+        applyTheme(localStorage.meshMonitorTheme ?? "system")
+        themeBtn.onclick = () =>
+            applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(document.documentElement.dataset.pref) + 1) % THEME_ORDER.length])
+
+        // Node fills live in CSS so the toggle repaints them for free. Only the
+        // transient marks (particles, pulses, flashes) need a literal colour, so
+        // they read it from the same tokens at the moment they are drawn.
+        const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+        const MARK = {
+            signal: () => token("--signal"),
+            ok: () => token("--ok"),
+            cell: () => token("--node-cell"),
+            bridge: () => token("--node-bridge"),
+            peer: () => token("--node-peer")
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // LAYOUT CONFIGURATION — distances and sizes of the force graph
+        // ════════════════════════════════════════════════════════════════
+        const LAYOUT = {
+            cellToCellDistance: 120,     // between adjacent cells
+            bridgeToCellDistance: 70,    // from a bridge to the cell it serves
+            peerToCellDistance: 70,      // from a peer to its own cell
+
+            cellRadius: 10,
+            selfRadius: 5,
+            bridgeRadius: 5,
+            peerRadius: 5,
+            serverRadius: 8.5,
+
+            chargeStrength: -120,        // negative repels
+            collisionPadding: 8,
+            bridgeLinkStrength: 0.8,
+            defaultLinkStrength: 0.5
+        }
+
+        // Overlay options. Spread into `rtc.cells` below, so the figures on
+        // screen and the engine's configuration cannot drift apart.
+        const CELLS_CONFIG = {
+            cellSize: "auto",
+            bridgesPerEdge: 2,
+            maxCellSize: 50,
+            targetCells: 100
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // STATE
+        // ════════════════════════════════════════════════════════════════
+        const $ = (id) => document.getElementById(id)
+        const shortId = (id) => (id?.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id)
+
+        let db = null, room = null, mesh = null, selfId = null
+
+        let selfState = {
+            cellId: null,
+            isBridge: false,
+            bridges: [],
+            dynamicTTL: null,
+            cellSize: null,
+            bridgesPerEdge: CELLS_CONFIG.bridgesPerEdge
+        }
+
+        const remotePeerStates = new Map()
+        // peer:join's 2nd argument — 'superpeer' marks a Fallback Server
+        // (GenosSRV). Informational only: never a trust decision.
+        const peerTypes = new Map()
+
+        // ════════════════════════════════════════════════════════════════
+        // THROTTLED UPDATE SYSTEM
+        // ════════════════════════════════════════════════════════════════
+        let updatePending = false
+        let lastUpdateTime = 0
+        const UPDATE_THROTTLE = 300
+
+        function scheduleUpdate(restart = false) {
+            if (restart) scheduleUpdate._needsRestart = true
+            if (updatePending) return
+
+            const elapsed = Date.now() - lastUpdateTime
+
+            updatePending = true
+            if (elapsed >= UPDATE_THROTTLE) requestAnimationFrame(() => doUpdate())
+            else setTimeout(() => requestAnimationFrame(() => doUpdate()), UPDATE_THROTTLE - elapsed)
+        }
+
+        function doUpdate() {
+            const needsRestart = scheduleUpdate._needsRestart || false
+            scheduleUpdate._needsRestart = false
+            lastUpdateTime = Date.now()
+            updatePending = false
+
+            // Skip the whole render (DOM + force simulation) when the visible
+            // model is unchanged — the overlay gossips a keep-alive every ~10s
+            // and the graph must not twitch for it. getAllPeers() also expires
+            // ghosts, so an expiry does change the print.
+            const all = getAllPeers()
+            let fp = `${selfState.cellSize}|${selfState.dynamicTTL}`
+            for (const pid of [...all.keys()].sort()) {
+                const st = all.get(pid)
+                fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(",")}|${peerTypes.get(pid) || ""}`
+            }
+            if (!needsRestart && fp === doUpdate._lastFp) return
+            doUpdate._lastFp = fp
+
+            render(needsRestart)
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // HELPERS
+        // ════════════════════════════════════════════════════════════════
+        const getCellIndex = (cid) => {
+            const m = String(cid || "").match(/cell-(\d+)/)
+            return m ? Number(m[1]) : NaN
+        }
+
+        // Adjacent cells by index. The overlay assigns peers by rendezvous hash,
+        // so the indices that exist are not necessarily contiguous — every
+        // caller checks the neighbour is real before drawing it.
+        const neighborCells = (cid) => {
+            const i = getCellIndex(cid)
+            if (Number.isNaN(i)) return []
+            return i > 0 ? [`cell-${i - 1}`, `cell-${i + 1}`] : [`cell-${i + 1}`]
+        }
+
+        function getAllPeers() {
+            const all = new Map()
+            // Expire gossip-only ghosts: no state for 90s (background tabs
+            // gossip about once a minute) AND no live RTC connection — a
+            // physically connected peer always stays.
+            const cutoff = Date.now() - 90000
+            const connected = room?.getPeers?.() ?? {}
+
+            for (const [pid, state] of remotePeerStates) {
+                if ((state.at ?? 0) < cutoff && !(pid in connected)) {
+                    remotePeerStates.delete(pid)
+                    continue
+                }
+                all.set(pid, { ...state })
+            }
+
+            all.set(selfId, {
+                cellId: selfState.cellId,
+                isBridge: selfState.isBridge,
+                bridges: selfState.bridges || []
+            })
+            return all
+        }
+
+        // Bridge truth comes straight from the engine — `mesh:state` for self,
+        // gossiped `mesh:peer-state` for remotes. Never recomputed here: bridge
+        // election is a deterministic function of the shared roster, and a
+        // second opinion could only be wrong.
+        const isBridgePeer = (st) => !!(st?.isBridge || st?.bridges?.length)
+
+        const getBridgesPerEdge = () => selfState.bridgesPerEdge ?? CELLS_CONFIG.bridgesPerEdge
+
+        function getPeersInCell(cellId) {
+            const peers = []
+            for (const [pid, st] of getAllPeers()) if (st.cellId === cellId) peers.push(pid)
+            return peers
+        }
+
+        function getAllCellIds() {
+            const cells = new Set()
+            for (const [, st] of getAllPeers()) if (st.cellId) cells.add(st.cellId)
+            return [...cells].sort((a, b) => getCellIndex(a) - getCellIndex(b))
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // D3 SETUP
+        // ════════════════════════════════════════════════════════════════
+        const graphEl = $("graph")
+        let width = graphEl.clientWidth
+        let height = graphEl.clientHeight
+
+        const svg = d3.select("#graph").append("svg").attr("viewBox", `0 0 ${width} ${height}`)
+
+        const defs = svg.append("defs")
+        const linkLayer = svg.append("g").attr("class", "links")
+        const nodeLayer = svg.append("g").attr("class", "nodes")
+        const labelLayer = svg.append("g").attr("class", "labels")
+        const animLayer = svg.append("g").attr("class", "animations")
+
+        const glow = defs.append("filter").attr("id", "glow")
+        glow.append("feGaussianBlur").attr("stdDeviation", "3").attr("result", "coloredBlur")
+        const feMerge = glow.append("feMerge")
+        feMerge.append("feMergeNode").attr("in", "coloredBlur")
+        feMerge.append("feMergeNode").attr("in", "SourceGraphic")
+
+        const simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id)
+                .distance(d =>
+                    d.kind === "cell-link" ? LAYOUT.cellToCellDistance :
+                        d.kind === "bridge-link" ? LAYOUT.bridgeToCellDistance :
+                            LAYOUT.peerToCellDistance)
+                .strength(d => d.kind === "bridge-link" ? LAYOUT.bridgeLinkStrength : LAYOUT.defaultLinkStrength))
+            .force("charge", d3.forceManyBody().strength(LAYOUT.chargeStrength))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide().radius(d => radiusFor(d) + LAYOUT.collisionPadding))
+            .on("tick", ticked)
+
+        const nodePositions = new Map()
+
+        function radiusFor(d) {
+            if (d.kind === "cell") return LAYOUT.cellRadius
+            if (d.isSelf) return LAYOUT.selfRadius
+            if (d.isServer) return LAYOUT.serverRadius
+            if (d.isBridge) return LAYOUT.bridgeRadius
+            return LAYOUT.peerRadius
+        }
+
+        // Class, not colour: the fill lives in the stylesheet so a theme change
+        // repaints the topology without touching the simulation.
+        function classFor(d) {
+            if (d.kind === "cell") return "node node-cell"
+            if (d.isSelf) return "node node-self"
+            if (d.isServer) return "node node-server"
+            if (d.isBridge) return "node node-bridge"
+            return "node node-peer"
+        }
+
+        const drag = d3.drag()
+            .on("start", (event, d) => {
+                if (!event.active) simulation.alphaTarget(0.3).restart()
+                d.fx = d.x
+                d.fy = d.y
+            })
+            .on("drag", (event, d) => {
+                d.fx = event.x
+                d.fy = event.y
+            })
+            .on("end", (event, d) => {
+                if (!event.active) simulation.alphaTarget(0)
+                d.fx = null
+                d.fy = null
+            })
+
+        function ticked() {
+            linkLayer.selectAll("line")
+                .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x).attr("y2", d => d.target.y)
+
+            nodeLayer.selectAll("circle")
+                .attr("cx", d => d.x).attr("cy", d => d.y)
+                .each(function (d) { nodePositions.set(d.id, { x: d.x, y: d.y, r: radiusFor(d) }) })
+
+            labelLayer.selectAll("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y + radiusFor(d) + 12)
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // GRAPH MODEL
+        // ════════════════════════════════════════════════════════════════
+        function buildGraph() {
+            const nodes = []
+            const links = []
+            const cellIds = new Set()
+            const allPeers = getAllPeers()
+
+            for (const [, st] of allPeers) if (st.cellId) cellIds.add(st.cellId)
+
+            for (const cid of cellIds) {
+                nodes.push({ id: `cell:${cid}`, kind: "cell", cellId: cid, label: cid.replace("cell-", "C") })
+            }
+
+            for (const [pid, st] of allPeers) {
+                nodes.push({
+                    id: `peer:${pid}`,
+                    kind: "peer",
+                    peerId: pid,
+                    cellId: st.cellId,
+                    isBridge: isBridgePeer(st),
+                    isSelf: pid === selfId,
+                    isServer: peerTypes.get(pid) === "superpeer",
+                    bridges: Array.isArray(st.bridges) ? st.bridges : [],
+                    label: shortId(pid)
+                })
+            }
+
+            // Membership: every peer hangs off its own cell.
+            for (const n of nodes) {
+                if (n.kind === "peer" && n.cellId) {
+                    links.push({ source: n.id, target: `cell:${n.cellId}`, kind: "membership" })
+                }
+            }
+
+            // The chain, drawn only between cells that both exist and are truly
+            // adjacent — an index gap means the cells in between hold no peers
+            // this monitor has heard from.
+            const sortedCells = [...cellIds]
+                .map(cid => ({ cid, idx: getCellIndex(cid) }))
+                .filter(o => !Number.isNaN(o.idx))
+                .sort((a, b) => a.idx - b.idx)
+
+            for (let i = 0; i < sortedCells.length - 1; i++) {
+                if (sortedCells[i + 1].idx - sortedCells[i].idx === 1) {
+                    links.push({
+                        source: `cell:${sortedCells[i].cid}`,
+                        target: `cell:${sortedCells[i + 1].cid}`,
+                        kind: "cell-link"
+                    })
+                }
+            }
+
+            // Bridges: the cells a bridge peer actually serves, as the engine
+            // reported them. The neighbour guess is only a fallback for a peer
+            // whose gossip has not arrived yet.
+            for (const n of nodes) {
+                if (n.kind !== "peer" || !n.isBridge || !n.cellId) continue
+
+                for (const nc of (n.bridges.length ? n.bridges : neighborCells(n.cellId))) {
+                    if (!cellIds.has(nc) || nc === n.cellId) continue
+                    links.push({ source: n.id, target: `cell:${nc}`, kind: "bridge-link" })
+                }
+            }
+
+            return { nodes, links }
+        }
+
+        function render(restart = false) {
+            const { nodes, links } = buildGraph()
+
+            const link = linkLayer.selectAll("line")
+                .data(links, d => `${d.source.id || d.source}-${d.target.id || d.target}-${d.kind}`)
+
+            link.exit().transition().duration(200).style("opacity", 0).remove()
+
+            link.enter()
+                .append("line")
+                .attr("class", d => `link link-${d.kind === "membership" ? "membership" : d.kind === "cell-link" ? "cell" : "bridge"}`)
+                .style("opacity", 0)
+                .transition().duration(300).style("opacity", 1)
+
+            const node = nodeLayer.selectAll("circle").data(nodes, d => d.id)
+
+            node.exit().transition().duration(200).attr("r", 0).remove()
+
+            node.enter()
+                .append("circle")
+                .attr("class", classFor)
+                .attr("r", 0)
+                .style("cursor", "pointer")
+                .call(drag)
+                .transition().duration(300).attr("r", radiusFor)
+
+            node.transition().duration(200).attr("r", radiusFor)
+            node.attr("class", classFor)
+
+            const label = labelLayer.selectAll("text").data(nodes, d => d.id)
+            label.exit().remove()
+            label.enter()
+                .append("text")
+                .attr("class", d => `node-label ${d.kind === "cell" ? "cell-label" : ""}`)
+                .merge(label)
+                .text(d => d.label)
+
+            simulation.nodes(nodes)
+            simulation.force("link").links(links)
+            simulation.alpha(restart ? 0.8 : 0.1).restart()
+
+            updateUI()
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // MESSAGE ANIMATION
+        // ════════════════════════════════════════════════════════════════
+        // An illustration of the overlay's shape, not a captured route: the
+        // engine reports neither the hops a message took nor which bridge
+        // carried it, so the walk below is reconstructed from the topology.
+
+        function findBridgeBetweenCells(fromCellId, toCellId) {
+            for (const [pid, st] of getAllPeers()) {
+                if (!isBridgePeer(st)) continue
+
+                const serves = st.bridges?.length ? st.bridges : neighborCells(st.cellId)
+                if (st.cellId === fromCellId && serves.includes(toCellId)) return pid
+                if (st.cellId === toCellId && serves.includes(fromCellId)) return pid
+            }
+            // Unknown bridge: the animation simply hops cell to cell instead.
+            return null
+        }
+
+        function buildFullMessagePath(fromPeerId, fromCellId, toCellId) {
+            const path = [
+                { type: "peer", id: fromPeerId, cellId: fromCellId },
+                { type: "cell", id: fromCellId }
+            ]
+
+            const fromIdx = getCellIndex(fromCellId)
+            const toIdx = getCellIndex(toCellId)
+
+            if (!Number.isNaN(fromIdx) && !Number.isNaN(toIdx) && fromIdx !== toIdx) {
+                const step = fromIdx < toIdx ? 1 : -1
+
+                for (let i = fromIdx; i !== toIdx; i += step) {
+                    const bridgePeer = findBridgeBetweenCells(`cell-${i}`, `cell-${i + step}`)
+                    if (bridgePeer) path.push({ type: "bridge", id: bridgePeer })
+                    path.push({ type: "cell", id: `cell-${i + step}` })
+                }
+            }
+
+            for (const peerId of getPeersInCell(toCellId)) {
+                if (peerId !== fromPeerId) path.push({ type: "dest-peer", id: peerId, cellId: toCellId })
+            }
+
+            return path
+        }
+
+        // One broadcast, drawn from wherever it entered this peer's view: to the
+        // sender's own cell first, then outward — and only outward if bridges
+        // exist, since with `bridgesPerEdge: 0` nothing leaves a cell.
+        function animateBroadcast(fromPeerId, fromCellId, messageText) {
+            const fromPos = nodePositions.get(`peer:${fromPeerId}`)
+
+            createPulse(fromPos?.x ?? width / 2, fromPos?.y ?? height / 2, MARK.signal())
+            if (fromPos) flashNode(`peer:${fromPeerId}`, MARK.signal())
+
+            const sameCellPeers = getPeersInCell(fromCellId).filter(pid => pid !== fromPeerId)
+            sameCellPeers.forEach((peerId, idx) => {
+                setTimeout(() => {
+                    if (fromPos) animatePeerToPeer(fromPeerId, peerId, fromCellId, messageText, idx === 0)
+                    else animateCellToPeer(fromCellId, peerId, messageText, idx === 0)
+                }, idx * 150)
+            })
+
+            if (getBridgesPerEdge() <= 0) return
+
+            getAllCellIds().filter(cid => cid !== fromCellId).forEach((toCellId, index) => {
+                const fullPath = buildFullMessagePath(fromPeerId, fromCellId, toCellId)
+                setTimeout(
+                    () => animateAlongFullPath(fullPath, messageText, index === 0),
+                    sameCellPeers.length * 150 + index * 200
+                )
+            })
+        }
+
+        function animatePeerToPeer(fromPeerId, toPeerId, cellId, messageText, showLabel) {
+            const fromPos = nodePositions.get(`peer:${fromPeerId}`)
+            const cellPos = nodePositions.get(`cell:${cellId}`)
+            const toPos = nodePositions.get(`peer:${toPeerId}`)
+            if (!fromPos || !cellPos || !toPos) return
+
+            animateParticleAlongPoints([
+                { ...fromPos, nodeType: "peer", nodeId: fromPeerId },
+                { ...cellPos, nodeType: "cell", nodeId: cellId },
+                { ...toPos, nodeType: "dest-peer", nodeId: toPeerId }
+            ], messageText, showLabel, () => {
+                createPulse(toPos.x, toPos.y, MARK.ok())
+                flashNode(`peer:${toPeerId}`, MARK.ok())
+            }, true)
+        }
+
+        function animateAlongFullPath(path, messageText, showLabel = true) {
+            if (path.length < 2) return
+
+            const cellPath = path.filter(n => n.type !== "dest-peer")
+            const destPeers = path.filter(n => n.type === "dest-peer")
+
+            const points = cellPath
+                .map(node => {
+                    const pos = nodePositions.get(node.type === "cell" ? `cell:${node.id}` : `peer:${node.id}`)
+                    return pos ? { ...pos, nodeType: node.type, nodeId: node.id } : null
+                })
+                .filter(Boolean)
+
+            if (points.length < 2) return
+
+            animateParticleAlongPoints(points, messageText, showLabel, () => {
+                const lastCell = cellPath.at(-1)
+                if (lastCell?.type !== "cell") return
+
+                const destCellPos = nodePositions.get(`cell:${lastCell.id}`)
+                if (!destCellPos) return
+
+                if (!destPeers.length) {
+                    createPulse(destCellPos.x, destCellPos.y, MARK.ok())
+                    flashNode(`cell:${lastCell.id}`, MARK.ok())
+                    return
+                }
+
+                destPeers.forEach((destPeer, idx) => {
+                    setTimeout(() => animateCellToPeer(lastCell.id, destPeer.id, messageText, idx === 0), idx * 120)
+                })
+            }, true)
+        }
+
+        function animateCellToPeer(cellId, peerId, messageText, showLabel = false) {
+            const cellPos = nodePositions.get(`cell:${cellId}`)
+            const peerPos = nodePositions.get(`peer:${peerId}`)
+            if (!cellPos || !peerPos) return
+
+            animateParticleAlongPoints([
+                { ...cellPos, nodeType: "cell", nodeId: cellId },
+                { ...peerPos, nodeType: "dest-peer", nodeId: peerId }
+            ], messageText, showLabel, () => {
+                createPulse(peerPos.x, peerPos.y, MARK.ok())
+                flashNode(`peer:${peerId}`, MARK.ok())
+            }, false)
+        }
+
+        function animateParticleAlongPoints(points, messageText, showLabel, onComplete, flashIntermediates = false) {
+            if (points.length < 2) return
+
+            const startPos = points[0]
+
+            const particle = animLayer.append("circle")
+                .attr("class", "message-particle").attr("r", 6)
+                .attr("cx", startPos.x).attr("cy", startPos.y)
+
+            let label = null
+            let labelBg = null
+
+            if (showLabel && messageText) {
+                // d3's .text() writes textContent, so a peer's message can never
+                // become markup here.
+                const displayText = messageText.length > 12 ? `${messageText.slice(0, 12)}…` : messageText
+
+                labelBg = animLayer.append("rect").attr("class", "message-label-bg")
+                    .attr("x", startPos.x - 35).attr("y", startPos.y - 30)
+                    .attr("width", 70).attr("height", 18)
+
+                label = animLayer.append("text").attr("class", "message-label-text")
+                    .attr("x", startPos.x).attr("y", startPos.y - 21)
+                    .text(displayText)
+            }
+
+            const trail = animLayer.append("path")
+                .attr("class", "message-trail")
+                .attr("d", `M${startPos.x},${startPos.y}`)
+
+            let currentSegment = 0
+
+            function animateNextSegment() {
+                if (currentSegment >= points.length - 1) {
+                    const lastPoint = points.at(-1)
+                    createPulse(lastPoint.x, lastPoint.y, MARK.ok())
+
+                    if (lastPoint.nodeId) {
+                        flashNode(
+                            lastPoint.nodeType === "cell" ? `cell:${lastPoint.nodeId}` : `peer:${lastPoint.nodeId}`,
+                            MARK.ok()
+                        )
+                    }
+
+                    setTimeout(() => {
+                        particle.remove()
+                        trail.remove()
+                        label?.remove()
+                        labelBg?.remove()
+                    }, 400)
+
+                    onComplete?.()
+                    return
+                }
+
+                const end = points[currentSegment + 1]
+                const duration = end.nodeType === "bridge" ? 180 : end.nodeType === "dest-peer" ? 280 : 250
+
+                particle.transition().duration(duration).ease(d3.easeCubicInOut)
+                    .attr("cx", end.x).attr("cy", end.y)
+
+                if (label && labelBg) {
+                    label.transition().duration(duration).ease(d3.easeCubicInOut)
+                        .attr("x", end.x).attr("y", end.y - 21)
+                    labelBg.transition().duration(duration).ease(d3.easeCubicInOut)
+                        .attr("x", end.x - 35).attr("y", end.y - 30)
+                }
+
+                trail.transition().duration(duration).attr(
+                    "d",
+                    points.slice(0, currentSegment + 2).map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
+                )
+
+                if (flashIntermediates && currentSegment > 0) {
+                    const prev = points[currentSegment]
+                    if (prev.nodeId) {
+                        const color = prev.nodeType === "bridge" ? MARK.bridge()
+                            : prev.nodeType === "cell" ? MARK.cell() : MARK.peer()
+                        createPulse(prev.x, prev.y, color, 0.6)
+                        flashNode(prev.nodeType === "cell" ? `cell:${prev.nodeId}` : `peer:${prev.nodeId}`, color)
+                    }
+                }
+
+                currentSegment++
+                setTimeout(animateNextSegment, duration)
+            }
+
+            animateNextSegment()
+        }
+
+        // `style` rather than `attr`: a presentation attribute loses to the
+        // stylesheet rule that carries the node's fill, so clearing the style is
+        // also what restores the node to its own colour.
+        function flashNode(nodeId, color) {
+            const node = nodeLayer.selectAll("circle").filter(d => d.id === nodeId)
+            if (node.empty()) return
+
+            node.transition().duration(150).style("fill", color)
+                .transition().duration(300).style("fill", null)
+        }
+
+        function createPulse(x, y, color, opacity = 1) {
+            const pulse = animLayer.append("circle")
+                .attr("class", "pulse-ring")
+                .attr("cx", x).attr("cy", y).attr("r", 10)
+                .attr("stroke", color).attr("opacity", opacity)
+
+            setTimeout(() => pulse.remove(), 800)
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // UI
+        // ════════════════════════════════════════════════════════════════
+        function updateUI() {
+            const allPeers = getAllPeers()
+            const cells = new Set()
+            let bridges = 0
+
+            for (const [, st] of allPeers) {
+                if (st.cellId) cells.add(st.cellId)
+                if (isBridgePeer(st)) bridges++
+            }
+
+            $("metricPeers").textContent = allPeers.size
+            $("metricCells").textContent = cells.size
+            $("metricBridges").textContent = bridges
+            $("metricCellSize").textContent = selfState.cellSize ?? "—"
+            $("metricTTL").textContent = selfState.dynamicTTL ?? "—"
+
+            $("selfCell").textContent = selfState.cellId ?? "—"
+            $("selfRole").textContent = selfState.isBridge ? "bridge" : ""
+            $("selfRole").className = selfState.isBridge ? "role-bridge" : ""
+
+            renderCellList()
+        }
+
+        const el = (tag, text, className) => {
+            const node = document.createElement(tag)
+            node.textContent = text
+            if (className) node.className = className
+            return node
+        }
+
+        function renderCellList() {
+            const structure = new Map()
+            const allPeers = getAllPeers()
+
+            for (const [pid, st] of allPeers) {
+                const c = st.cellId || "cell-?"
+                if (!structure.has(c)) structure.set(c, new Set())
+                structure.get(c).add(pid)
+            }
+
+            const list = $("cellList")
+            list.replaceChildren()
+
+            if (!structure.size) {
+                const empty = document.createElement("p")
+                empty.className = "empty"
+                empty.textContent = "Waiting for the overlay…"
+                list.append(empty)
+                return
+            }
+
+            for (const cellId of [...structure.keys()].sort((a, b) => getCellIndex(a) - getCellIndex(b))) {
+                const peerSet = structure.get(cellId)
+
+                const group = document.createElement("div")
+                group.className = "cell-group"
+
+                const head = document.createElement("div")
+                head.className = "cell-head"
+                head.append(el("span", cellId), el("span", `${peerSet.size} ${peerSet.size === 1 ? "peer" : "peers"}`))
+                group.append(head)
+
+                for (const pid of [...peerSet].sort()) {
+                    const row = document.createElement("div")
+                    row.className = `peer-row ${pid === selfId ? "is-self" : ""}`
+                    row.append(el("span", shortId(pid)))
+
+                    if (pid === selfId) row.append(el("b", "YOU"))
+                    if (isBridgePeer(allPeers.get(pid))) row.append(el("b", "BRIDGE", "is-bridge"))
+                    if (peerTypes.get(pid) === "superpeer") row.append(el("b", "SRV", "is-server"))
+
+                    group.append(row)
+                }
+
+                list.append(group)
+            }
+        }
+
+        // What a peer said goes left, what the network did goes right. Kind is
+        // what decides, so a new kind lands in the right half by declaring it
+        // here rather than at every call site.
+        const MESSAGE_KINDS = new Set(["MSG", "SELF"])
+
+        // Newest first, and built from nodes rather than a markup string: every
+        // detail here can carry text a remote peer chose, so it goes in as
+        // textContent and can never be parsed as HTML.
+        function log(kind, detail, route) {
+            const stream = $(MESSAGE_KINDS.has(kind) ? "msgLog" : "netLog")
+            stream.querySelector(".empty")?.remove()
+
+            const entry = document.createElement("div")
+            entry.className = `log-entry ${kind.toLowerCase()}`
+
+            entry.append(
+                el("span", new Date().toLocaleTimeString([], { hour12: false }), "log-time"),
+                el("span", kind, "log-kind")
+            )
+
+            const detailEl = el("span", detail, "log-detail")
+            if (route) detailEl.append(el("span", route, "log-route"))
+            entry.append(detailEl)
+
+            stream.prepend(entry)
+            while (stream.children.length > 50) stream.lastChild.remove()
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // MESSAGES
+        // ════════════════════════════════════════════════════════════════
+        // `mesh.send()` carries whatever the application puts in it; this page
+        // sends plain strings and prints anything else as a compact summary.
+        function formatMessage(data) {
+            if (typeof data === "string") return data.length > 60 ? `${data.slice(0, 60)}…` : data
+            if (data && typeof data === "object") {
+                const keys = Object.keys(data)
+                return keys.length <= 3
+                    ? keys.map(k => `${k}: ${String(data[k]).slice(0, 12)}`).join(", ")
+                    : `{${keys.length} keys}`
+            }
+            return String(data).slice(0, 60)
+        }
+
+        // The overlay already deduplicates (`seen` and `delivered` sets) before
+        // it hands a message over, so a handler never needs its own guard.
+        function handleMeshMessage(data, from) {
+            if (from === selfId) return
+
+            const text = formatMessage(data)
+            const fromCell = getAllPeers().get(from)?.cellId
+            const myCell = selfState.cellId || "cell-0"
+
+            log("MSG", `${shortId(from)}: ${text}`, fromCell ? `${fromCell} → ${myCell}` : null)
+
+            if (fromCell) {
+                animateBroadcast(from, fromCell, text)
+                return
+            }
+
+            // The sender's cell has not been gossiped yet: pulse locally instead
+            // of drawing a route that would be invented.
+            const myPos = nodePositions.get(`peer:${selfId}`)
+            if (myPos) {
+                createPulse(myPos.x, myPos.y, MARK.signal())
+                flashNode(`peer:${selfId}`, MARK.ok())
+            }
+        }
+
+        function sendMessage() {
+            const input = $("msgInput")
+            const text = input.value.trim()
+            if (!text || !mesh) return
+
+            mesh.send(text)
+
+            const myCell = selfState.cellId || "cell-0"
+            log("SELF", text, `${myCell} → ${getAllCellIds().join(", ")}`)
+            animateBroadcast(selfId, myCell, text)
+
+            input.value = ""
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // SYNC TRAFFIC
+        // ════════════════════════════════════════════════════════════════
+        // Graph operations arriving from other peers. These are the only three
+        // types the engine emits — `db.use()` sees the batch before it is
+        // applied and must hand it back, or the whole message is discarded.
+        const OP_TYPES = new Set(["upsert", "remove", "link"])
+
+        function formatOp(op) {
+            if (op.type === "remove") return `DEL ${shortId(op.id)}`
+            if (op.type === "link") return `LINK ${shortId(op.sourceId)} → ${shortId(op.targetId)}`
+
+            const value = op.value
+            if (value && typeof value === "object") {
+                return value.text !== undefined
+                    ? `PUT "${String(value.text).slice(0, 24)}"`
+                    : `PUT {${Object.keys(value).slice(0, 2).join(", ")}}`
+            }
+            return `PUT ${String(value).slice(0, 24)}`
+        }
+
+        // Which peer sent the batch is not part of the middleware's arguments,
+        // so the arrival is drawn from the first remote peer whose cell is
+        // known: the point is that something came in from outside, not who.
+        function animateRemoteSync(op) {
+            for (const [pid, st] of getAllPeers()) {
+                if (pid !== selfId && st.cellId) return animateBroadcast(pid, st.cellId, formatOp(op))
+            }
+            createPulse(width / 2, height / 2, MARK.signal())
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // CONNECT
+        // ════════════════════════════════════════════════════════════════
+        async function connect() {
+            try {
+                db = await gdb("mesh-cells-monitor", {
+                    rtc: { cells: { ...CELLS_CONFIG, debug: false } }
+                })
+
+                room = db.room
+                mesh = room.mesh
+                selfId = db.selfId
+
+                room.on("peer:join", (id, type) => {
+                    if (type) peerTypes.set(id, type)
+                    log("JOIN", shortId(id), type ?? null)
+                    scheduleUpdate(true)
+                })
+
+                room.on("peer:leave", (id) => {
+                    remotePeerStates.delete(id)
+                    peerTypes.delete(id)
+                    log("LEAVE", shortId(id))
+                    scheduleUpdate(true)
+                })
+
+                // Own position in the overlay, recomputed by the engine whenever
+                // the roster changes.
+                room.on("mesh:state", (state) => {
+                    selfState = {
+                        cellId: state.cellId,
+                        isBridge: state.isBridge === true,
+                        bridges: Array.isArray(state.bridges) ? state.bridges : [],
+                        dynamicTTL: state.dynamicTTL,
+                        cellSize: state.cellSize,
+                        bridgesPerEdge: state.bridgesPerEdge ?? selfState.bridgesPerEdge
+                    }
+                    scheduleUpdate(true)
+                })
+
+                // Gossiped state of a remote peer: `{ id, cell, bridges, … }` —
+                // note `cell`, not `cellId`, which is the self-state's name.
+                room.on("mesh:peer-state", (data) => {
+                    if (data.id === selfId) return
+                    remotePeerStates.set(data.id, {
+                        cellId: data.cell,
+                        bridges: Array.isArray(data.bridges) ? data.bridges : [],
+                        at: Date.now()
+                    })
+                    scheduleUpdate(false)
+                })
+
+                // Ghost sweep: a peer known only through gossip never emits
+                // peer:leave, so refresh on a timer and let getAllPeers() expire
+                // whoever went quiet.
+                setInterval(() => scheduleUpdate(false), 15000)
+
+                mesh.on("message", handleMeshMessage)
+
+                db.use(async (ops) => {
+                    for (const op of ops) {
+                        if (!OP_TYPES.has(op?.type)) continue
+                        log("SYNC", formatOp(op), `→ ${selfState.cellId || "cell-0"}`)
+                        animateRemoteSync(op)
+                    }
+                    return ops
+                })
+
+                $("msgInput").disabled = false
+                $("sendBtn").disabled = false
+                $("runState").classList.add("live")
+                $("connState").textContent = `joined as ${shortId(selfId)}`
+                log("INFO", "Connected — watching the cellular mesh")
+
+            } catch (error) {
+                $("connState").textContent = "connection failed"
+                log("ERROR", error.message)
+                console.error("Error initializing:", error)
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // INIT
+        // ════════════════════════════════════════════════════════════════
+        $("sendBtn").addEventListener("click", sendMessage)
+        $("msgInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage() })
+
+        // The graph is measured, never assumed: a viewBox fixed at load time
+        // would letterbox the topology the first time the window changes.
+        new ResizeObserver(() => {
+            width = graphEl.clientWidth
+            height = graphEl.clientHeight
+            if (!width || !height) return
+
+            svg.attr("viewBox", `0 0 ${width} ${height}`)
+            simulation.force("center", d3.forceCenter(width / 2, height / 2))
+            simulation.alpha(0.3).restart()
+        }).observe(graphEl)
+
+        connect()
+        scheduleUpdate(true)
+    </script>
+</body>
+
+</html>
