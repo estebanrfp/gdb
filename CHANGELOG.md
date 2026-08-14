@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.3] - 2026-08-14
+
+### Fixed
+
+- **Two ways a pair of peers could stay permanently diverged are gone.** The bundled GenosRTC is rebuilt at 0.25.2, closing two failure modes that the default multi-relay list had been masking and a single-relay room exposed. Rapidly reloading one of two connected browsers and writing immediately could desynchronise them forever — the reloaded tab returns with the same peer identity and the other side silently discarded its redial; an offer from an already-"connected" peer is now taken as the reboot it proves, and the pair reconnects in seconds. And a network drop (wifi off, NAT rebinding, a suspended laptop) could leave both sides holding connections stuck in apparent 'connected' with neither ever re-dialing; a watchdog now pings peers whose channel goes quiet and replaces any that leave a ping unanswered — which also keeps NAT mappings alive in idle rooms and renegotiates channels degraded into multi-second round trips. Verified live: reload-and-write resynchronises every time, a long wifi cut with offline writes reconverges on its own ~30 seconds after the network returns, a quiet room holds indefinitely, and 12 cellular-mesh tabs keep a stable roster at full broadcast reach. The wire format is unchanged, but only updated peers self-heal — update every peer in a room together, and redeploy the Fallback Server alongside your clients.
+
 ## [0.23.2] - 2026-08-13
 
 ### Fixed
