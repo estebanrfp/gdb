@@ -65,6 +65,15 @@ room.on("stream:add", (stream, peerId) => console.log(stream.id, peerId))
 const cursorChannel = room.channel<{ x: number; y: number }>("cursors")
 cursorChannel.on("message", (position, peerId) => console.log(position.x, peerId))
 cursorChannel.send({ x: 120, y: 345 })
+
+// Chunked transfer: meta travels ahead of the payload, and both ends get a
+// 0 → 1 fraction. Guarded here because the published types once omitted all of it.
+const fileChannel = room.channel<ArrayBuffer>("file")
+fileChannel.send(new ArrayBuffer(8), null as any, { filename: "a.png" }, (fraction, peerId) =>
+  console.log(fraction * 100, peerId)
+)
+fileChannel.on("message", (data, peerId, meta) => console.log(data.byteLength, peerId, meta))
+fileChannel.on("progress", (fraction, peerId, meta) => console.log(fraction * 100, peerId, meta))
 room.getPeers()
 room.leave()
 

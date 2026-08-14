@@ -429,7 +429,7 @@ Create a named channel to send and receive data like chat messages or game state
 
 ```javascript
 // Create a channel for cursor positions
-const cursorChannel = db.room.channel("cursor-positions")
+const cursorChannel = db.room.channel("cursors")
 
 // Listen for data from other peers
 cursorChannel.on("message", (position, peerId) => {

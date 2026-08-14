@@ -74,7 +74,7 @@ const db = await gdb("p2p-db", { rtc: true }) // (rtc: true) for realtime update
 const room = db.room
 
 // 3. Create a channel for data messages
-const dataChannel = room.channel("example-action")
+const dataChannel = room.channel("actions")
 
 // 4. Listen for peer lifecycle events
 room.on("peer:join", (peerId) => console.log(`${peerId} joined the channel`))
@@ -221,7 +221,7 @@ const db = await gdb("file-room", { rtc: true, password: "secure-password" })
 const room = db.room
 
 // 3. Create a data channel for file transfers
-const fileChannel = room.channel("file-transfer")
+const fileChannel = room.channel("file")
 
 // 4. Handle incoming files
 fileChannel.on("message", (message, peerId) => {
@@ -266,7 +266,7 @@ document
 
 ### Explanation
 
-1.  **Data Channel**: We create a specific channel (`file-transfer`) to handle file transfers, keeping them separate from other data like chat messages.
+1.  **Data Channel**: We create a specific channel (`file`) to handle file transfers, keeping them separate from other data like chat messages.
 2.  **Metadata Support**: Metadata (like file name, type, and a unique ID) is packaged into a single object along with the file content (`ArrayBuffer`). This entire object is what's sent through the channel.
 3.  **Broadcasting Files**: The `fileChannel.send()` method transmits the object (metadata + payload) to all peers in the channel.
 4.  **Receiving Files**: The `fileChannel.on('message', ...)` event receives the object. The recipient can then extract the metadata and payload to reconstruct and save the file.
@@ -277,7 +277,7 @@ document
 ### Best Practices & Considerations
 
 - **File Size Limits & Chunking**: WebRTC data channels have a message size limit (which varies by browser, but is often around 256KB). For larger files, you must implement "chunking": splitting the file into smaller pieces, sending them sequentially, and reassembling them on the receiver's end.
-- **Progress Feedback**: The base `db.room.channel` API does not provide built-in progress tracking. If you implement chunking, you can also send progress messages through the same channel to create a progress bar. For example: `fileChannel.send({ type: 'progress', fileId: '...', percent: 50 })`.
+- **Progress Feedback**: Built in. `send()` takes an `onProgress` callback and the receiver gets a `progress` event, both reporting a fraction from 0 to 1.
 - **Error Handling**: Add logic to manage cases where file transfers fail due to network issues or peer disconnections.
 - **Handling Multiple Transfers**: To differentiate between simultaneous transfers, include a unique identifier in the metadata for each file (e.g., `{ id: 'unique-file-123' }`). This allows both sender and receiver to track the state and progress of each file independently.
 

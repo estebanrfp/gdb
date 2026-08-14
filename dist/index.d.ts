@@ -100,9 +100,16 @@ declare module "genosdb" {
   // ── Room (GenosRTC) ────────────────────────────────────────────────
 
   export interface RoomChannel<T = any> {
-    /** Send data to all peers, or to specific peer ids. */
-    send(data: T, targets?: string | string[]): void
-    on(event: "message", handler: (data: T, peerId: string) => void): void
+    /** Send to all peers or specific ids. `meta` requires a binary payload. */
+    send(
+      data: T,
+      targets?: string | string[],
+      meta?: Record<string, any>,
+      onProgress?: (fraction: number, peerId: string, meta?: any) => void
+    ): void
+    on(event: "message", handler: (data: T, peerId: string, meta?: any) => void): void
+    /** Incoming payload still arriving. `fraction` runs 0 → 1. */
+    on(event: "progress", handler: (fraction: number, peerId: string, meta?: any) => void): void
     off(event: string, handler: (...args: any[]) => void): void
   }
 

@@ -97,23 +97,31 @@ Creates or connects to a named data channel. This is the recommended way to send
 - **`type`** `{string}`: Channel identifier in UTF‑8 (max 12 bytes — longer names throw).
 - **Returns**: A `channel` object.
 
-#### `channel.send(data, targets?)`
+#### `channel.send(data, targets?, meta?, onProgress?)`
 
-Sends data through the channel.
+Sends data through the channel. Large payloads are chunked and reassembled.
 
 - **`data`**: Any serializable data (JSON, string, binary).
 - **`targets`** `{string | string[]}`: _(Optional)_ A single peer ID or an array of peer IDs. If omitted, sends to all.
+- **`meta`** `{object}`: _(Optional)_ Delivered to the receiver's `message` and `progress` handlers. Binary payloads only (`Blob`/`ArrayBuffer`/typed array) — with JSON it throws.
+- **`onProgress`** `{Function}`: _(Optional)_ `(fraction, peerId, meta) => void`. `fraction` runs 0 → 1.
 
 #### `channel.on('message', callback)`
 
 Registers a callback to fire when a full message is received.
 
-- **Callback:** `(data, peerId) => void`
+- **Callback:** `(data, peerId, meta) => void`
+
+#### `channel.on('progress', callback)`
+
+Fires while an incoming payload is still arriving.
+
+- **Callback:** `(fraction, peerId, meta) => void`. `fraction` runs 0 → 1.
 
 **Data Channel Example (Chat):**
 
 ```javascript
-const chatChannel = db.room.channel("chat-messages")
+const chatChannel = db.room.channel("chat")
 
 // Listen for incoming messages
 chatChannel.on("message", (message, peerId) => {
