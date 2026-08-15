@@ -937,15 +937,6 @@
             defaultLinkStrength: 0.5
         }
 
-        // Overlay options. Spread into `rtc.cells` below, so the figures on
-        // screen and the engine's configuration cannot drift apart.
-        const CELLS_CONFIG = {
-            cellSize: "auto",
-            bridgesPerEdge: 2,
-            maxCellSize: 50,
-            targetCells: 100
-        }
-
         // ════════════════════════════════════════════════════════════════
         // STATE
         // ════════════════════════════════════════════════════════════════
@@ -959,8 +950,7 @@
             isBridge: false,
             bridges: [],
             dynamicTTL: null,
-            cellSize: null,
-            bridgesPerEdge: CELLS_CONFIG.bridgesPerEdge
+            cellSize: null
         }
 
         const remotePeerStates = new Map()
@@ -1055,7 +1045,6 @@
         // second opinion could only be wrong.
         const isBridgePeer = (st) => !!(st?.isBridge || st?.bridges?.length)
 
-        const getBridgesPerEdge = () => selfState.bridgesPerEdge ?? CELLS_CONFIG.bridgesPerEdge
 
         function getPeersInCell(cellId) {
             const peers = []
@@ -1310,9 +1299,8 @@
             return path
         }
 
-        // One broadcast, drawn from wherever it entered this peer's view: to the
-        // sender's own cell first, then outward — and only outward if bridges
-        // exist, since with `bridgesPerEdge: 0` nothing leaves a cell.
+        // One broadcast, drawn from wherever it entered this peer's view: to
+        // the sender's own cell first, then outward through the bridges.
         function animateBroadcast(fromPeerId, fromCellId, messageText) {
             const fromPos = nodePositions.get(`peer:${fromPeerId}`)
 
@@ -1326,8 +1314,6 @@
                     else animateCellToPeer(fromCellId, peerId, messageText, idx === 0)
                 }, idx * 150)
             })
-
-            if (getBridgesPerEdge() <= 0) return
 
             getAllCellIds().filter(cid => cid !== fromCellId).forEach((toCellId, index) => {
                 const fullPath = buildFullMessagePath(fromPeerId, fromCellId, toCellId)
@@ -1713,7 +1699,9 @@
         async function connect() {
             try {
                 db = await gdb("mesh-cells-monitor", {
-                    rtc: { cells: { ...CELLS_CONFIG, debug: false } }
+                    rtc: {
+                        cells: { cellSize: 5 }
+                    }
                 })
 
                 room = db.room
@@ -1741,8 +1729,15 @@
                         isBridge: state.isBridge === true,
                         bridges: Array.isArray(state.bridges) ? state.bridges : [],
                         dynamicTTL: state.dynamicTTL,
-                        cellSize: state.cellSize,
-                        bridgesPerEdge: state.bridgesPerEdge ?? selfState.bridgesPerEdge
+                        cellSize: state.cellSize
+                    }
+                    // The sealed roster is the authoritative membership: any
+                    // peer outside it left the topology — drop it now instead
+                    // of waiting out the gossip-expiry window.
+                    if (Array.isArray(state.roster)) {
+                        const sealed = new Set(state.roster)
+                        for (const id of [...remotePeerStates.keys()])
+                            if (!sealed.has(id)) remotePeerStates.delete(id)
                     }
                     scheduleUpdate(true)
                 })

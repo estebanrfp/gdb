@@ -239,18 +239,18 @@
     /**
      * Real-time peers graph over GenosRTC's Cellular Mesh, drawn with D3.
      * Demonstrates: gdb(name, { rtc: { cells } }), db.room's 'peer:join' /
-     * 'peer:leave', the mesh gossip events 'mesh:state' / 'mesh:peer-state',
+     * 'peer:leave', the mesh events 'mesh:state' / 'mesh:peer-state',
      * db.room.getPeers() and db.selfId.
      * - One local node ('me') and one link per connected peer.
      * - Bridge peers and cross-cell links are styled from the engine's
-     *   gossiped state — never recomputed here.
+     *   sealed state — never recomputed here.
      * - A Fallback Server announces type 'superpeer' on peer:join and is
      *   drawn as a bigger violet node.
      */
     import { gdb } from "../dist/index.js"
 
     const db = await gdb("p2pgraph-demo", {
-      rtc: { cells: { cellSize: 'auto', bridgesPerEdge: 2 } }
+      rtc: { cells: { cellSize: 5 } }
     }) // room id = db name
 
     // 1) Theme, before anything paints — the guide's three-state toggle.
@@ -380,10 +380,19 @@
     // 7) Seed with current peers (getPeers() returns a plain object)
     Object.keys(db.room.getPeers?.() ?? {}).forEach(upsertPeer)
 
-    // 8) Real-time: peers join/leave + cellular state gossip
+    // 8) Real-time: peers join/leave + cellular state events
     db.room.on?.('peer:join', (id, type) => { if (type) peerTypes.set(id, type); upsertPeer(id) })
     db.room.on?.('peer:leave', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id) })
-    db.room.on?.('mesh:state', st => { selfState = st; render() })
+    db.room.on?.('mesh:state', st => {
+      selfState = st
+      // The sealed roster is authoritative: drop peers that left the topology.
+      if (Array.isArray(st.roster)) {
+        const sealed = new Set(st.roster)
+        for (const id of [...peerStates.keys()])
+          if (!sealed.has(id)) { peerStates.delete(id); removePeer(id) }
+      }
+      render()
+    })
     db.room.on?.('mesh:peer-state', st => {
       if (st.id === db.selfId) return
       peerStates.set(st.id, { cellId: st.cell, bridges: st.bridges ?? [] })

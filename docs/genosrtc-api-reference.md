@@ -189,16 +189,10 @@ const db = await gdb("my-app", {
   rtc: { cells: true }  // defaults
 })
 
-// With options
+// With a custom cell size
 const db = await gdb("my-app", {
   rtc: {
-    cells: {
-      cellSize: "auto",      // "auto" or fixed number
-      bridgesPerEdge: 2,     // bridge redundancy
-      maxCellSize: 50,       // max peers per cell
-      targetCells: 100,      // target cell count
-      debug: false           // verbose logging
-    }
+    cells: { cellSize: 5 }  // peers per cell, default 10
   }
 })
 ```
@@ -220,9 +214,9 @@ mesh.on("message", (data, fromPeerId) => {
 ### Mesh Events
 
 ```javascript
-// Your cell status
+// Your cell status, emitted at each topology seal
 db.room.on("mesh:state", (state) => {
-  // state: { cellId, isBridge, bridges, dynamicTTL, cellSize }
+  // state: { epoch, cellId, isBridge, bridges, roster, dynamicTTL, cellSize, totalCells }
 })
 
 // Remote peer states (for visualization)

@@ -241,7 +241,7 @@
       <div class="probe__eyebrow">GenosDB · Cellular Mesh</div>
       <h1 class="probe__title">Reach Probe</h1>
       <p class="probe__hint">
-        Open in several tabs — each is a peer. Past 10 peers the mesh splits
+        Open in several tabs — each is a peer. Past 5 peers the mesh splits
         into cells with elected bridges. Press <b>Ping</b>: every peer answers,
         and reach shows how many the broadcast reached across the cells.
       </p>
@@ -280,16 +280,17 @@
     // (peers, cells, own role) and offers a reach probe: broadcasting "hello"
     // and counting the "world" replies measures real end-to-end delivery —
     // does the broadcast reach every peer across every cell? — plus latency.
-    // Optional query params: ?room=<name>&size=<auto|N>&relay=<ws url,url>
+    // Optional query param: ?room=<name>
     import { gdb } from "../dist/index.js";
 
     const q = new URLSearchParams(location.search);
     const room = q.get("room") ?? "mesh-reach-probe";
-    const relay = q.get("relay"); // comma-separated relay URLs; empty = built-in
-    const rtc = { cells: { cellSize: q.get("size") ?? "auto", bridgesPerEdge: 2 } };
-    if (relay) rtc.relayUrls = relay.split(",");
 
-    const db = await gdb(room, { rtc });
+    const db = await gdb(room, {
+        rtc: {
+            cells: { cellSize: 5 } // one elected bridge per cell, by design
+        }
+    });
     window.db = db; // console probes
 
     const states = new Map(); // peerId -> last gossiped state (+ arrival time)
@@ -325,7 +326,7 @@
       if (rows.length < 2) {
         // A single cell isn't a distribution yet — say so instead of drawing
         // one lonely full bar.
-        $("list").innerHTML = `<div class="cell-note">Single cell — the mesh splits past 10 peers.</div>`;
+        $("list").innerHTML = `<div class="cell-note">Single cell — the mesh splits past 5 peers.</div>`;
         return;
       }
       const max = Math.max(1, ...rows.map(([, ids]) => ids.size));

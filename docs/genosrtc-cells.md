@@ -7,11 +7,11 @@
 ### Key Features
 
 - **Cellular Architecture**: Peers grouped into cells with bridges connecting adjacent cells
-- **Dynamic CellSize**: Automatically adjusts based on network size
-- **Deterministic Bridges**: Bridge election is a pure function of the shared roster (per-edge hash ranking)
-- **Dynamic TTL**: Message time-to-live calculated based on topology
+- **Epoch-Sealed Topology**: The whole layout derives from a sealed roster — zero coordination traffic
+- **Deterministic Bridges**: Per-cell hash ranking; the full rank order doubles as the succession line
+- **Total Cell Isolation**: Each cell is an independent mesh; data crosses only through elected bridges
+- **Dynamic TTL**: Message time-to-live calculated from the topology
 - **Deduplication**: Duplicate message prevention with tracking sets
-- **Heartbeat**: Periodic synchronization and cleanup of inactive peers
 
 ---
 
@@ -53,13 +53,29 @@ cell-0          cell-1
 
 #### Bridge Selection
 
-Bridges are elected per edge `(lo, hi)` as a pure function of the shared roster: candidates from both cells are ranked by a per-edge hash, and the best candidate from **each side** is always included — guaranteeing egress in both directions — before filling up to `bridgesPerEdge`.
+The top-ranked member of each cell — by a per-cell hash — serves **all** of that cell's edges: exactly one bridge per cell, and every edge covered from both sides (one bridge per side, each relaying in both directions).
 
 ```javascript
-const rank = id => hash(`${id}@${lo}~${hi}`); // per-edge ranking spreads load
+const rank = id => hash(`${id}@${cellIdx}`); // per-cell ranking
 ```
 
-Every peer derives the same election independently, so connection admission stays symmetric with no coordination messages.
+Every peer derives the same election independently, so connection admission stays symmetric with no coordination messages. The full rank order is also the **succession line**: when a titular drops from the census, the next candidate takes over at the following seal — no negotiation, no messages.
+
+---
+
+## Epoch-Sealed Topology
+
+The topology is a pure function of a **sealed roster**. Each peer snapshots the census (announce-based, fed over the relays) into an epoch; cells, bridges, succession and channel audiences all derive from that snapshot with the same math on every peer — so no topology data ever travels the wire, and two peers with the same roster compute identical layouts.
+
+Between seals the topology is immutable: a joining peer holds no role — no links, no frames — until the next seal admits it. Departures send a `bye` beacon that clears the census in one relay hop (urgent reseal); silent crashes fall back to the census timeout.
+
+| Trigger | Seal delay |
+|---------|-----------|
+| Growth, certain departure (`bye`), dead edge-bridge | first 2s quiet gap of the roster (10s cap) |
+| Pure shrink (suspected drop) | 30s suspicion window |
+| Grace after each seal | 5s — then links outside the new topology are pruned |
+
+Cell isolation is enforced at three independent layers: connections exist only along sealed roles, frames are audience-targeted at the sender, and receivers drop anything outside their role.
 
 ---
 
@@ -71,16 +87,10 @@ import { gdb } from 'genosdb';
 // Cells with default options
 const db = await gdb('mydb', { rtc: { cells: true } });
 
-// Cells with custom options
+// Cells with a custom cell size
 const db = await gdb('mydb', { 
   rtc: { 
-    cells: { 
-      cellSize: 'auto',
-      bridgesPerEdge: 2,
-      maxCellSize: 50,
-      targetCells: 100,
-      debug: false
-    }
+    cells: { cellSize: 5 }  // default 10 peers per cell
   }
 });
 
@@ -102,40 +112,33 @@ const selfId = db.selfId;
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `cellSize` | `'auto'` \| `number` | `'auto'` | Number of peers per cell. In `'auto'` mode it's calculated dynamically |
-| `bridgesPerEdge` | `number` | `2` | Number of bridges per connection between adjacent cells |
-| `maxCellSize` | `number` | `50` | Maximum peers per cell in auto mode |
-| `targetCells` | `number` | `100` | Target number of cells in the network (auto mode) |
-| `debug` | `boolean` | `false` | Enables debug logs in console |
+| `cellSize` | `number` | `10` | Peers per cell — the room forms `ceil(N / cellSize)` cells |
+
+> Unknown options are ignored. Logging follows GenosDB's shared flag: `gdb('mydb', { debug: true })` enables it across core, plugins and GenosRTC.
 
 > **Note:** For direct usage with GenosRTC (without GenosDB), see [genosrtc-guide.md](genosrtc-guide.md).
 
 ---
 
-## Dynamic CellSize
+## Cell Count
 
-When `cellSize: 'auto'`, the cell size is calculated automatically:
+The room divides exactly by the configured `cellSize` (default 10):
 
 ```javascript
-const computeOptimalCellSize = (peerCount, targetCells, maxCellSize) => {
-  if (peerCount <= 10) return Math.max(2, peerCount); // single cell until 11 peers
-  const computed = Math.ceil(peerCount / targetCells);
-  return Math.max(10, Math.min(maxCellSize, computed));
-}
+const totalCells = Math.ceil(peerCount / cellSize);
 ```
 
 ### Calculation Table
 
-| Peers | Formula | cellSize |
-|-------|---------|----------|
-| 10 | single cell | 10 |
-| 100 | 100/100 = 1 → floor | 10 |
-| 500 | 500/100 = 5 → floor | 10 |
-| 1,000 | 1000/100 = 10 | 10 |
-| 5,000 | 5000/100 = 50 | 50 |
-| 10,000 | 10000/100 = 100 → capped | 50 |
+| Peers | `cellSize` | Cells |
+|-------|-----------|-------|
+| 10 | 10 (default) | 1 |
+| 11 | 10 (default) | 2 |
+| 100 | 10 (default) | 10 |
+| 12 | 5 | 3 |
+| 25 | 5 | 5 |
 
-The cellSize is recalculated on each `refreshState()` to adapt to network changes.
+More peers means **more cells, never bigger cells** — per-peer connections stay `O(cellSize)` at any scale. The layout is recomputed at each seal. Note: HRW assigns peers statistically, so small rooms show uneven cells (e.g. 12 peers as 7+3+2); the spread evens out as N grows, in exchange for churn-stable placement.
 
 ---
 
@@ -152,7 +155,7 @@ class PeerMetrics {
   stability      // 0.0 - 1.0 (decreases with reconnections)
   reconnects     // Reconnection counter
   isResponsive   // true if responded to last ping
-  connectedCells // Set of cells where peer has been seen
+  connectedCells // Cells this peer serves (own + bridged), refreshed at each seal
 }
 ```
 
@@ -162,7 +165,7 @@ class PeerMetrics {
 |----------|-------------|
 | `uptime` | `Date.now() - joinedAt` |
 | `avgRtt` | Average of `rttSamples` (∞ if empty) |
-| `isStale` | `Date.now() - lastSeen > 30000` |
+| `isStale` | `Date.now() - lastSeen > 30000` — diagnostic only; cleanup follows the sealed roster |
 | `healthScore` | Composite score 0.0 - 1.0 |
 
 ### Health Score
@@ -182,10 +185,8 @@ healthScore =
 The message Time-To-Live is calculated based on network size:
 
 ```javascript
-const dynamicTTL = () => {
-  const totalCells = Math.ceil(roster.length / cellSize);
-  return Math.min(150, Math.ceil(Math.log2(totalCells + 1)) * 2 + 3);
-}
+const dynamicTTL = () =>
+  Math.min(150, Math.ceil(Math.log2(sealedCells + 1)) * 2 + 3);
 ```
 
 | Peers | Cells | TTL |
@@ -193,7 +194,7 @@ const dynamicTTL = () => {
 | 50 | 5 | 9 |
 | 200 | 20 | 13 |
 | 1,000 | 100 | 17 |
-| 10,000 | 200 | 19 |
+| 10,000 | 1,000 | 23 |
 
 TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 
@@ -205,10 +206,11 @@ TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 
 | Type | Purpose |
 |------|---------|
-| `state` | Peer state broadcast (cell, bridges, health) |
 | `msg` | User message (payload from `mesh.send()`) |
 | `ping` | Latency measurement request |
 | `pong` | Ping response with timestamp |
+
+No topology type exists: cells, bridges and peer states are derived locally from the seal, never transmitted.
 
 ### Message Structure
 
@@ -229,6 +231,8 @@ TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 2. **Message from neighbor cell**: Bridge injects into its cell and forwards to other neighbors
 3. **Deduplication**: Already seen messages (`seen` set) are not processed again
 
+Every frame is **audience-targeted**: it is sent only to the sealed members of its cell channel plus that cell's elected bridges — surviving direct cross-cell links carry nothing. Receivers apply a **role guard**: frames outside their own channel (or a channel they bridge) are dropped before processing. Directed sends (`channel().send(data, targets)`) take a direct fast path when every target is a live link, and are otherwise forwarded by bridges without being delivered to them.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Peer A sends message from cell-0                           │
@@ -245,26 +249,20 @@ TTL decreases by 1 per hop. Messages with TTL ≤ 0 are not forwarded.
 
 ---
 
-## Heartbeat
+## Seal Cadence
 
-The system periodically broadcasts state and cleans up inactive peers:
+A 2s tick compares the census against the sealed roster and reseals when due — nothing is ever sent over the network for this:
 
 ```javascript
-const HEARTBEAT_INTERVAL = 2000;  // 2 seconds
-const PEER_TIMEOUT = 30000;       // 30 seconds
-
 setInterval(() => {
-  sendState();  // Gossip own state on change, plus a ~10s keep-alive
-  
-  // Remove stale peers
-  for (const [id, metrics] of peerMetrics) {
-    if (metrics.isStale) {
-      peerInfo.delete(id);
-      peerMetrics.delete(id);
-    }
-  }
+  // urgent (growth, bye, dead edge-bridge): seal at the first 2s quiet gap,
+  // 10s cap if the roster never settles; pure shrink waits 30s
+  tick();
+  // re-emit local mesh:peer-state events every ~30s (local listeners only)
 }, HEARTBEAT_INTERVAL);
 ```
+
+Each seal rebuilds `peerInfo` from the roster, opens the channels the new role requires, and — after a 5s grace window that absorbs seal skew between peers — prunes every connection the sealed topology does not recognize.
 
 ---
 
@@ -277,18 +275,13 @@ const seen = new Set();      // Message IDs for relay (max 5000)
 const delivered = new Set(); // Message IDs delivered to handlers
 ```
 
-### Valid Peer Filtering
+### Audience Targeting
 
-Before sending to specific targets, their existence is verified:
+Every outgoing frame carries an explicit target list — the sealed members and elected bridges of its cell channel, narrowed to live connections. An unsealed or out-of-role link receives nothing.
 
-```javascript
-const currentPeers = new Set(Object.keys(room.getPeers() || {}));
-const validTargets = targets.filter(id => currentPeers.has(id));
-```
+### Role Guard
 
-### Stale Verification
-
-Only peers with `lastSeen` within the last 30 seconds are considered active.
+A receiver only processes frames from its own cell channel, or from a neighbor channel it was elected to bridge. Anything else is dropped on arrival — inter-cell data flows exclusively through bridges.
 
 ---
 
@@ -325,9 +318,11 @@ unsubscribe();
 ```javascript
 const state = mesh.getState();
 // {
+//   epoch: 42,
 //   cellId: "cell-2",
 //   isBridge: true,
 //   bridges: ["cell-1", "cell-3"],
+//   roster: ["peer-a", "peer-b", ...],  // the sealed membership
 //   cellSize: 5,
 //   dynamicTTL: 23,
 //   totalCells: 20,
@@ -363,11 +358,11 @@ const rtt = await mesh.ping(peerId);
 const peerInfo = mesh.getPeerInfo();
 // Map<peerId, { cell, isBridge, bridges }>
 
-// Roster of active peers (not stale)
+// Sealed roster of the current epoch
 const roster = mesh.getStableRoster();
 // ['peer-a', 'peer-b', 'peer-c', ...]
 
-// Known cells
+// Known cells (lastSeen = seal timestamp)
 const cells = mesh.getKnownCells();
 // Map<cellId, { lastSeen, peerId }>
 
@@ -397,12 +392,13 @@ room.on('peer:leave', peerId => { ... });
 
 ```javascript
 room.on('mesh:state', state => {
-  // Own state updated
-  // { cellId, isBridge, bridges, dynamicTTL, cellSize }
+  // Own state, emitted at each seal
+  // { epoch, cellId, isBridge, bridges, roster, dynamicTTL, cellSize, totalCells }
 });
 
 room.on('mesh:peer-state', data => {
-  // Remote peer state received
+  // Remote peer state — derived locally from the seal (nothing travels
+  // the wire), re-emitted every ~30s for freshness-window consumers
   // { id, cell, bridges, health, timestamp }
 });
 
@@ -420,8 +416,13 @@ room.on('mesh:health', healthData => {
 |----------|-------|-------------|
 | `SEEN_MAX` | 5000 | Maximum IDs in `seen` set |
 | `RTT_TIMEOUT` | 3000 | Ping timeout (ms) |
-| `PEER_TIMEOUT` | 30000 | Time to mark peer as stale |
-| `HEARTBEAT_INTERVAL` | 2000 | Heartbeat interval (ms) |
+| `PEER_TIMEOUT` | 30000 | Time to mark peer as stale (diagnostic) |
+| `HEARTBEAT_INTERVAL` | 2000 | Seal-cadence tick (ms) |
+| `SEAL_QUIET_MS` | 2000 | Roster quiet gap that triggers an urgent seal |
+| `SEAL_MAX_WAIT_MS` | 10000 | Urgent-seal cap if the roster never settles |
+| `SEAL_SHRINK_MS` | 30000 | Suspicion window for unconfirmed departures |
+| `GRACE_MS` | 5000 | Post-seal grace before pruning |
+| `REEMIT_MS` | 30000 | Local re-emit of `mesh:peer-state` |
 
 ---
 
@@ -434,7 +435,7 @@ async function main() {
   // Connect with cells enabled
   const db = await gdb('my-app', { 
     rtc: { 
-      cells: { cellSize: 'auto', bridgesPerEdge: 2 } 
+      cells: true 
     }
   });
 
@@ -475,18 +476,21 @@ main();
 
 ## Scalability
 
-| Peers | Cells | Max Hops | Connections |
-|-------|-------|----------|-------------|
-| 100 | 10 | ~10 | ~459 |
-| 1,000 | 100 | ~100 | ~4,599 |
-| 10,000 | 200 | ~150 | ~45,999 |
-| Large scale | 1,000+ | ~150 (max) | Scales linearly |
+| Peers | Cells | Max Hops (TTL) | Connections |
+|-------|-------|----------------|-------------|
+| 100 | 10 | 9 | ~500 |
+| 1,000 | 100 | 17 | ~5,000 |
+| 10,000 | 1,000 | 23 | ~50,000 |
+| Large scale | 10,000+ | O(log C), 150 cap | Scales linearly |
 
 ### Connection Formula
 
 ```
-connections ≈ (peers × cellSize) + (cells × bridgesPerEdge × 2)
+connections ≈ peers × (cellSize − 1) / 2   // intra-cell meshes
+            + cells × log₂C                // bridge links to neighbor cells
 ```
+
+Hops stay logarithmic thanks to the power-of-two skip links between cells.
 
 Compared to traditional mesh (`N × (N-1) / 2`), the reduction is **100x to 1000x** for large networks.
 
@@ -497,10 +501,9 @@ Compared to traditional mesh (`N × (N-1) / 2`), the reduction is **100x to 1000
 | Use Case | GDB Configuration |
 |----------|-------------------|
 | General chat | `{ rtc: { cells: true } }` |
-| Real-time games | `{ rtc: { cells: { cellSize: 5, bridgesPerEdge: 2 } } }` |
-| IoT / Sensors | `{ rtc: { cells: { cellSize: 'auto', targetCells: 200 } } }` |
-| Low latency | `{ rtc: { cells: { cellSize: 3, bridgesPerEdge: 2 } } }` |
-| High scale | `{ rtc: { cells: { cellSize: 'auto', maxCellSize: 100 } } }` |
+| Demos / small rooms | `{ rtc: { cells: { cellSize: 5 } } }` |
+| Low latency | `{ rtc: { cells: { cellSize: 3 } } }` |
+| High scale | `{ rtc: { cells: { cellSize: 20 } } }` |
 
 ---
 

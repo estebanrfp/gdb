@@ -301,7 +301,7 @@ chat.send({ text: "Hello everyone!" })
 | Small team collaboration (< 50) | `rtc: true` |
 | Medium rooms (50-100) | Either works |
 | Large event/webinar (100+) | `rtc: { cells: true }` |
-| Massive multiplayer (1000+) | `rtc: { cells: { bridgesPerEdge: 3 } }` |
+| Massive multiplayer (1000+) | `rtc: { cells: { cellSize: 20 } }` |
 
 For detailed configuration options, mesh API, and architecture documentation, see:
 - **[genosrtc-api-reference.md](genosrtc-api-reference.md#-cellular-mesh-network)** — Quick API reference

@@ -40,7 +40,7 @@ Creates and configures a database connection.
       `{ relayUrls, turnConfig }`
       - `relayUrls` `{string[]}` – Custom list of secure WebSocket relay URLs (for Nostr), now passed inside the `rtc` object.
       - `turnConfig` `{Array<Object>}` – Configuration for TURN servers, now passed inside the `rtc` object.
-      - `cells` `{boolean | Object}` – Enable Cellular Mesh overlay for massive scalability. Pass `true` for defaults or an object with options: `{ cellSize, bridgesPerEdge, maxCellSize, targetCells, debug }`.
+      - `cells` `{boolean | Object}` – Enable Cellular Mesh overlay for massive scalability. Pass `true` for defaults or `{ cellSize }` (peers per cell, default 10).
     - `sm` `{Object}` – Enables and configures the Security Manager. Provide at least `superAdmins` (an array of authorized addresses).
     - `ai` `{boolean}` – If `true`, loads the AI module.
     - `nlq` `{boolean}` – If `true`, loads the Natural Language for Queries module.
@@ -113,16 +113,10 @@ const db = await gdb("my-db", {
   rtc: { cells: true }
 })
 
-// Cells with custom configuration
+// Cells with a custom cell size
 const db = await gdb("my-db", {
   rtc: {
-    cells: {
-      cellSize: "auto",      // "auto" or fixed number (default: "auto")
-      bridgesPerEdge: 2,     // redundancy between cells (default: 2)
-      maxCellSize: 50,       // upper limit per cell (default: 50)
-      targetCells: 100,      // target number of cells (default: 100)
-      debug: false           // enable debug logging (default: false)
-    }
+    cells: { cellSize: 5 }  // peers per cell (default: 10)
   }
 })
 

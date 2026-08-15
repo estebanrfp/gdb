@@ -110,8 +110,8 @@ When enabled via `rtc: { cells: true }`, GenosRTC introduces a **Cellular Mesh O
 
 ### Architectural Components
 
--   **Cells**: Logical groups of peers (10 by default in auto mode, up to `maxCellSize`) with full mesh connectivity within the cell. Small rooms stay a single direct mesh; the first split happens past 10 peers.
--   **Bridge Nodes**: Peers deterministically elected to maintain connections between neighboring cells — adjacent cells plus power-of-two skip links, giving the topology an O(log C) diameter. Multiple bridges per edge (configurable via `bridgesPerEdge`) provide redundancy, and the election always includes the best candidate from each side of an edge, guaranteeing egress in both directions.
+-   **Cells**: Logical groups of peers (`cellSize` each, 10 by default) with full mesh connectivity within the cell. Small rooms stay a single direct mesh; the room forms `ceil(N / cellSize)` cells.
+-   **Bridge Nodes**: One bridge per cell, elected by a per-cell hash rank over the sealed roster, maintains connections to all neighboring cells — adjacent cells plus power-of-two skip links, giving the topology an O(log C) diameter. Every edge is thus covered from both sides, and the rank order doubles as a succession line: a dead titular is replaced at the next seal without negotiation.
 -   **Dynamic TTL**: Message hop limit derived from the topology (`2 × log₂(cells + 1) + 3`, capped at 150), preventing infinite propagation while ensuring delivery.
 -   **Rendezvous (HRW) Hashing**: Each peer maps to the cell with the highest `hash(peerId:cell)` score, so membership stays stable as peers join and leave, and a cell-count change relocates only a minimal fraction of peers.
 
