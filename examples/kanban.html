@@ -158,7 +158,7 @@
 
     // Load tasks from the database
     async function init() {
-      await db.map(({id, value, action}) => {
+      await db.map({ field: 'createdAt', order: 'asc' }, ({ id, value, action }) => {
         if (action === 'removed') {
           const taskElement = document.querySelector(`[data-id="${id}"]`);
           if (!taskElement) {
@@ -175,6 +175,10 @@
         }
         if (value && value.column && value.text) {
           renderTask(value.column, id, value.text);
+          // The sort field survives column moves via the DOM (moveTask
+          // rebuilds the value from what is rendered).
+          const el = document.querySelector(`[data-id="${id}"]`);
+          if (el) el.dataset.createdAt = value.createdAt ?? '';
         }
       });
     }
@@ -183,7 +187,7 @@
     // Add a new task
     window.addTask = async (column, text) => {
       if (!text) return;
-      const task = { column, text };
+      const task = { column, text, createdAt: Date.now() };
       const id = await db.put(task);
       renderTask(column, id, text);
     };
@@ -198,7 +202,11 @@
       const text = taskTextSpan.textContent;
 
       // Update the value in the database
-      const updatedTask = { column: newColumn, text };
+      const updatedTask = {
+        column: newColumn,
+        text,
+        createdAt: parseInt(taskElement.dataset.createdAt, 10) || Date.now()
+      };
       await db.put(updatedTask, id);
 
       // Update the task in the DOM without deleting or recreating it

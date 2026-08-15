@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.22.3 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.24.1 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -36,18 +36,18 @@ Install: `npm i genosdb` · Current version: 0.22.3 · Runtime dependencies: non
 
 ## Documentation
 
-- [API reference](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-api-reference.md): every method, option and operator.
-- [Documentation index](https://github.com/estebanrfp/gdb/blob/main/docs/index.md): all guides.
-- [Examples](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-examples.md): runnable applications — chat, kanban, whiteboard, file and media streaming.
-- [Zero-trust security model](https://github.com/estebanrfp/gdb/blob/main/docs/zero-trust-security-model.md): what each role can and cannot do.
-- [GenosRTC architecture](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
-- [Cellular Mesh](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
-- [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
-- [Whitepaper](https://github.com/estebanrfp/gdb/blob/main/WHITEPAPER.md): architecture and design rationale.
+- [API reference](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-api-reference.md): every method, option and operator.
+- [Documentation index](https://github.com/estebanrfp/GenosDB/blob/main/docs/index.md): all guides.
+- [Examples](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-examples.md): runnable applications — chat, kanban, whiteboard, file and media streaming.
+- [Zero-trust security model](https://github.com/estebanrfp/GenosDB/blob/main/docs/zero-trust-security-model.md): what each role can and cannot do.
+- [GenosRTC architecture](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
+- [Cellular Mesh](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
+- [Fallback Server](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
+- [Whitepaper](https://github.com/estebanrfp/GenosDB/blob/main/WHITEPAPER.md): architecture and design rationale.
 - [Articles](https://genosdb.com): concepts, comparisons and tutorials.
 
 ## Optional
 
-- [Migration guide](https://github.com/estebanrfp/gdb/blob/main/MIGRATION.md): moving from the removed `new GDB()` API.
-- [Changelog](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md)
-- [Philosophy](https://github.com/estebanrfp/gdb/blob/main/PHILOSOPHY.md): why the source is closed and how collaboration works.
+- [Migration guide](https://github.com/estebanrfp/GenosDB/blob/main/MIGRATION.md): moving from the removed `new GDB()` API.
+- [Changelog](https://github.com/estebanrfp/GenosDB/blob/main/CHANGELOG.md)
+- [Philosophy](https://github.com/estebanrfp/GenosDB/blob/main/PHILOSOPHY.md): why the source is closed and how collaboration works.

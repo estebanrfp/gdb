@@ -345,7 +345,7 @@
          * user is about to click.
          */
         const watch = (list, status, targetStatus, label) =>
-            db.map({ query: { status } }, ({ id, value, action }) => {
+            db.map({ query: { status }, field: "created", order: "asc" }, ({ id, value, action }) => {
                 // Scoped to THIS list. Searching the document would let one
                 // column's `removed` delete the row the other just added — the
                 // two notifications of a move arrive in either order.

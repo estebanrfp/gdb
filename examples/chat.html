@@ -7,10 +7,10 @@
 </form>
 <script type="module"> import { gdb } from "../dist/index.js";
   let db = await gdb('chat9linescode', { rtc: true }), chat = db.get("note" + location.hash.replace('#', '/')), view = document;
-  db.map(({ id, value }) => {
+  db.map({ field: 'timestamp', order: 'asc' }, ({ id, value }) => {
     (view.line = view.getElementById(id) || view.createElement("li")).id = id;
     list.appendChild(view.line).innerText = value.msg
     window.scroll(0, list.offsetHeight);
   });
-  form.onsubmit = (eve) => { db.put({ msg: who.value + ': ' + what.value }), eve.preventDefault(what.value = "") }
+  form.onsubmit = (eve) => { db.put({ msg: who.value + ': ' + what.value, timestamp: Date.now() }), eve.preventDefault(what.value = "") }
 </script>

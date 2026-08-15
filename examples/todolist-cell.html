@@ -748,19 +748,39 @@
             li.append(taskText, editField, actions)
         }
 
+        // Canonical order: the engine sorts by `createdAt` (see the db.map
+        // options below); the DOM inserts positionally for tasks that arrive
+        // after the initial batch.
+        const createdAtKey = (createdAt) => String(createdAt ?? 0).padStart(15, "0")
+
+        function placeSorted(li) {
+            const next = [...taskList.children].find(
+                (el) => el !== li && el.dataset.createdAt > li.dataset.createdAt
+            )
+            taskList.insertBefore(li, next ?? null)
+        }
+
         function handleAddTask(id, value) {
             if (!value || typeof value !== "object") return
 
             const li = document.createElement("li")
             li.id = id
+            li.dataset.createdAt = createdAtKey(value.createdAt)
             createTaskElements(li, id, value)
-            taskList.append(li)
+            placeSorted(li)
             $("emptyState").classList.add("hidden")
         }
 
-        function handleUpdateTask(id, { text, completed }) {
+        function handleUpdateTask(id, { text, completed, createdAt }) {
             const li = $(id)
             if (!li) return
+
+            // A legacy task gains `createdAt` on its first edit — re-seat it once.
+            const key = createdAtKey(createdAt)
+            if (li.dataset.createdAt !== key) {
+                li.dataset.createdAt = key
+                placeSorted(li)
+            }
 
             const taskText = li.querySelector(".task-text")
             const editField = li.querySelector(".task-edit")
@@ -797,7 +817,11 @@
             if (!li) return
 
             const taskText = li.querySelector(".task-text")
-            await db.put({ text: taskText.textContent, completed: !taskText.classList.contains("completed") }, id)
+            await db.put({
+                text: taskText.textContent,
+                completed: !taskText.classList.contains("completed"),
+                createdAt: parseInt(li.dataset.createdAt, 10) || Date.now(),
+            }, id)
         }
 
         async function saveEdit(id, newText) {
@@ -807,7 +831,11 @@
             if (!li) return
 
             const completed = li.querySelector(".task-text").classList.contains("completed")
-            await db.put({ text: newText.trim(), completed }, id)
+            await db.put({
+                text: newText.trim(),
+                completed,
+                createdAt: parseInt(li.dataset.createdAt, 10) || Date.now(),
+            }, id)
             cancelEdit(li)
         }
 
@@ -817,17 +845,20 @@
             const input = $("taskInput")
             if (!input.value.trim()) return
 
-            await db.put({ text: input.value.trim(), completed: false })
+            await db.put({ text: input.value.trim(), completed: false, createdAt: Date.now() })
             input.value = ""
         }
 
         // One reactive query drives the list: 'initial' replays what is already
         // stored, and every later peer's write arrives through the same callback.
-        await db.map(({ id, value, action }) => {
-            if (action === "initial" || action === "added") handleAddTask(id, value)
-            if (action === "updated") handleUpdateTask(id, value)
-            if (action === "removed") handleDeleteTask(id)
-        })
+        await db.map(
+            { field: "createdAt", order: "asc" },
+            ({ id, value, action }) => {
+                if (action === "initial" || action === "added") handleAddTask(id, value)
+                if (action === "updated") handleUpdateTask(id, value)
+                if (action === "removed") handleDeleteTask(id)
+            }
+        )
 
         $("taskInput").addEventListener("keydown", (e) => {
             if (e.key === "Enter") addTask()

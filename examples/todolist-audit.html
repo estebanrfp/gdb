@@ -115,11 +115,14 @@
     // Inicialización con top-level await (sin initDB)
     let db = await gdb('todoList-audit', { rtc: true, audit: true });
 
-    const { unsubscribe } = await db.map(({ id, value, action }) => {
-      if (action === "initial" || action === "added") handleAddTask(id, value);
-      if (action === "updated") handleUpdateTask(id, value);
-      if (action === "removed") handleDeleteTask(id);
-    });
+    const { unsubscribe } = await db.map(
+      { field: 'createdAt', order: 'asc' },
+      ({ id, value, action }) => {
+        if (action === "initial" || action === "added") handleAddTask(id, value);
+        if (action === "updated") handleUpdateTask(id, value);
+        if (action === "removed") handleDeleteTask(id);
+      }
+    );
 
     // Create DOM elements for each task
     function createTaskElements(li, id, { text, completed }) {
@@ -163,22 +166,45 @@
       li.append(taskTextSpan, taskEditTextInput, iconContainer);
     }
 
+    // Canonical order: the engine sorts by `createdAt` (see the db.map
+    // options below), so every peer shows the same list. The DOM needs
+    // positional insertion for tasks that arrive after the initial batch;
+    // `data-createdAt` is the sort key (zero-padded so string comparison
+    // is numeric comparison).
+    const createdAtKey = (createdAt) => String(createdAt ?? 0).padStart(15, '0');
+
+    function placeSorted(li) {
+      const list = document.getElementById('taskList');
+      const next = [...list.children].find(
+        (el) => el !== li && el.dataset.createdAt > li.dataset.createdAt
+      );
+      list.insertBefore(li, next ?? null);
+    }
+
     // Add task handler
     function handleAddTask(id, value) {
       if (!value || typeof value !== 'object') return;
       if (currentNodeIds.has(id)) return;
-      const { text, completed } = value;
+      const { text, completed, createdAt } = value;
       const li = document.createElement('li');
       li.id = id;
+      li.dataset.createdAt = createdAtKey(createdAt);
       createTaskElements(li, id, { text, completed });
-      document.getElementById('taskList').appendChild(li);
+      placeSorted(li);
       currentNodeIds.add(id);
     }
 
     // Update task handler
-    function handleUpdateTask(id, { text, completed }) {
+    function handleUpdateTask(id, { text, completed, createdAt }) {
       const li = document.getElementById(id);
       if (!li) return;
+
+      // A legacy task gains `createdAt` on its first edit — re-seat it once.
+      const key = createdAtKey(createdAt);
+      if (li.dataset.createdAt !== key) {
+        li.dataset.createdAt = key;
+        placeSorted(li);
+      }
 
       const taskTextSpan = li.querySelector('span');
       const taskEditTextInput = li.querySelector('input');
@@ -228,7 +254,8 @@
       taskTextSpan.classList.toggle('completed');
       await db.put({
         text: taskTextSpan.textContent,
-        completed
+        completed,
+        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now()
       }, id);
     }
 
@@ -241,7 +268,11 @@
 
       const taskTextSpan = li.querySelector('span');
       const completed = taskTextSpan.classList.contains('completed');
-      await db.put({ text: newText.trim(), completed }, id);
+      await db.put({
+        text: newText.trim(),
+        completed,
+        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now()
+      }, id);
       cancelEdit(li);
     }
 
@@ -257,7 +288,8 @@
 
       await db.put({
         text: input.value,
-        completed: false
+        completed: false,
+        createdAt: Date.now()
       });
       input.value = '';
     }
