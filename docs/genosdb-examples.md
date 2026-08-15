@@ -75,9 +75,6 @@ The other half of the **Geo module**: the playground runs `$near` against coordi
 ### [Real-Time collaborative rich‑text editor powered by GenosDB](https://estebanrfp.github.io/gdb/examples/collab.html)
 A real-time collaborative rich‑text editor powered by GenosDB: live typing sync, remote cursors/selections, RBAC + WebAuthn auth, Markdown/HTML split preview with draggable splitter, version history panel, file sharing, and video room.
 
-### [Basic Collaborative Editor powered by GenosDB](https://estebanrfp.github.io/gdb/examples/collab-editor-basic.html)
-A minimal, no-login collaborative text editor — the basic counterpart to the rich-text editor above. Shows live presence (online peers) and debounced auto-save on top of GenosDB's automatic P2P sync: writes via `db.put()` and a reactive `db.get(id, callback)` subscription, with concurrent edits resolved by the Hybrid Logical Clock — no manual channels or timestamps.
-
 ### [Real-time IoT Thermostat Control powered by GenosDB](https://estebanrfp.github.io/gdb/examples/thermostat.html)
 A real-time peer-to-peer thermostat control demo showcasing GenosDB's reactive synchronization. Multiple users can adjust target temperature, toggle eco-mode (Leaf), and set away status — all changes instantly sync across connected browsers without any backend server. Demonstrates `db.put()`, reactive `db.get()` subscriptions, and P2P room events for peer counting.
 
