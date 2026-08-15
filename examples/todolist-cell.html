@@ -1020,7 +1020,10 @@
         })
 
         room.on("peer:join", paint)
-        room.on("peer:leave", (id) => {
+        // A closed link is NOT a departure — cells reseal links all the time.
+        // Real exits arrive as peer:lost (the bye); silent crashes expire
+        // through the ghost sweep below.
+        room.on("peer:lost", (id) => {
             remotePeers.delete(id)
             paint()
         })

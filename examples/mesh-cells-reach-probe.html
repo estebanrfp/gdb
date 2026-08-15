@@ -355,7 +355,9 @@
       render();
     });
     db.room.on("peer:join", (id, type) => { if (type) peerTypes.set(id, type); });
-    db.room.on("peer:leave", id => { states.delete(id); peerTypes.delete(id); render(); });
+    // A closed link is NOT a departure — the mesh reseals links all the time.
+    // Real exits arrive as peer:lost (the bye); silent crashes expire above.
+    db.room.on("peer:lost", id => { states.delete(id); peerTypes.delete(id); render(); });
 
     // Reach probe: broadcast "hello", every peer auto-answers "world".
     const mesh = db.room.mesh;

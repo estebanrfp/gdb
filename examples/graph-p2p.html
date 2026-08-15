@@ -382,7 +382,10 @@
 
     // 8) Real-time: peers join/leave + cellular state events
     db.room.on?.('peer:join', (id, type) => { if (type) peerTypes.set(id, type); upsertPeer(id) })
-    db.room.on?.('peer:leave', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id) })
+    // A closed link is NOT a departure — cells reseal links all the time.
+    // Real exits arrive as peer:lost (the bye); the sealed roster below also
+    // drops whoever truly left the topology.
+    db.room.on?.('peer:lost', id => { peerStates.delete(id); peerTypes.delete(id); removePeer(id) })
     db.room.on?.('mesh:state', st => {
       selfState = st
       // The sealed roster is authoritative: drop peers that left the topology.

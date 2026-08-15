@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-08-16
+
+### Added
+
+- **Radio presence: `peer:seen` and `peer:lost` on `db.room`, delivered as a heartbeat.** The bundled GenosRTC moves to 0.29.0. A peer is *seen* the moment its announce reaches you through a relay — typically within a second, well before any WebRTC channel negotiates, and in cellular mesh regardless of whether a direct channel will ever exist. `db.room.on('peer:seen', (peerId, type) => …)` fires on every announce (first sight and each ~30 s refresh alike — consumers refresh a timestamp and deduplicate for display), `db.room.on('peer:lost', peerId => …)` only on an explicit farewell. Together they make one distinction precise that `peer:leave` alone never could: **a closed link is not a departure** — cellular mesh reseals links between living peers routinely, and presence models built on connection events undercounted rooms permanently. Purely additive and free on the wire: announces were already part of signalling; the transport stops discarding what they prove. The `type` argument names the declared kind when present (`'superpeer'`, `'native'`).
+
+### Changed
+
+- **The cells examples model presence by radio, and the two monitors now share one face.** `mesh-cells-monitor`, `mesh-cells-reach-probe`, `graph-p2p` and `todolist-cell` clear presence on `peer:lost` (the bye) and silence-timeout instead of on `peer:leave`, so their counts hold exact through mesh reconfigurations — the probe and monitor no longer dip when a link reseals. The web monitor additionally adopts the full radio model (instant appearance on first announce, placement by the engine's own rendezvous hash until gossip confirms) and the native monitor's exact visual language: one shared palette (peers orange, self blue, bridges amber, servers violet, native peers a light-cyan ring with a hollow core, cells green), the native's ring marks for bridges and cells, colour-coded stat figures, complete legends in both worlds — and a graph that only spends energy when something visible changes.
+
 ## [0.24.2] - 2026-08-15
 
 ### Fixed

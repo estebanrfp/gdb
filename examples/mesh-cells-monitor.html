@@ -43,15 +43,15 @@
             --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
 
             /* Graph scale. A topology needs a categorical ramp the base palette
-               does not define, so it gets its own tokens — derived from the
-               status colours wherever one already carries the right meaning.
-               Nothing below this block ever names a colour directly. */
-            --node-self: var(--accent);
-            --node-peer: var(--text-secondary);
-            --node-bridge: var(--warn);
+               does not define, so it gets its own tokens. Self, peer and
+               bridge match the native monitor's palette — one look across
+               both worlds. Nothing below this block names a colour directly. */
+            --node-self: #58a6ff;
+            --node-peer: #ff6b35;
+            --node-bridge: #f0c000;
             --node-server: var(--violet);
-            --node-native: var(--signal);
-            --node-cell: var(--ok);
+            --node-native: #67e8f9;
+            --node-cell: #3fb950;
             --signal: #39c5cf;
             /* a message in flight — the one thing that is neither peer nor cell */
         }
@@ -229,12 +229,24 @@
             color: var(--text-tertiary);
         }
 
+        .stat.peers b {
+            color: var(--node-peer);
+        }
+
         .stat.cells b {
             color: var(--node-cell);
         }
 
         .stat.bridges b {
             color: var(--node-bridge);
+        }
+
+        .stat.cell-size b {
+            color: var(--node-cell);
+        }
+
+        .stat.ttl b {
+            color: var(--signal);
         }
 
         /* ── The graph ──────────────────────────────────────────── */
@@ -324,6 +336,15 @@
 
         .legend .server {
             color: var(--node-server);
+        }
+
+        .legend .native {
+            color: var(--node-native);
+        }
+
+        .legend .native i {
+            background: transparent;
+            border: 2px solid currentColor;
         }
 
         .legend .cell {
@@ -621,6 +642,7 @@
            returns to it when cleared. */
         .node-cell {
             fill: var(--node-cell);
+            fill-opacity: .25;
         }
 
         .node-peer {
@@ -636,10 +658,15 @@
             fill: var(--node-server);
         }
 
+        .node-native {
+            /* transparent, not none: the hole stays clickable for dragging */
+            fill: transparent;
+            stroke: var(--node-native);
+            stroke-width: 3;
+        }
+
         .node-self {
             fill: var(--node-self);
-            stroke: var(--text-primary);
-            stroke-width: 3;
         }
 
         .link {
@@ -666,6 +693,22 @@
             stroke-opacity: .5;
         }
 
+        .bridge-ring,
+        .cell-ring {
+            fill: none;
+            pointer-events: none;
+        }
+
+        .bridge-ring {
+            stroke: var(--node-bridge);
+            stroke-width: 1.5;
+        }
+
+        .cell-ring {
+            stroke: var(--node-cell);
+            stroke-width: 2;
+        }
+
         .node-label {
             font-family: var(--mono);
             font-size: 10px;
@@ -676,6 +719,11 @@
         }
 
         .cell-label {
+            fill: var(--node-cell);
+            font-weight: 600;
+        }
+
+        .self-label {
             fill: var(--text-primary);
             font-weight: 600;
         }
@@ -802,7 +850,7 @@
         </header>
 
         <div class="stats">
-            <p class="stat">
+            <p class="stat peers">
                 <b id="metricPeers">1</b><span>Peers</span>
             </p>
             <p class="stat cells">
@@ -811,10 +859,10 @@
             <p class="stat bridges">
                 <b id="metricBridges">0</b><span>Bridges</span>
             </p>
-            <p class="stat">
+            <p class="stat cell-size">
                 <b id="metricCellSize">—</b><span>Cell size</span>
             </p>
-            <p class="stat">
+            <p class="stat ttl">
                 <b id="metricTTL">—</b><span>Dynamic TTL</span>
             </p>
         </div>
@@ -829,6 +877,7 @@
                     <li class="peer"><i></i>Peer</li>
                     <li class="bridge"><i></i>Bridge</li>
                     <li class="server"><i></i>Server</li>
+                    <li class="native"><i></i>Native</li>
                     <li class="cell"><i></i>Cell</li>
                     <li class="signal"><i></i>Message</li>
                 </ul>
@@ -959,6 +1008,24 @@
         }
 
         const remotePeerStates = new Map()
+        // Radio presence: peers heard on the announce plane (peer:seen /
+        // peer:lost) before any connection or gossip exists. Placed with the
+        // engine's own math (cells.js hash / computeCellForPeer, verbatim) —
+        // the seal will confirm the same cell, because it runs the same HRW.
+        const seenByRadio = new Map()
+        const hashPeer = (str) => {
+            let h = 0
+            for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 2654435761)
+            return h >>> 0
+        }
+        const cellForPeer = (pid, C) => {
+            let best = 0, bestScore = -1
+            for (let c = 0; c < Math.max(1, C); c++) {
+                const score = hashPeer(`${pid}:${c}`)
+                if (score > bestScore) { bestScore = score; best = c }
+            }
+            return best
+        }
         // peer:join's 2nd argument — 'superpeer' marks a Fallback Server
         // (GenosSRV). Informational only: never a trust decision.
         const peerTypes = new Map()
@@ -997,7 +1064,10 @@
                 const st = all.get(pid)
                 fp += `;${pid}|${st.cellId}|${isBridgePeer(st)}|${(st.bridges || []).join(",")}|${peerTypes.get(pid) || ""}`
             }
-            if (!needsRestart && fp === doUpdate._lastFp) return
+            // Unconditional: if nothing visible changed, no energy — a seal
+            // that only bumps the epoch must not shake the graph. (The gate
+            // the native monitor was born with, returned to its reference.)
+            if (fp === doUpdate._lastFp) return
             doUpdate._lastFp = fp
 
             render(needsRestart)
@@ -1036,8 +1106,19 @@
                 all.set(pid, { ...state })
             }
 
+            // Radio-seen peers without gossip yet: drawn immediately, in the
+            // cell the engine's own math assigns them. Same 90s ghost rule,
+            // same exemption: a physically connected peer never expires.
+            for (const [pid, at] of seenByRadio) {
+                if (at < cutoff && !(pid in connected)) { seenByRadio.delete(pid); continue }
+                if (all.has(pid) || pid === selfId) continue
+                all.set(pid, { cellId: `cell-${cellForPeer(pid, selfState.totalCells || 1)}`, bridges: [], at })
+            }
+
             all.set(selfId, {
-                cellId: selfState.cellId,
+                // Pre-first-seal, place ourselves with the same local math the
+                // radio peers use — the seal will confirm it (same HRW).
+                cellId: selfState.cellId || `cell-${cellForPeer(selfId, selfState.totalCells || 1)}`,
                 isBridge: selfState.isBridge,
                 bridges: selfState.bridges || []
             })
@@ -1075,6 +1156,7 @@
         const defs = svg.append("defs")
         const linkLayer = svg.append("g").attr("class", "links")
         const nodeLayer = svg.append("g").attr("class", "nodes")
+        const ringLayer = svg.append("g").attr("class", "rings")
         const labelLayer = svg.append("g").attr("class", "labels")
         const animLayer = svg.append("g").attr("class", "animations")
 
@@ -1112,6 +1194,7 @@
             if (d.kind === "cell") return "node node-cell"
             if (d.isSelf) return "node node-self"
             if (d.isServer) return "node node-server"
+            if (d.isNative) return "node node-native"
             if (d.isBridge) return "node node-bridge"
             return "node node-peer"
         }
@@ -1140,6 +1223,9 @@
             nodeLayer.selectAll("circle")
                 .attr("cx", d => d.x).attr("cy", d => d.y)
                 .each(function (d) { nodePositions.set(d.id, { x: d.x, y: d.y, r: radiusFor(d) }) })
+
+            ringLayer.selectAll("circle")
+                .attr("cx", d => d.x).attr("cy", d => d.y)
 
             labelLayer.selectAll("text")
                 .attr("x", d => d.x)
@@ -1170,8 +1256,9 @@
                     isBridge: isBridgePeer(st),
                     isSelf: pid === selfId,
                     isServer: peerTypes.get(pid) === "superpeer",
+                    isNative: peerTypes.get(pid) === "native",
                     bridges: Array.isArray(st.bridges) ? st.bridges : [],
-                    label: shortId(pid)
+                    label: pid === selfId ? "YOU" : shortId(pid)
                 })
             }
 
@@ -1231,6 +1318,13 @@
 
             const node = nodeLayer.selectAll("circle").data(nodes, d => d.id)
 
+            // A cell draws as the native monitor's mark: a faint core inside
+            // its ring, so the disc is the ring's inner fill, 4px short.
+            // A native peer is a thick ring with a wee hole — same footprint,
+            // never mistakable for the solid self disc.
+            const drawnR = d => d.kind === "cell" ? radiusFor(d) - 4
+                : d.isNative ? radiusFor(d) - 1.5 : radiusFor(d)
+
             node.exit().transition().duration(200).attr("r", 0).remove()
 
             node.enter()
@@ -1239,16 +1333,27 @@
                 .attr("r", 0)
                 .style("cursor", "pointer")
                 .call(drag)
-                .transition().duration(300).attr("r", radiusFor)
+                .transition().duration(300).attr("r", drawnR)
 
-            node.transition().duration(200).attr("r", radiusFor)
+            node.transition().duration(200).attr("r", drawnR)
             node.attr("class", classFor)
+
+            // The native monitor's rings: bridges float one at radius + 3,
+            // cells wear theirs at the radius itself.
+            const ring = ringLayer.selectAll("circle")
+                .data(nodes.filter(d => d.isBridge || d.kind === "cell"), d => d.id)
+            ring.exit().remove()
+            ring.enter()
+                .append("circle")
+                .merge(ring)
+                .attr("class", d => d.kind === "cell" ? "cell-ring" : "bridge-ring")
+                .attr("r", d => d.kind === "cell" ? radiusFor(d) : radiusFor(d) + 3)
 
             const label = labelLayer.selectAll("text").data(nodes, d => d.id)
             label.exit().remove()
             label.enter()
                 .append("text")
-                .attr("class", d => `node-label ${d.kind === "cell" ? "cell-label" : ""}`)
+                .attr("class", d => `node-label ${d.kind === "cell" ? "cell-label" : d.isSelf ? "self-label" : ""}`)
                 .merge(label)
                 .text(d => d.label)
 
@@ -1714,6 +1819,26 @@
                 mesh = room.mesh
                 selfId = db.selfId
 
+                room.on("peer:seen", (id, type) => {
+                    if (type) peerTypes.set(id, type)
+                    // Every announce lands here (a heartbeat): refresh always,
+                    // but only first sight / a return is worth showing.
+                    const returning = !seenByRadio.has(id)
+                    seenByRadio.set(id, Date.now())
+                    if (!returning) return
+                    log("SEEN", shortId(id), type ?? null)
+                    scheduleUpdate(true)
+                })
+
+                room.on("peer:lost", (id) => {
+                    // A bye arrives once per relay — only the first one counts.
+                    if (!seenByRadio.delete(id)) return
+                    remotePeerStates.delete(id)
+                    peerTypes.delete(id)
+                    log("LOST", shortId(id))
+                    scheduleUpdate(true)
+                })
+
                 room.on("peer:join", (id, type) => {
                     if (type) peerTypes.set(id, type)
                     log("JOIN", shortId(id), type ?? null)
@@ -1721,8 +1846,11 @@
                 })
 
                 room.on("peer:leave", (id) => {
-                    remotePeerStates.delete(id)
-                    peerTypes.delete(id)
+                    // A closed link is NOT a departure: the mesh reseals links
+                    // all the time, and clearing gossip or the declared type
+                    // here flips the fingerprint twice per reseal — the pulse.
+                    // Real exits arrive as peer:lost (bye) or expire by
+                    // silence, and those paths do the clearing.
                     log("LEAVE", shortId(id))
                     scheduleUpdate(true)
                 })
@@ -1735,7 +1863,8 @@
                         isBridge: state.isBridge === true,
                         bridges: Array.isArray(state.bridges) ? state.bridges : [],
                         dynamicTTL: state.dynamicTTL,
-                        cellSize: state.cellSize
+                        cellSize: state.cellSize,
+                        totalCells: state.totalCells
                     }
                     // The sealed roster is the authoritative membership: any
                     // peer outside it left the topology — drop it now instead
