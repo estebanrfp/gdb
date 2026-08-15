@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.2] - 2026-08-15
+
+### Fixed
+
+- **Two peers meeting through a single relay connect in seconds, every time — previously a simultaneous join could go mutually deaf for a minute.** The bundled genosrtc moves to 0.28.1. In cells mode, admission's total isolation refused every signal until one's own topology sealed, and that guard was eating the one thing it could not afford to: the first contact. A joiner's offer landing before the receiver's first real seal was dropped silently — and where the default multi-relay list retries organically through per-relay dial slots, a single relay (the sovereign GenosSRV deployment) has exactly one slot, so both sides sat in silence until the pending-dial sweep and cooldown allowed a redial (~60 s, self-healing but long enough to read as broken). Admission's door now stays open while no sealed view contains another peer — never-sealed and solo-sealed alike — because a topology of one protects nothing; it closes exactly when a real roster exists to enforce, so the O(cellSize) isolation invariant is untouched for every working room. Dials also start on the first announce instead of waiting for the first seal, so first contact got faster across the board. Verified against the wire-parity Rust peer: simultaneous single-relay joins went from intermittently costing a 68-second recovery cycle to five consecutive runs converging in ~6.6 s, the sealed-topology admission verdicts are byte-identical in the conformance vectors, and the native-interop browser suites (cells mesh included) pass against this rebuilt bundle.
+
 ## [0.24.1] - 2026-08-15
 
 ### Fixed
