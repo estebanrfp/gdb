@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-08-15
+
+### Fixed
+
+- **A removed node's history can no longer poison the oplog.** Since 0.22.12 every sync encounter answers with the full oplog window — the correct reply, because a scalar watermark proves what a peer has seen, never what it holds. But the window carries a removed node's full history (`upsert` + `remove`), and the delta apply path never consulted the receiver's own tombstones: the upsert of a locally-absent node resurrected it and was re-recorded, the remove re-killed it and was recorded too. The graph always ended correct — which is exactly what kept this invisible — while the receiver's window gained another pair and served it back on the next encounter. Pairs doubled per encounter per side: measured live from six pairs to a full 500-op window of nothing but one dead node's history, evicting all useful operations and forcing every future encounter into full-state fallbacks. The delta upsert path now checks the receiver's own logged removals first — the same guard the full-state path always had — so a historic pair applies nothing and records nothing. This also closes a quiet LWW violation: an older concurrent upsert can no longer resurrect a node deleted with a newer timestamp over the delta path (delete-wins already held on the full-state path; the two paths now agree). The Fallback Server carries the same fix. Receive-side only, nothing on the wire changes: mixed versions interoperate, each updated peer stops amplifying and re-serving junk. Verified by executing real three-peer sync sessions (joins, offline writes, rejoins, oplog rotation) — the poisoning signature is gone and all convergence invariants hold — plus the full native-interop browser suite against the rebuilt bundle.
+
 ## [0.24.0] - 2026-08-15
 
 ### Changed
