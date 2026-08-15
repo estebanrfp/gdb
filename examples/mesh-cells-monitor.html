@@ -50,6 +50,7 @@
             --node-peer: var(--text-secondary);
             --node-bridge: var(--warn);
             --node-server: var(--violet);
+            --node-native: var(--signal);
             --node-cell: var(--ok);
             --signal: #39c5cf;
             /* a message in flight — the one thing that is neither peer nor cell */
@@ -384,6 +385,10 @@
 
         .peer-row .is-server {
             color: var(--node-server);
+        }
+
+        .peer-row .is-native {
+            color: var(--node-native);
         }
 
         /* Prose, so it says so: the stream around it is mono and a placeholder
@@ -1571,6 +1576,7 @@
                     if (pid === selfId) row.append(el("b", "YOU"))
                     if (isBridgePeer(allPeers.get(pid))) row.append(el("b", "BRIDGE", "is-bridge"))
                     if (peerTypes.get(pid) === "superpeer") row.append(el("b", "SRV", "is-server"))
+                    if (peerTypes.get(pid) === "native") row.append(el("b", "NATIVE", "is-native"))
 
                     group.append(row)
                 }
