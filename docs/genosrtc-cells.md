@@ -142,44 +142,6 @@ More peers means **more cells, never bigger cells** — per-peer connections sta
 
 ---
 
-## Metrics System (PeerMetrics)
-
-Each peer keeps health metrics for monitoring and diagnostics (bridge election itself is deterministic — see above):
-
-```javascript
-class PeerMetrics {
-  peerId         // Unique peer ID
-  joinedAt       // Initial connection timestamp
-  lastSeen       // Last recorded activity
-  rttSamples[]   // Last 10 latency samples
-  stability      // 0.0 - 1.0 (decreases with reconnections)
-  reconnects     // Reconnection counter
-  isResponsive   // true if responded to last ping
-  connectedCells // Cells this peer serves (own + bridged), refreshed at each seal
-}
-```
-
-### Computed Properties
-
-| Property | Calculation |
-|----------|-------------|
-| `uptime` | `Date.now() - joinedAt` |
-| `avgRtt` | Average of `rttSamples` (∞ if empty) |
-| `isStale` | `Date.now() - lastSeen > 30000` — diagnostic only; cleanup follows the sealed roster |
-| `healthScore` | Composite score 0.0 - 1.0 |
-
-### Health Score
-
-```javascript
-healthScore = 
-  (rttScore * 0.25) +           // 25%: Low latency = better
-  (uptimeScore * 0.25) +        // 25%: Longer connected = better
-  (stabilityScore * 0.30) +     // 30%: Fewer reconnections = better
-  (responsivenessScore * 0.20)  // 20%: Responds to pings = better
-```
-
----
-
 ## Dynamic TTL
 
 The message Time-To-Live is calculated based on network size:
@@ -326,28 +288,14 @@ const state = mesh.getState();
 //   cellSize: 5,
 //   dynamicTTL: 23,
 //   totalCells: 20,
-//   knownCells: 18,
-//   health: {
-//     cellId: "cell-2",
-//     memberCount: 5,
-//     avgHealth: 0.85,
-//     responsiveRatio: 1.0
-//   }
+//   knownCells: 18
 // }
 ```
 
-### Metrics
+### Diagnostics
 
 ```javascript
-// Metrics for a specific peer
-const metrics = mesh.getMetrics(peerId);
-// { uptime, avgRtt, healthScore, isStale, stability, ... }
-
-// Cell health
-const health = mesh.getCellHealth('cell-2');
-// { cellId, memberCount, avgHealth, responsiveRatio }
-
-// Ping a peer (returns RTT in ms)
+// Ping a peer (returns RTT in ms — answered only by the target)
 const rtt = await mesh.ping(peerId);
 ```
 
@@ -399,12 +347,7 @@ room.on('mesh:state', state => {
 room.on('mesh:peer-state', data => {
   // Remote peer state — derived locally from the seal (nothing travels
   // the wire), re-emitted every ~30s for freshness-window consumers
-  // { id, cell, bridges, health, timestamp }
-});
-
-room.on('mesh:health', healthData => {
-  // Cell health update
-  // { cellId, isBridge, health: { memberCount, avgHealth, ... } }
+  // { id, cell, bridges, timestamp }
 });
 ```
 
@@ -416,7 +359,6 @@ room.on('mesh:health', healthData => {
 |----------|-------|-------------|
 | `SEEN_MAX` | 5000 | Maximum IDs in `seen` set |
 | `RTT_TIMEOUT` | 3000 | Ping timeout (ms) |
-| `PEER_TIMEOUT` | 30000 | Time to mark peer as stale (diagnostic) |
 | `HEARTBEAT_INTERVAL` | 2000 | Seal-cadence tick (ms) |
 | `SEAL_QUIET_MS` | 2000 | Roster quiet gap that triggers an urgent seal |
 | `SEAL_MAX_WAIT_MS` | 10000 | Urgent-seal cap if the roster never settles |

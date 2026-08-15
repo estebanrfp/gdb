@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-08-15
+
+### Changed
+
+- **Cellular Mesh is re-architected around an epoch-sealed topology — cells are now fully isolated meshes.** The bundled GenosRTC jumps to 0.28.0. Previously the overlay negotiated its shape through continuous state gossip: every peer broadcast its cell and bridge claims every few seconds, the topology emerged from whatever arrived, and under real conditions — background tabs, census noise, divergent views — rooms re-organized endlessly while data could cross cells over surviving direct links, defeating the overlay's purpose. The topology is now a pure function of a sealed roster snapshot: every peer derives identical cells (rendezvous hashing), one elected bridge per cell (per-cell hash rank whose full order doubles as a succession line — a dead bridge is replaced at the next seal, no negotiation, no messages), and per-channel audiences, so no topology data travels the wire at all. Isolation is enforced at three independent layers: connections exist only along sealed roles, every frame is audience-targeted at the sender, and receivers drop anything outside their role — verified live with bridges disabled: nothing crosses. Join bursts collapse into a single atomic reorganization (quiet-seal); departures emit a bye beacon that clears the census in one relay hop, so a closed tab leaves the topology in ~5 seconds instead of minutes; and an incoming offer no longer kills a healthy connection (the mutual-churn failure under many tabs). Roles are computed, never declared, which also removes a spoofing surface — a peer can no longer gossip itself into being a bridge. Measured on a 16-peer, 4-cell room across two browsers: identical topology on every peer, broadcast reach 16/16 in ~30 ms. The overlay's wire behavior changed: update every peer in a room together, and redeploy the Fallback Server alongside your clients.
+- **The cells configuration is one knob.** `rtc: { cells: true }` for defaults, or `rtc: { cells: { cellSize: N } }` — peers per cell, default 10; a room of N peers forms `ceil(N/cellSize)` cells. `cellSize: 'auto'`, `bridgesPerEdge`, `maxCellSize`, `targetCells` and `debug` are retired; unknown options are ignored, so existing configs keep working untouched. Cells logging now follows the shared `gdb('db', { debug: true })` flag like every other module.
+
+### Removed
+
+- **The overlay's health telemetry.** `getMetrics()`, `getCellHealth()` and the `mesh:health` event are gone, and `mesh:peer-state` / `getState()` no longer carry `health` fields — none of it fed a single decision (election is by hash, cleanup by sealed roster, succession by census). `mesh.ping(peerId)` stays, and only the target answers now, so the returned RTT finally measures the peer you asked for instead of the fastest listener.
+
 ## [0.23.4] - 2026-08-14
 
 ### Fixed
