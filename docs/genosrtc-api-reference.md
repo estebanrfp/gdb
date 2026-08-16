@@ -41,7 +41,7 @@ Listen to room events to know when peers join or leave, and when they send media
 
 Registers a callback function for a specific event.
 
-- **`eventName`** `{string}`: The name of the event (`'peer:join'`, `'peer:leave'`, `'stream:add'`, `'track:add'` — plus, with Cellular Mesh, `'mesh:state'` and `'mesh:peer-state'`, covered in [Cells](./genosrtc-cells.md)).
+- **`eventName`** `{string}`: The name of the event (`'peer:join'`, `'peer:leave'`, `'peer:seen'`, `'peer:lost'`, `'stream:add'`, `'track:add'` — plus, with Cellular Mesh, `'mesh:state'` and `'mesh:peer-state'`, covered in [Cells](./genosrtc-cells.md)).
 - **`callback`** `{Function}`: The function to execute.
 
 **Available Events:**
@@ -65,6 +65,23 @@ Registers a callback function for a specific event.
   db.room.on("peer:leave", (peerId) => {
     console.log(`Peer ${peerId} has left.`)
   })
+  ```
+
+- **`peer:seen`**: Fires when a peer's presence announce arrives through a relay — typically seconds before `peer:join`, and for every peer in the room even when Cellular Mesh keeps it outside your cell. Announces repeat (~30 s), so this event re-fires as a heartbeat: refresh a timestamp per peer, deduplicate for display, and treat prolonged silence as departure.
+
+  - **Callback:** `(peerId: string, type?: string) => void` — when present, `type` identifies the declared kind exactly as in `peer:join`.
+
+  ```javascript
+  const lastSeen = new Map()
+  db.room.on("peer:seen", (peerId) => lastSeen.set(peerId, Date.now()))
+  ```
+
+- **`peer:lost`**: Fires when a peer says goodbye (a closing tab broadcasts its farewell). May arrive once per relay — deduplicate. Note the difference: `peer:leave` reports a *connection* closing, which Cellular Mesh does routinely between living peers; `peer:lost` is the actual departure.
+
+  - **Callback:** `(peerId: string) => void`
+
+  ```javascript
+  db.room.on("peer:lost", (peerId) => lastSeen.delete(peerId))
   ```
 
 - **`stream:add`**: Fires when a peer sends a `MediaStream` (audio/video).
