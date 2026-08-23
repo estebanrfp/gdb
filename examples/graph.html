@@ -420,8 +420,9 @@
 
                     <p class="group">Nodes <span id="node-count"></span></p>
                     <p class="hint">
-                        Click to select · <kbd>Shift</kbd>+click a second node to link them ·
-                        double-click to delete. The same gestures work on the canvas.
+                        Click to select · <kbd>Shift</kbd>+click a second node to link them —
+                        or unlink, if already linked · double-click to delete.
+                        The same gestures work on the canvas.
                     </p>
                     <ul id="node-list" class="node-list"></ul>
                 </div>
@@ -475,6 +476,7 @@
          *   · db.put(value)              — a node; its id comes back
          *   · db.put(value, id)          — an update, addressed by that id
          *   · db.link(from, to)          — a directed edge, source → target
+         *   · db.unlink(from, to)        — that edge undone; both nodes stay
          *   · db.remove(id)              — a node, and every edge pointing at it
          *   · db.map({}, callback)       — a subscription: the canvas is redrawn
          *                                  by the same path a remote change takes
@@ -883,8 +885,9 @@
             if (!selectedId) return setStatus("Select a node first, then Shift+click another.", "error")
             if (selectedId === targetId) return setStatus("A node cannot link to itself.", "error")
 
-            await db.link(selectedId, targetId)
-            setStatus(`Linked ${labelOf(nodes.get(selectedId)?.value)} → ${labelOf(nodes.get(targetId)?.value)}`, "ok")
+            const linked = nodes.get(selectedId)?.edges.includes(targetId)
+            await (linked ? db.unlink(selectedId, targetId) : db.link(selectedId, targetId))
+            setStatus(`${linked ? "Unlinked" : "Linked"} ${labelOf(nodes.get(selectedId)?.value)} → ${labelOf(nodes.get(targetId)?.value)}`, "ok")
             select(selectedId) // clears the selection, so the next link starts clean
         }
 

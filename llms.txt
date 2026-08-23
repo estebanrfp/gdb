@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.25.0 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.26.0 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -24,7 +24,7 @@ Install: `npm i genosdb` · Current version: 0.25.0 · Runtime dependencies: non
 ## API surface (frozen public contract)
 
 - The database is created with an **async factory**, never with `new`: `const db = await gdb(name, options)`.
-- Core methods: `put(value, id?)` · `get(id, callback?)` · `map(options?, callback?)` · `link(sourceId, targetId)` · `remove(id)` · `clear()` · `use(middleware)`.
+- Core methods: `put(value, id?)` · `get(id, callback?)` · `map(options?, callback?)` · `link(sourceId, targetId)` · `unlink(sourceId, targetId)` · `remove(id)` · `clear()` · `use(middleware)`.
 - `map` and `get` become reactive when given a callback. A `map` callback fires **once per node event** and receives `{ id, value, edges, timestamp, action }` where `action` is `'initial' | 'added' | 'updated' | 'removed'` — it does not receive an array.
 - Query operators live **inside** `query`: `$eq $ne $gt $gte $lt $lte $in $between $exists $startsWith $endsWith $contains $text $like $regex $not $and $or $edge`, plus `$near`/`$bbox` with the geo module. `$edge` performs recursive graph traversal and also goes inside `query`. `$text` matches per field (accent-insensitive), not across the whole node.
 - Sorting and pagination via `field`, `order`, `$limit`, `$after`, `$before`.

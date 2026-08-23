@@ -141,7 +141,7 @@ In this example:
 
 3. **Edge Cleanup**:
 
-   - When a node is deleted with `db.remove()`, references to it in other nodes' edges are cleaned up automatically — no dangling edges.
+   - When a node is deleted with `db.remove()`, references to it in other nodes' edges are cleaned up automatically — no dangling edges. To remove a single relationship while keeping both nodes, use `db.unlink()`.
 
 4. **Persistence & Notifications**:
    - All changes made by `link` are persisted to storage and emitted to listeners and peers, keeping the graph consistent across the network.
@@ -164,4 +164,66 @@ In this example:
 
 ---
 
-This documentation provides a clear and concise explanation of the `link` method, including its behavior, parameters, error handling, and practical examples. Let me know if you'd like further clarification or additional examples! 😊
+### **Method: `unlink(sourceId, targetId)`**
+
+#### **Description**
+
+The `unlink` method removes a **directed edge** from one node to another, leaving both nodes in the graph. The change is persisted to storage and synchronized with peers in real time, just like any other change.
+
+This method is useful for restructuring relationships without touching the data itself (e.g., moving an item under another parent, or retiring a reference that no longer applies).
+
+---
+
+#### **Parameters**
+
+1. **`sourceId`** (required):
+
+   - Type: String
+   - Description: The unique identifier of the node the edge starts from.
+
+2. **`targetId`** (required):
+   - Type: String
+   - Description: The unique identifier of the node the edge points to.
+
+---
+
+#### **Behavior**
+
+1. **Validation**:
+
+   - The edge must exist. If `sourceId` has no edge to `targetId`, a warning is logged (`⚠️ No edge from '<sourceId>' to '<targetId>'.`) and the method exits without making changes.
+
+2. **Directed Edge**:
+
+   - `unlink(a, b)` removes `a → b` only. A `b → a` edge, if present, is untouched.
+
+3. **Timestamping**:
+
+   - The operation is stamped with the Hybrid Logical Clock (HLC), so concurrent changes resolve deterministically across peers.
+
+4. **Persistence**:
+
+   - Changes are saved to persistent storage (e.g., OPFS).
+
+5. **Notification**:
+   - The method emits an event to notify listeners and peers of the change, and `$edge` traversals stop following the removed edge immediately.
+
+---
+
+#### **Returns**
+
+- **Nothing**:
+  - The method does not return any value. However, it logs a warning when the edge does not exist.
+
+---
+
+#### **Example**
+
+```javascript
+await db.link("group_1", "user_1") // group_1 → user_1
+await db.unlink("group_1", "user_1") // the edge is gone; both nodes stay
+```
+
+---
+
+This documentation provides a clear and concise explanation of the `link` and `unlink` methods, including their behavior, parameters, error handling, and practical examples. Let me know if you'd like further clarification or additional examples! 😊

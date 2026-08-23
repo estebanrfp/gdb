@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-08-23
+
+### Added
+
+- **`db.unlink(sourceId, targetId)`: the inverse of `link`.** Removes the directed edge from `sourceId` to `targetId` and leaves both nodes in place — stamped by the Hybrid Logical Clock, persisted, and synchronized like any other write, with `$edge` traversals dropping the removed edge immediately. Under the Security Manager the operation is governed by the existing `link` capability: whoever may create an edge may remove it. Typed beside `link` in the shipped declarations. On the wire it travels as a new `unlink` operation in delta sync; peers on 0.25.0 or older log a warning, skip it, and converge on their next full sync — update the peers of a room together so edge removals propagate promptly. No data migration, and no change to the bundled GenosRTC.
+
 ## [0.25.0] - 2026-08-16
 
 ### Added

@@ -215,6 +215,21 @@ await db.link(sourceId, targetId)
 
 ---
 
+### `async unlink(sourceId, targetId)`
+
+Removes a directed relationship between two nodes.
+
+- **Parameters**:
+  - `sourceId` `{string}`
+  - `targetId` `{string}`
+- **Returns**: `{Promise<void>}`
+
+```js
+await db.unlink(sourceId, targetId)
+```
+
+---
+
 ### `async remove(id)`
 
 Deletes a node and its references.
@@ -553,7 +568,7 @@ Ask yourself: **"Does this data need to survive a page refresh?"**
 
 If the answer is **YES**, use the core database methods. This is for data that represents the shared state of your application.
 
--   **Use:** `db.put()`, `db.link()`, `db.remove()`
+-   **Use:** `db.put()`, `db.link()`, `db.unlink()`, `db.remove()`
 -   **Examples:** User profiles, document content, to-do list items.
 
 ```javascript
