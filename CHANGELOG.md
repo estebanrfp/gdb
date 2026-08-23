@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.1] - 2026-08-23
+
+### Fixed
+
+- **The bundled Fallback Server now applies `unlink`.** GenosSRV moves to 0.6.0: the server-side engine gains the same three mirrors of `link` (store, apply table, public method), so an always-on replica applies an edge removal instead of silently skipping it — an edge the room removed can no longer resurrect from the server's copy once the peer that removed it is gone. Verified end-to-end: browser → server (applied and persisted in SQLite) → a fresh browser joining later. **If you run a Fallback Server, redeploy it** alongside 0.26.x clients.
+
 ## [0.26.0] - 2026-08-23
 
 ### Added
