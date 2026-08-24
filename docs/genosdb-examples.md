@@ -200,6 +200,11 @@ A GenosDB × blockchain showcase: a live Polygon (Amoy) NFT marketplace **mirror
 
 _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 
+### [dCampaigns](https://estebanrfp.github.io/dCampaigns/) · [source](https://github.com/estebanrfp/dCampaigns)
+A three-sided marketplace with no backend: an operator, clients who commission work, and creators who deliver it — **all three over one signed graph**. Roles are not rows in a table but **signed grants earned through governance**, so a newcomer declares a side and is promoted by rule, verified locally by every peer. Each client works in its **own room, isolated by transport** (the access code encrypts the signaling, so without it no replica is ever exchanged — something an ACL denying `read` cannot achieve). The core idea is in the approval model: a delivery stays the creator's node and is never rewritten by the reviewer, while the **verdict is a separate node owned by whoever decided it** — two claims by two people, each verifiable on its own. Stats are live client-side aggregations of signed operations, not a service. The Playwright suite runs **every peer in its own browser context** (separate OPFS, localStorage, IndexedDB) and includes the adversarial case: a rejected creator running a tampered client, signing an approval of their own work, refused by every honest peer. Vanilla JavaScript + Vite.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
 ### [OVGrid - Open Virtual Grid](https://ovgrid.com/)
 WebXR Educational Virtual World - Real-time shared experiences. ~ By [estebanrfp](https://github.com/estebanrfp)
 Project progress videos - [@ovgrid](https://odysee.com/@ovgrid:d)
