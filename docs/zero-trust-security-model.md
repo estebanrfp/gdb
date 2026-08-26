@@ -56,7 +56,7 @@ Their capabilities are now strictly limited to the permissions explicitly define
 
 #### Everything They CANNOT Do:
 
-*   **CANNOT write anymore.** The bootstrap condition is now `false` because their user node exists, and the permission check `can('guest', 'write')` returns `false`. Their write access is closed until a SuperAdmin promotes them.
+*   **CANNOT write anymore.** The bootstrap condition is now `false` because their user node exists, and the permission check `can('guest', 'write')` returns `false`. Their write access to the shared graph is closed until a SuperAdmin promotes them: the call still succeeds on their own device, and every other peer rejects the operation — enforcement is peer-side, which is what makes it hold even against a modified client.
 *   **CANNOT delete, link, or assign roles.** They are confined to the minimal permissions of a guest.
 
 ---
