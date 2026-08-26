@@ -222,7 +222,7 @@ Stores data securely in the GDB instance. The `originalValue` is encrypted using
 - **Parameters**:
   - `originalValue` `{any}` – The data to store. It must be JSON-serializable.
   - `id` `{string}` _(optional)_ – The ID for this piece of data. If not provided, a new unique ID will be generated and returned.
-- **Returns**: `{Promise<string>}` – The `id` that can be used with `db.sm.get()` to retrieve the data.
+- **Returns**: `{Promise<string>}` – The `id` that can be used with `db.sm.get()` to retrieve the data, and with `db.link()` / `db.unlink()` to relate the node.
 
 #### Example
 
@@ -254,7 +254,7 @@ Retrieves and automatically attempts to decrypt data that was previously stored 
     - `value` `{any}`:
       - If decryption was successful: The original, decrypted data.
       - If decryption failed (e.g., not owner, no session): The raw encrypted ciphertext.
-    - `edges` `{Array}`: Edges of the node.
+    - `edges` `{Array}`: Edges of the node, with the Security Manager's internal prefix removed so the ids appear as your app knows them (`db.sm.map()` results follow the same rule).
     - `timestamp` `{object}`: The GDB timestamp of the node.
     - `decrypted` `{boolean}`: `true` if the data was successfully decrypted, `false` otherwise.
   - `unsubscribe` `{Function}` _(optional)_: If a `callback` was provided, this function stops the real-time listener.

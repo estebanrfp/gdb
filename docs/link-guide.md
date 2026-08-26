@@ -146,6 +146,9 @@ In this example:
 4. **Persistence & Notifications**:
    - All changes made by `link` are persisted to storage and emitted to listeners and peers, keeping the graph consistent across the network.
 
+5. **Encrypted Nodes Link Too**:
+   - The ids returned by `db.sm.put()` work directly as `sourceId` or `targetId`, resolving to the underlying encrypted node; `unlink()` follows the same rule. If a public node and an encrypted node share an id, the exact (public) match takes precedence. Reading back, `db.sm.get()` and `db.sm.map()` return `edges` as your app knows them, while `db.get()` and `db.map()` expose the raw graph ids.
+
 ---
 
 #### **Use Cases**
