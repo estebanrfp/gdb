@@ -110,6 +110,36 @@ In summary, our Security Manager implements a secure, one-way entry portal for n
 
 ---
 
+### Confidentiality: Cryptographic, Not Topological
+
+Every rule above governs **actions** — who may write, delete, link or assign
+roles. Distribution is a different axis, and it works differently: **every peer
+in a room replicates the full graph**. That is what makes GenosDB local-first —
+any peer can go offline holding everything it needs and converge later, in any
+order.
+
+So data travels to everyone in the room, and `db.sm.put` encryption decides who
+can read it. A node arrives at every peer; only its owner's session can decrypt
+it. A peer that cannot decrypt logs that it skipped the attempt — that is the
+boundary working, not a leak.
+
+This follows from the threat model rather than working around it. In a
+serverless network, selective replication cannot be a security control: nothing
+stops a modified peer from re-forwarding what it already holds, so a "don't send
+this to that peer" policy is ignored by precisely the peer you would need it
+against. Position in the network grants no trust — that is the whole premise —
+so the boundary has to be one a hostile peer cannot cross, and that is
+cryptography, not topology. The same reasoning holds for any end-to-end
+encrypted system: the transport carries everything and is never trusted to be
+selective.
+
+Where a perimeter must be physical, the unit is the **database name**: the room
+is derived from it, so each name is its own sync universe and a peer only
+replicates the graphs of the rooms it joins. Use separate databases for separate
+sharing scopes, and let encryption gate reading within each one.
+
+---
+
 ### Opening It Up: Public Platforms
 
 The portal above is the **secure default**, where a `SuperAdmin` decides who can

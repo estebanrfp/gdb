@@ -11,6 +11,7 @@ GenosDB is **zero-trust and serverless**: every operation is cryptographically s
 - **RBAC** — a hierarchy of roles (`guest` → `user` → `manager` → `admin` → `superadmin`). A brand-new identity is a write-blocked `guest` until a superadmin signs a promotion.
 - **Node-level ACLs** — per-node `read` / `write` / `delete` grants. Since 0.14.0 these are enforced **against malicious peers**: the verified author of every incoming operation is checked against the node's owner and collaborators, so a modified peer cannot write a node it does not own.
 - **Governance** — a superadmin declares advancement rules up front; the engine resolves each user's role by **last-match-wins** (promotion and automatic demotion), signing every change for peers to verify — from a browser session, or 24/7 via the always-on [Fallback Server](docs/genosdb-fallback-server.md).
+- **Confidentiality** — every peer in a room replicates the full graph; what protects a record is encryption (`db.sm.put`), not who receives it. Selective replication cannot be a control in a serverless network: a modified peer can always re-forward what it already holds.
 
 Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
 
