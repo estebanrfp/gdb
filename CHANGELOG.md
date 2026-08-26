@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.2] - 2026-08-26
+
+### Fixed
+
+- **The ids `db.sm.put` hands out now work in `db.link` and `db.unlink`.** Encrypted nodes live under an internal Security Manager prefix, and the graph API resolved ids literally — so linking the id `sm.put` returned looked up a node that does not exist and skipped the edge with a generic warning. With the SM loaded, `link`/`unlink` now resolve their arguments the way the rest of the SM surface always has: an exact graph match wins, the SM-prefixed node is the fallback. Resolution happens once, on the writing peer — the operation travels already resolved, so nothing on the wire changes and mixed versions interoperate. On the way out, `sm.get` and `sm.map` return `edges` in the same user ids, directly reusable in `sm.get`; the core view (`db.get`/`db.map`) keeps showing raw graph ids, exactly as it shows ciphertext for encrypted values. Verified in-browser against the rebuilt bundle: public→encrypted and encrypted→encrypted links, translated edges, exact-match precedence when a public and an encrypted node share an id, and unlink through the same resolution.
+
 ## [0.26.1] - 2026-08-23
 
 ### Fixed
