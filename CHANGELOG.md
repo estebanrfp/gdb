@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.3] - 2026-08-26
+
+### Fixed
+
+- **A regular expression written as a literal in a query now filters.** `db.map({ query: { name: /^ana/ } })` matched *every* node instead of the ones it describes: a `RegExp` is an object, so the filter walked it looking for operators, found none, and an empty set of conditions is vacuously satisfied — the query passed everything through in silence. Literals are now evaluated as what they are, honouring their own flags (`/^ana/i` is case-insensitive, `/^ana/` is not); the `{ $regex: '…' }` form is untouched. The same rule governs `db.sm.map()`, which selects the encrypted nodes with a literal internally: it returned the whole graph — public nodes and other users' records included — and now returns only Security-Manager nodes, so it decrypts what it should and no longer spends the graph's whole length on every call. Queries you write with `$eq`, `$in`, `$startsWith`, `$regex` or a bare value are unaffected.
+
 ## [0.26.2] - 2026-08-26
 
 ### Fixed
