@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.4] - 2026-08-27
+
+### Changed
+
+- **The default signalling relay list is re-measured, and back to ten.** These are public, community-run Nostr relays: they go down, change policy or get renewed, so the shipped list is re-checked at every release — routine maintenance, not a fault, and the reason the client fans out to several in parallel rather than trusting one. Out: `relay.snort.social` (refusing connections), `nostr.oxtr.dev` and `relay.mostr.pub` (both silent — a relay that times out never logs an error, it just quietly costs you redundancy). In: `nostr.mom`, `nos.lol`, `offchain.pub`, `relay.damus.io` and `no.str.cr`, each verified from a browser with a real WebSocket, an ephemeral-kind subscription and an accepted write — connectivity alone is not enough, since a reachable relay can still refuse the ephemeral events signalling depends on. Nothing changes in your code. To be independent of this list entirely, pass your own: `gdb(name, { rtc: { relayUrls: [...] } })` — note that `rtc: true` discards every rtc option, so it must be an object.
+
 ## [0.26.3] - 2026-08-26
 
 ### Fixed
