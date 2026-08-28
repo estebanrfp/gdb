@@ -297,7 +297,7 @@ Encrypts a **value** instead of a whole record. The key derives from the active 
 - **Returns**: `{Promise<string>}` – `{"iv":…,"encrypted":…,"type":"aes-gcm-self-ssm-v2"}`. Being a string, it stores as an ordinary node field. `decrypt` returns the original value.
 - **Throws** (decrypt, one message per cause): `User session (signer) required` · `encryptedString is not valid JSON` · `Unsupported encryption type or incorrect version` · `Invalid encrypted data format` · **`Failed to decrypt personal data`** when the data belongs to someone else.
 
-> **Why not `db.sm.put`?** That encrypts the whole record, hiding fields you may want public and forcing reads through `db.sm.map`, which is not reactive. An encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it. Reach for these whenever part of a record must stay public, or the record must stay live.
+> **Why not `db.sm.put`?** That encrypts the whole record, hiding fields you may want public and forcing reads through `db.sm.map`, which is not reactive. An encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it. Reach for these whenever part of a record must stay public, or the record must stay live. Working demo of the full pattern: **[Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)**.
 
 #### Example: A public title with a private body
 
