@@ -48,7 +48,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
     *   **Permission Types:** Supports granular permissions: `'read'` (view node), `'write'` (update node), `'delete'` (remove node).
     *   **Integration with RBAC:** ACL checks are performed in addition to RBAC. A user must have both the role permission and the ACL permission for the operation.
     *   **Automatic Middleware:** When enabled (`acls: true` in SM config), ACLs register middleware that enforces permissions on all database operations.
-    *   **Enforced against malicious peers (since 0.14.0):** the cryptographically-verified author (`signer`) is propagated to the per-node middleware, so a modified peer cannot write a node it does not own — node-level ACLs are real security against any peer, not just an honest-client convenience.
+    *   **Enforced against malicious peers:** the cryptographically-verified author is checked against the node's owner and collaborators wherever a write is applied — live operations and state reconciliation alike — so node-level ACLs are real security against any peer, not just an honest-client convenience.
     *   **API Methods:** Exposed via `db.sm.acls.set()`, `db.sm.acls.grant()`, and `db.sm.acls.revoke()` for creating nodes with ACLs and managing permissions.
 
 6.  **Governance (Role Promotion & Demotion) - Optional Extension**

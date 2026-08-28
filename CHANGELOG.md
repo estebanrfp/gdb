@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-08-28
+
+### Security
+
+- **Node-level ACLs are now enforced on the sync paths, not only on live ops.** Ownership was checked op-by-op but never during state reconciliation: `deltaSync` and `fullStateSync` merged by timestamp alone, so a peer running modified code could overwrite — or delete — any node it did not own by broadcasting a newer clock, the owner's own node included. Every owned node now travels with its author's signed payload, and an authorship gate re-checks it on every apply path (live, delta and full state); a write to a node you neither own nor collaborate on is refused by every honest peer. Encrypted `db.sm.put` records are covered too (their owner lives in `value._meta.owner`). `user:` nodes, governance and any ownerless data never touch the gate and are unchanged.
+
+- **Wire format changes — update a room's peers together, and redeploy the Fallback Server (GenosSRV 0.7.0).** A peer on this build refuses owned nodes that arrive without provenance, so a room mixing 0.26.x and 0.27.0 stops converging on owned nodes (ownerless data still flows). GenosSRV carries the same gate: an un-updated Fallback Server would relay owned nodes stripped of provenance and updated browsers would reject them — convergence stopping silently at the server. Redeploy it alongside your clients.
+
+- **One-time migration.** Owned nodes written before this release carry no provenance, so they do not travel through catch-up until re-signed. Any ordinary write to a node re-signs it; for durable data, re-save an identity's owned nodes once after upgrading. Nothing is lost locally — it just does not propagate until re-signed.
+
 ## [0.26.3] - 2026-08-26
 
 ### Fixed

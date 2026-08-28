@@ -195,7 +195,7 @@ WebAuthn enables passwordless authentication using biometrics or hardware keys, 
 
 ### 6.3 Access Control Lists (ACLs)
 
-As an optional extension to RBAC, ACLs provide fine-grained, node-level permissions. Enabled with `acls: true`, this allows node owners to grant specific permissions ('read', 'write', 'delete') to other users for individual nodes, complementing the global role hierarchy with per-node access control. Crucially, these checks are enforced against **any** peer, not merely the honest client: since 0.14.0 the cryptographically-verified author of every incoming operation is propagated to the per-node middleware, so a modified peer cannot write a node it does not own.
+As an optional extension to RBAC, ACLs provide fine-grained, node-level permissions. Enabled with `acls: true`, this allows node owners to grant specific permissions ('read', 'write', 'delete') to other users for individual nodes, complementing the global role hierarchy with per-node access control. Crucially, these checks are enforced against **any** peer, not merely the honest client: the cryptographically-verified author of every write is checked against the node's owner and collaborators, on the live operation path and on the state-reconciliation paths alike, so a modified peer cannot write a node it does not own.
 
 ### 6.4 Governance (Role Promotion & Demotion)
 
