@@ -32,6 +32,8 @@ The Security Manager (SM) is not imported separately but is activated and attach
 > ```
 >
 > **Note on Automatic Initialization**: When you provide the `sm` configuration object, the `gdb` function automatically handles all necessary internal setup. This includes registering the P2P security middleware, a core feature that relies on the `Real-Time Communication module` to sign and verify data between peers. For this reason, `rtc: true` must be enabled alongside the sm configuration. The initialization process also attempts a silent WebAuthn session resume, ensuring the db instance you receive is fully prepared for use.
+>
+> It is recommended to use a separate database instance for each project or browser, as this allows all related processes, configurations, and security policies to be managed independently. This separation improves operational control, reduces the risk of interference between projects, and enhances traceability, maintenance, and data protection.
 
 ---
 

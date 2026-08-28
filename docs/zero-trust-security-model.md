@@ -138,6 +138,8 @@ is derived from it, so each name is its own sync universe and a peer only
 replicates the graphs of the rooms it joins. Use separate databases for separate
 sharing scopes, and let encryption gate reading within each one.
 
+It is recommended to use a separate database instance for each project or browser, as this allows all related processes, configurations, and security policies to be managed independently. This separation improves operational control, reduces the risk of interference between projects, and enhances traceability, maintenance, and data protection.
+
 ---
 
 ### Opening It Up: Public Platforms

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.1] - 2026-08-29
+
+### Fixed
+
+- An owned node written just before a reload lost the signature that lets it travel. Signing in re-signs your own unsigned nodes.
+- An oplog entry whose node was gone travelled as an empty value, creating null nodes on peers. Redeploy GenosSRV 0.7.1.
+- A second database opened in the same page left the first without security. Each now carries its own Security Manager.
+
+### Changed
+
+- Bundled `genosrtc.min.js` drops the `offchain.pub` relay, which was failing to connect.
+
 ## [0.27.0] - 2026-08-28
 
 ### Security
