@@ -219,7 +219,7 @@ These functions provide a simple API, similar to GDB's core `put` and `get`, but
 
 - **Signature**: `(originalValue: any, id?: string): Promise<string>`
 
-Stores data securely in the GDB instance. The `originalValue` is encrypted using a key derived from the active user's Ethereum identity.
+Stores data securely in the GDB instance. The `originalValue` is sealed with a random per-node content key; that key travels on the node wrapped as a *key envelope* for each authorized reader — initially just the owner. Sharing and unsharing are handled by `db.sm.acls.grant` / `db.sm.acls.revoke` (see their entries): a collaborator granted `write` or `delete` can update the record with this same call, and the existing envelopes stay valid.
 
 - **Parameters**:
   - `originalValue` `{any}` – The data to store. It must be JSON-serializable.
@@ -245,7 +245,7 @@ try {
 
 - **Signature**: `(id: string, callback?: Function): Promise<{ result: object | null, unsubscribe?: Function }>`
 
-Retrieves and automatically attempts to decrypt data that was previously stored using `db.sm.put()` by the **current active user**.
+Retrieves and automatically attempts to decrypt data previously stored with `db.sm.put()`. Decryption succeeds for **any session holding a key envelope** on the node: the owner, or a collaborator added with `db.sm.acls.grant`.
 
 - **Parameters**:
   - `id` `{string}` – The ID of the data to retrieve.
@@ -255,7 +255,7 @@ Retrieves and automatically attempts to decrypt data that was previously stored 
     - `id` `{string}`: The node's ID.
     - `value` `{any}`:
       - If decryption was successful: The original, decrypted data.
-      - If decryption failed (e.g., not owner, no session): The raw encrypted ciphertext.
+      - If decryption failed (e.g., no envelope for this session, or no active session): The raw encrypted ciphertext.
     - `edges` `{Array}`: Edges of the node, with the Security Manager's internal prefix removed so the ids appear as your app knows them (`db.sm.map()` results follow the same rule).
     - `timestamp` `{object}`: The GDB timestamp of the node.
     - `decrypted` `{boolean}`: `true` if the data was successfully decrypted, `false` otherwise.
@@ -291,7 +291,7 @@ try {
 
 - **Signatures**: `(data: any): Promise<string>` · `(encryptedString: string): Promise<any>`
 
-Encrypts a **value** instead of a whole record. The key derives from the active user's private key (PBKDF2 → AES-256-GCM), so it encrypts *for yourself*: there is no recipient and it cannot share data with another user.
+Encrypts a **value** instead of a whole record. The key derives from the active user's private key (PBKDF2 → AES-256-GCM), so it encrypts *for yourself*: there is no recipient and it cannot share data with another user — to share an encrypted **record**, use `db.sm.put` + `db.sm.acls.grant` instead.
 
 - **Parameters**:
   - `data` `{any}` – Any JSON-serializable value. MessagePack-encoded and compressed before encryption.
@@ -539,6 +539,8 @@ try {
 
 Grants a specific permission to a user for a node. Only the owner can grant permissions.
 
+On an **encrypted node** (created with `db.sm.put`), `grant` additionally wraps the record's content key for the target — every permission level includes cryptographic read access. The target must have signed in at least once, so their `user:` node carries their verifiable public key; granting to an address that never signed in throws `has no published key yet`.
+
 - **Signature**: `(nodeId: string, userAddress: string, permission: string): Promise<void>`
 - **Parameters**:
   - `nodeId` `{string}` – The ID of the node.
@@ -562,15 +564,16 @@ try {
 }
 ```
 
-### `db.sm.acls.revoke(nodeId, userAddress, permission)`
+### `db.sm.acls.revoke(nodeId, userAddress)`
 
-Revokes a specific permission from a user for a node. Only the owner can revoke permissions.
+Revokes all permissions from a user for a node. Only the owner can revoke permissions.
 
-- **Signature**: `(nodeId: string, userAddress: string, permission: string): Promise<void>`
+On an **encrypted node**, this is cryptographic revocation: the record's content key is rotated, the content re-encrypted, and the new key re-wrapped for the remaining readers only — everything written afterwards is unreadable to the revoked identity, on every peer, no matter who relays it. Revocation is forward-only: what a reader could decrypt while authorized, they may have copied.
+
+- **Signature**: `(nodeId: string, userAddress: string): Promise<void>`
 - **Parameters**:
   - `nodeId` `{string}` – The ID of the node.
-  - `userAddress` `{string}` – The Ethereum address of the user to revoke permission from.
-  - `permission` `{string}` – The permission to revoke ('read', 'write', 'delete').
+  - `userAddress` `{string}` – The Ethereum address of the user to revoke.
 - **Returns**: `{Promise<void>}`
 
 #### Example
@@ -580,10 +583,8 @@ const noteId = "some_note_id"
 const collaboratorAddress = "0xCollaboratorAddress..."
 
 try {
-  await db.sm.acls.revoke(noteId, collaboratorAddress, "write")
-  console.log(
-    `Revoked write permission from ${collaboratorAddress} for note ${noteId}`
-  )
+  await db.sm.acls.revoke(noteId, collaboratorAddress)
+  console.log(`Revoked access for ${collaboratorAddress} on note ${noteId}`)
 } catch (error) {
   console.error("Failed to revoke permission:", error.message)
 }
@@ -596,6 +597,8 @@ try {
 - **'delete'**: Allows removing the node.
 
 Owners have all permissions by default and cannot have their permissions revoked.
+
+On encrypted (`db.sm.put`) nodes every level includes a key envelope, so read access is enforced by encryption. On plain ACL nodes (`acls.set`) values replicate readable by design — the ACL governs who may change them.
 
 ---
 

@@ -17,7 +17,7 @@ As of today, GenosDB is in a stable beta phase, offering a robust set of feature
     -   Recursive graph traversal with the `$edge` operator for complex queries ([See article](https://genosdb.com/genosdb-recursive-graph-traversal)).
     -   GenosRTC: P2P streaming for real-time audio, video, and file transfers.
     -   Cellular Mesh architecture for horizontal scaling to large-scale networks.
-    -   Advanced Security Module: A **zero-trust** model featuring Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), and rule-based **Governance** (last-match-wins role promotion & demotion) — all cryptographically signed and enforced against malicious peers — plus WebAuthn biometric authentication and a solution to the Distributed Trust Paradox ([See RBAC](https://genosdb.com/genosdb-rbac-access-control), [See Trust Paradox](https://genosdb.com/genosdb-distributed-trust-paradox)).
+    -   Advanced Security Module: A **zero-trust** model featuring Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs) with **cryptographic read revocation** (per-record envelope encryption, key rotation on revoke), and rule-based **Governance** (last-match-wins role promotion & demotion) — all cryptographically signed and enforced against malicious peers — plus WebAuthn biometric authentication and a solution to the Distributed Trust Paradox ([See RBAC](https://genosdb.com/genosdb-rbac-access-control), [See Trust Paradox](https://genosdb.com/genosdb-distributed-trust-paradox)).
     -   Fallback Server (GenosSRV): an optional always-on superpeer — durable memory, 24/7 governance and self-hosted signaling — shipped with the builds as a single zero-dependency file.
     -   Intelligent Delta Synchronization via an oplog, compressed payloads, full-state fallback, and signaling over the Nostr network for maximum efficiency ([See article](https://genosdb.com/genosdb-oplog-delta-sync)).
     -   High-performance asynchronous engine capable of handling tens of thousands of writes per second ([See article](https://genosdb.com/genosdb-async-engine-realtime-performance)).
@@ -58,6 +58,7 @@ This roadmap outlines our planned features and goals. It is a living document an
 -   `[ ]` Launch a public, interactive demo of the 3D metaverse built with Babylon.js and GenosDB.
 -   `[ ]` Publish a detailed technical article on the metaverse architecture.
 -   `[ ]` Further optimize GenosRTC for mobile browsers (iOS/Android) based on community testing and feedback.
+-   `[ ]` **Scoped replication** — "don't ship what the receiver cannot decrypt": a transport-level optimization layered on the envelope encryption shipped in 0.28 (signed peer identity plus filtering sealed records by their envelopes on the sync paths). The envelope metadata already on every record makes this a pure add-on with no migration; it will be activated only if measurement shows the traffic matters, since replicating sealed records is also what keeps them available while their readers are offline.
 
 ### Mid Term (2026 H2 – 2027)
 

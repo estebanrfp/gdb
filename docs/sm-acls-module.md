@@ -12,6 +12,7 @@ The **Access Control Lists (ACLs)** module provides fine-grained, node-level per
 - **Real-Time Synchronization**: Permission changes sync across all peers
 - **Integration with RBAC**: Works alongside existing role-based permissions
 - **Automatic Middleware**: Enforces permissions on all database operations
+- **Cryptographic Read Control**: on encrypted (`db.sm.put`) nodes, `grant` shares a key envelope and `revoke` rotates the content key — read access is enforced by encryption, not cooperation
 
 ### How permissions work
 
@@ -199,6 +200,7 @@ console.log(permissions);
 - Allows viewing the node's value and edges
 - Required for `db.get(nodeId)` operations
 - Does not allow modifications
+- On **encrypted nodes** (created with `db.sm.put`) this is cryptographic: without a key envelope the value is ciphertext on every peer. On plain ACL nodes (created with `acls.set`) values replicate readable by design — use `db.sm.put` when the content itself is confidential
 
 ### `write`
 - Includes `read` permissions
@@ -209,6 +211,24 @@ console.log(permissions);
 - Includes `read` and `write` permissions
 - Allows deleting the node with `db.sm.acls.delete()`
 - Note: `delete` permission is not automatically granted with `write`
+
+## Cryptographic Read Control (Encrypted Nodes)
+
+ACL nodes created with `acls.set` are the **public variant**: their values replicate readable to the whole room, stay queryable with `db.map`, and the ACL controls who may *change* them. When the content itself must be confidential, create the record with `db.sm.put` instead — the same `grant`/`revoke` calls then manage **encryption**, not just permission entries:
+
+- The record is sealed with a random per-node content key; each authorized reader holds that key wrapped to their public key (a *key envelope* stored on the node).
+- `grant(nodeId, address, permission)` adds an envelope — every permission level includes read. The target must have signed in at least once, so their `user:` node carries their verifiable public key.
+- `revoke(nodeId, address)` **rotates the content key**, re-encrypts the record, and re-wraps the new key for the remaining readers only. Everything written after the revocation is unreadable to the revoked identity on every peer, no matter who relays it.
+- `db.sm.get`/`db.sm.map` decrypt for any session holding an envelope; a `write`/`delete` collaborator updates the record with `db.sm.put` and the envelopes stay valid.
+
+```javascript
+const id = await db.sm.put({ note: "confidential" }, "doc1")  // encrypted record
+await db.sm.acls.grant("doc1", collaboratorAddress, "read")   // share: adds an envelope
+await db.sm.acls.revoke("doc1", collaboratorAddress)          // unshare: rotates the key
+await db.sm.put({ note: "v2 — revoked readers cannot open this" }, "doc1")
+```
+
+Revocation is forward-only: what a reader could decrypt while authorized, they may have copied — rotation protects everything written afterwards. Each revocation re-wraps once per remaining reader.
 
 ## Integration with RBAC
 

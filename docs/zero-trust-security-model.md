@@ -119,9 +119,14 @@ any peer can go offline holding everything it needs and converge later, in any
 order.
 
 So data travels to everyone in the room, and `db.sm.put` encryption decides who
-can read it. A node arrives at every peer; only its owner's session can decrypt
-it. A peer that cannot decrypt logs that it skipped the attempt — that is the
-boundary working, not a leak.
+can read it. A node arrives at every peer as sealed bytes; only sessions holding
+a **key envelope** — the owner, plus any address the owner granted through
+`db.sm.acls.grant` — can decrypt it. Revoking is cryptographic too:
+`db.sm.acls.revoke` rotates the record's content key and re-wraps it for the
+remaining readers, so everything written afterwards is unreadable to the revoked
+identity on every peer, no matter which peer relays it. A peer that cannot
+decrypt logs that it skipped the attempt — that is the boundary working, not a
+leak.
 
 This follows from the threat model rather than working around it. In a
 serverless network, selective replication cannot be a security control: nothing
@@ -137,6 +142,11 @@ Where a perimeter must be physical, the unit is the **database name**: the room
 is derived from it, so each name is its own sync universe and a peer only
 replicates the graphs of the rooms it joins. Use separate databases for separate
 sharing scopes, and let encryption gate reading within each one.
+
+The two layers compose: **the room decides what travels, the envelope decides
+who reads.** Replicating sealed records to peers that cannot open them is not
+waste — those peers are the relays that keep a record available while its
+readers are offline, and the envelope is what makes that safe.
 
 It is recommended to use a separate database instance for each project or browser, as this allows all related processes, configurations, and security policies to be managed independently. This separation improves operational control, reduces the risk of interference between projects, and enhances traceability, maintenance, and data protection.
 

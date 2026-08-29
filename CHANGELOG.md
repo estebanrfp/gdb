@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.1] - 2026-08-29
+
+### Fixed
+
+- **Rewriting an id that holds a pre-0.28 encrypted record no longer throws.** `db.sm.put` assumed every stored record carried key envelopes and crashed with a `TypeError` on records written by earlier releases, leaving those ids stuck. The owner now simply rewrites the id and it is reborn in the envelope format — the old ciphertext stays unreadable, exactly as 0.28.0 established. The same check closes a consistency hole in the new format too: a writer listed as collaborator but holding no envelope is refused with a clear error instead of re-keying a record it cannot read, which would have locked out every other reader.
+
+## [0.28.0] - 2026-08-29
+
+### Added
+
+- **Cryptographic read revocation on encrypted nodes.** `db.sm.put` now seals each record with a random per-node content key, wrapped for each authorized reader as a *key envelope* (ephemeral ECDH over secp256k1 → AES-256-GCM) stored on the node itself. `db.sm.acls.grant(id, address, level)` on an encrypted node adds an envelope for that reader — every level includes read — and `db.sm.acls.revoke(id, address)` **rotates the content key**, re-encrypts, and re-wraps for the remaining readers only: from that write on, the revoked identity holds bytes it cannot open, no matter which peer relays them. `db.sm.get`/`db.sm.map` decrypt for any session holding an envelope, and a `write`/`delete` collaborator updates the record through `db.sm.put` with the envelopes staying valid. The boundary is cryptography plus the 0.27 authorship gate — never network topology. Revocation is forward-only by nature: what a reader could decrypt while authorized, they may have copied; rotation protects everything written after.
+- **Identities publish a verifiable public key.** Signing in stamps the account's compressed secp256k1 key (`pub`) on its `user:` node — that is what lets an owner wrap an envelope for an address. The key needs no trust in the node carrying it: `grant` verifies it hashes to the target address before use, so a forged directory entry can only fail loudly, never redirect an envelope. Accounts whose `user:` node predates this release publish theirs on their next sign-in.
+
+### Changed
+
+- **`db.sm.put` records use the envelope format exclusively — records encrypted by earlier releases no longer decrypt.** The previous self-only format (a key derived from the owner's private key) could not be shared and is gone, with no migration path by design: re-save durable encrypted data once after upgrading. Field-level `encryptDataForCurrentUser`/`decryptDataForCurrentUser` are untouched.
+- **Update a room's peers together if they use `db.sm.*`.** A 0.27 peer cannot decrypt envelope records — its own included — and a 0.28 peer cannot decrypt the old format. Everything else interoperates unchanged: plain nodes, ACL nodes, the sync paths and the authorship gate are wire-identical, and **GenosSRV needs no redeploy** — a superpeer stores and serves sealed records without reading them, which is exactly the point.
+
 ## [0.27.1] - 2026-08-29
 
 ### Fixed
