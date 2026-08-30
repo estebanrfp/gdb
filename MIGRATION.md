@@ -4,6 +4,15 @@ This guide helps you migrate from the class-based API (`new GDB()`) to the new a
 
 ---
 
+## Version upgrade notes
+
+Changes between engine versions are documented in the [CHANGELOG](CHANGELOG.md). Two releases require action beyond updating:
+
+- **0.27.0** — owned nodes written by earlier versions carry no provenance and stop travelling through catch-up: re-save an identity's owned nodes once after upgrading, and redeploy GenosSRV alongside your clients.
+- **0.28.0** — `db.sm.put` records use the key-envelope format exclusively: records encrypted by earlier releases no longer decrypt, so re-save durable encrypted data once after upgrading.
+
+---
+
 ## Key changes
 
 - Support for `new GDB()` has been removed.
@@ -24,14 +33,14 @@ This guide helps you migrate from the class-based API (`new GDB()`) to the new a
 Before:
 
 ```js
-import { GDB } from 'gdb';
+import { GDB } from 'genosdb';
 const db = new GDB('my-db');
 ```
 
 After:
 
 ```js
-import { gdb } from 'gdb';
+import { gdb } from 'genosdb';
 const db = await gdb('my-db', { rtc: true }); // rtc: true for realtime comunication
 ```
 

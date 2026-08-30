@@ -132,9 +132,6 @@ The **Geo module** drawn rather than listed: `$near` is a circle of N kilometres
 ### [How Deep `$edge` Goes — Traversal Depth](https://estebanrfp.github.io/gdb/examples/traversal-depth.html)
 Two chains of 50 linked nodes, and a single `db.map()` that walks one of them end to end: `$edge` takes the filter you would have applied at each hop and pushes it into the traversal, so depth costs one query instead of one round trip per level. The second chain is never a starting point and never appears in the result — which is the part worth watching.
 
-### [Queries Written in English](https://estebanrfp.github.io/gdb/examples/query-natural-language.html)
-The **`nlq` module** (`gdb(name, { nlq: true })`) answering `db.map({ prompt })` — *"Get posts id between 4, 10"*, *"Get posts order desc by views limit 5"*, *"Full text search 'fiction'"* — against 50 real posts loaded from a public API, so the prompts run over values nobody arranged to make them work. It is a local, regex-based parser rather than a model: no inference, no network. The field holds the whole call, editable, which is what the page teaches.
-
 ### [Cellular Mesh Graph (D3)](https://estebanrfp.github.io/gdb/examples/graph-p2p.html)
 The compact companion to the Mesh Network Monitor: a D3 force graph of the **real** peers in your room (`db.room`), coloured by cell, with bridge peers and cross-cell links styled from the engine's own cellular state. Open it in several tabs and watch the mesh partition as peers arrive. ~170 lines — the smallest complete reading of `rtc: { cells }`.
 
@@ -223,7 +220,7 @@ _By: [Sambit Sahoo (soulsam480)](https://github.com/soulsam480)_
 
 ## Integrations
 
-Plugins, bridges, and adapters that bring GenosDB into other platforms, engines, and frameworks. *(Different from GenosDB's own optional **modules** — SM, NLQ, GEO, rx, audit.)*
+Plugins, bridges, and adapters that bring GenosDB into other platforms, engines, and frameworks. *(Different from GenosDB's own optional **modules** — SM, GEO, audit.)*
 
 ### [godot-genosdb — Serverless P2P multiplayer for Godot](https://github.com/estebanrfp/godot-genosdb)
 A drop-in **Godot 4** plugin that adds real-time **P2P multiplayer** to Web exports via GenosDB — no backend. The API **mirrors GenosDB** (`join` / `send` / `put` / `map` / `remove`), so using it teaches the real GenosDB API. Ships with a cozy Stardew-style co-op farm demo (chop trees in a shared world, P2P chat). **[▶ Live demo](https://estebanrfp.github.io/godot-genosdb/)**.

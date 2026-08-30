@@ -43,12 +43,11 @@ Creates and configures a database connection.
       - `cells` `{boolean | Object}` – Enable Cellular Mesh overlay for massive scalability. Pass `true` for defaults or `{ cellSize }` (peers per cell, default 10).
     - `sm` `{Object}` – Enables and configures the Security Manager. Provide at least `superAdmins` (an array of authorized addresses).
     - `ai` `{boolean}` – If `true`, loads the AI module.
-    - `nlq` `{boolean}` – If `true`, loads the Natural Language for Queries module.
     - `geo` `{boolean}` – If `true`, loads the Geo module.
     - `audit` `{boolean}` – If `true`, loads the Audit module.
     - `password` `{string}` – Optional encryption key.
     - `debug` `{boolean}` _(optional)_ – If `true`, enables GenosDB's internal debug logging (persistence, synchronization, networking and module activity). The console stays fully silent by default. Defaults to `false`.
-    - `saveDelay` `{number}` _(optional)_ – The debounce delay in milliseconds for saving the graph to persistent storage. Higher values reduce disk I/O under heavy write loads but increase the risk of data loss if the browser crashes. Defaults to `200`.
+    - `saveDelay` `{number}` _(optional)_ – The debounce delay in milliseconds for saving the graph and the operation log to persistent storage. Higher values reduce disk I/O under heavy write loads but increase the risk of data loss if the browser crashes. Defaults to `200`.
     - `oplogSize` `{number}` _(optional)_ – The maximum number of recent operations to keep in the operation log for delta-based P2P synchronization. Larger values allow peers to sync efficiently after longer disconnections but consume more memory. Defaults to `200`.
 
 - **Returns**: `gdb` object.

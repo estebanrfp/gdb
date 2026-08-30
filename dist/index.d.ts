@@ -265,8 +265,6 @@ declare module "genosdb" {
     sm?: SMOptions
     /** Load the AI module. */
     ai?: boolean | object
-    /** Load the Natural Language Queries module. */
-    nlq?: boolean
     /** Load the Geo module ($near / $bbox operators). */
     geo?: boolean
     /** Load the Audit module. */

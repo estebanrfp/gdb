@@ -22,9 +22,9 @@ For peers that are frequently communicating, transmitting the entire graph for m
 
 1.  **Operation Logging (Oplog):** Every local mutation (`put`, `remove`, `link`) is recorded as an entry in a capped, sliding-window log persisted in `localStorage`. Each entry contains the operation's essential metadata: its `type`, the affected node `id`, and a precise **Hybrid Logical Clock (HLC)** `timestamp` ensuring causal ordering.
 
-2.  **Sync Handshake:** When a peer connects or wants to catch up, it broadcasts a `sync` request. This message contains the HLC timestamp of the last operation it successfully processed (its `globalTimestamp`). A brand-new peer, having no history, will send a `globalTimestamp` of `null`.
+2.  **Sync Handshake:** When a peer connects or wants to catch up, it broadcasts a `sync` request. This message contains the HLC timestamp of the last operation it successfully processed (its `globalTimestamp`) and a compact, order-independent **digest** of the sender's entire state. A brand-new peer, having no history, will send a `globalTimestamp` of `null`.
 
-3.  **Delta Calculation & Hydration:** Upon receiving a `sync` request, a peer consults its Oplog. It calculates the "delta" by filtering its log for all operations with a timestamp greater than the `globalTimestamp` sent by the requesting peer.
+3.  **Digest Gate & Delta:** The receiving peer first compares the incoming digest against its own — **matching digests prove both states identical, and nothing is sent back**. On a mismatch it answers with its recent operation window (a scalar timestamp cannot prove what a peer *holds*, so the receiver's per-op HLC merge discards whatever it already knows).
     *   **Hydration:** Since the Oplog only stores minimal metadata for efficiency, the peer then "hydrates" any `upsert` operations in the delta set. It fetches the full, current `value` of the corresponding node from its main graph and attaches it to the operation. This ensures the delta is a self-contained, complete set of changes.
 
 4.  **Minimal & Compressed Transfer:** This array of hydrated delta operations is serialized using **MessagePack** and compressed with **pako (deflate)**. This minimal binary payload is then sent to the requesting peer inside a `deltaSync` message.
@@ -45,12 +45,15 @@ A full-state sync is initiated under two specific conditions:
 
 **The Fallback Process:**
 
-1.  **Full-State Transmission:** Instead of a delta, the up-to-date peer serializes and compresses its **entire current graph state**. This is sent in a `syncReceive` message.
+1.  **Full-State Transmission:** Instead of a delta, the up-to-date peer serializes and compresses its **entire current graph state**. This is sent in a `fullStateSync` message, together with the recent removals from its Oplog.
 
-2.  **State Reconciliation & Reset:** The desynchronized peer receives the full graph and performs a critical reconciliation process:
-    *   It completely discards its outdated local graph state, replacing it with the new one.
-    *   It **clears its own Oplog**, as its previous history is now invalid.
-    *   It scans the newly received graph to find the **highest HLC timestamp** among all nodes. It updates its own `HybridClock` and sets its `globalTimestamp` to this value. This crucial step ensures it is correctly "fast-forwarded" in time and can immediately participate in future delta syncs from a known-good state.
+2.  **State Reconciliation (Merge):** The desynchronized peer merges the received graph into its own, node by node:
+    *   A received node is applied only if it is **strictly newer** (by HLC timestamp) than the local copy — or than a local tombstone recording its deletion. Local nodes unknown to the sender are preserved.
+    *   The transmitted removals delete any local node they beat, so recent deletions win over stale copies.
+    *   Every applied operation is **recorded in the receiver's Oplog**, so its own window keeps serving future delta syncs.
+    *   It advances its `HybridClock` and `globalTimestamp` to the highest timestamp observed, "fast-forwarding" itself so it can immediately participate in future delta syncs from a known-good state.
+
+3.  **Reciprocity:** If the receiver holds nodes the sender lacks, it replies with its own full state, so reconciliation converges in both directions.
 
 This dual-mode architecture offers the performance of delta-syncing with the absolute reliability of full-state reconciliation, guaranteeing **eventual consistency** across the network regardless of peer connectivity.
 

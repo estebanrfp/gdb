@@ -553,83 +553,6 @@
                         <small>Unanchored, so it matches anywhere in the value.</small>
                     </li>
 
-                    <li class="group">Natural language (nlq module)</li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Finds a Company, then finds a Developer descendant, then finds that Developers descendant named Bob."}'>
-                        <strong>Nested traversal, in English</strong>
-                        <small>The same query as "Nested traversal" above, written as a sentence.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Finds a Company, then finds descendant named Bob"}'>
-                        <strong>Company → descendant named Bob</strong>
-                        <small>Without naming a type or a role for the descendant.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Finds only Companies"}'>
-                        <strong>Finds only companies</strong>
-                        <small>The simplest prompt there is: one type, no filters.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "finds descendant Developers"}'>
-                        <strong>Descendant developers</strong>
-                        <small>A traversal with no explicit starting point.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find a Company, then a descendant of type Employee with role Developer, then a descendant named Bob limit 5 order desc by id"}'>
-                        <strong>Nested traversal with order and limit</strong>
-                        <small>Type, role, name, ordering and a ceiling — all in one sentence.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find employees whose role is Developer or role is Designer and country is USA"}'>
-                        <strong>$or and $and, in English</strong>
-                        <small>Developer or Designer, and from the USA.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Find employees whose role in Developer, Designer"}'>
-                        <strong>A list of accepted values</strong>
-                        <small>Parses to $in.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find employees whose name starts with B order asc by name limit 10"}'>
-                        <strong>Starts with, ordered and capped</strong>
-                        <small>Name starts with B, ascending by name, first ten.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find employees whose name ends with son order asc by name limit 5"}'>
-                        <strong>Ends with</strong>
-                        <small>The mirror of the previous one.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Find employees whose name like \"J%\""}'>
-                        <strong>SQL-style like</strong>
-                        <small>Recognised too: name like "J%".</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find employees whose age between 30 and 40 order asc by age limit 5"}'>
-                        <strong>Between, ordered and capped</strong>
-                        <small>Age from 30 to 40, ascending, first five.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find employees whose hireDate between 2020-01-01 and 2020-12-31 order asc by hireDate limit 5"}'>
-                        <strong>Between two dates</strong>
-                        <small>ISO dates in a range, ordered by the same field.</small>
-                    </li>
-                    <li class="query-item"
-                        data-query='{"prompt": "Find a Company, then a descendant of type Employee whose tags includes JavaScript"}'>
-                        <strong>Traversal into an array field</strong>
-                        <small>"includes" reaches inside the tags array.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Find employees whose country is not USA"}'>
-                        <strong>Negation</strong>
-                        <small>Parses to $not.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Full text search \"Developer\""}'>
-                        <strong>Full text search</strong>
-                        <small>Across the fields of every node, rather than one named field.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Full text search \"developer\""}'>
-                        <strong>Full text search, lowercase</strong>
-                        <small>Same result: the search is case-insensitive.</small>
-                    </li>
-                    <li class="query-item" data-query='{"prompt": "Get employees order asc by name limit 2"}'>
-                        <strong>First two employees by name</strong>
-                        <small>Ordering and limit with no filter at all.</small>
-                    </li>
                 </ul>
 
                 <div class="catalogue-foot">
@@ -688,8 +611,6 @@
          *
          * What to read here, and where:
          *   · db.map({ query })   — a filter object; returns { results }
-         *   · db.map({ prompt })  — the same call, given a sentence in English,
-         *                           parsed by the `nlq` module enabled below
          *   · db.link(from, to)   — the edges the $edge presets walk
          *
          * No `rtc`: this page seeds its own graph and asks questions of it.
@@ -813,9 +734,7 @@
             applyTheme(THEME_ORDER[next])
         })
 
-        // `nlq: true` is what makes db.map({ prompt }) work. Without it the
-        // natural-language presets below throw, and the JSON ones still run.
-        const db = await gdb("genosdb-query-operators", { rtc: false, nlq: true })
+        const db = await gdb("genosdb-query-operators", { rtc: false })
 
         // ── Data ────────────────────────────────────────────────────
         const seedData = async () => {

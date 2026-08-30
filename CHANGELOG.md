@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-08-30
+
+### Added
+
+- **The sync handshake now carries a state digest — converged peers exchange nothing.** Every `sync` request ships a compact, order-independent digest of the sender's whole graph; when it matches the receiver's own, the reply is silence instead of the recent operation window. A room at rest pays a few bytes per encounter instead of re-shipping its history, and any mismatch falls through to the delta and full-state paths exactly as before. Older peers ignore the field and are answered as always — no migration needed, and a Fallback Server on 0.8.x interoperates unchanged: redeploying GenosSRV 0.9.0 is optional and simply extends the same saving to the server's encounters.
+
+### Changed
+
+- **The oplog joined the graph's debounced persistence cycle.** It used to write its full window to localStorage synchronously on every operation, so a burst of N ops paid N whole-window serializations on the main thread — the reason busy rooms could feel frozen once the window filled. `saveDelay` (default 200 ms) now governs both stores, and a burst costs one write.
+
+- **The bundled GenosRTC resolves its relay list from jsDelivr** — multi-CDN with automatic failover — refreshing on every boot and keeping its own copy in localStorage, so a peer that ever fetched a list can never be muted by a dead endpoint; an empty resolution now says so on the console. Updating the list needs no release: edit `relays.json` in the public repo and push.
+
+### Removed
+
+- **The `nlq` option and its natural-language query module are gone.** The module parsed controlled English into query objects, locally — a bridge whose two shores no longer need it: in 2026 queries are written by the developer or by their AI pair, and both emit the MongoDB-style object directly (which `llms.txt` already teaches). `db.map({ query })` was always the whole story; the option, the module, its docs and its example presets are removed. Four unreachable internal files (never wired to the module table) retired to `Experimental/OLD` in the same sweep.
+
 ## [0.29.0] - 2026-08-30
 
 ### Changed

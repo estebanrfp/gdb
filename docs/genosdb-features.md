@@ -6,7 +6,6 @@
     *   `rtc`: Enables the GenosRTC module for all P2P synchronization and real-time communication.
     *   `sm`: Activates the Security Manager for identity, RBAC, and encryption.
     *   `ai`: Loads the AI module.
-    *   `nlq`: Loads the Natural Language for Queries module.
     *   `geo`: Loads the Geo-spatial module.
 
 *   **Storage and Persistence:**
