@@ -17,10 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The bundled GenosRTC resolves its relay list from jsDelivr** — multi-CDN with automatic failover — refreshing on every boot and keeping its own copy in localStorage, so a peer that ever fetched a list can never be muted by a dead endpoint; an empty resolution now says so on the console. Updating the list needs no release: edit `relays.json` in the public repo and push.
 
-### Removed
-
-- **The `nlq` option and its natural-language query module are gone.** The module parsed controlled English into query objects, locally — a bridge whose two shores no longer need it: in 2026 queries are written by the developer or by their AI pair, and both emit the MongoDB-style object directly (which `llms.txt` already teaches). `db.map({ query })` was always the whole story; the option, the module, its docs and its example presets are removed. Four unreachable internal files (never wired to the module table) retired to `Experimental/OLD` in the same sweep.
-
 ## [0.29.0] - 2026-08-30
 
 ### Changed

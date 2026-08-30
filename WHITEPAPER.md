@@ -124,7 +124,6 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 -   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
 -   **Geo Module**: Enabled with `geo: true`. Adds geospatial indexing and queries.
 -   **Audit Module**: Enabled with `audit: true`. Analyzes oplog data for problematic content.
--   **NLQ Module**: Enabled with `nlq: true`. Adds a thin prompt-to-query layer that translates controlled-English natural-language prompts into standard operator queries.
 
 **Example (Enabling Modules)**:
 ```javascript

@@ -72,7 +72,7 @@ Browser + GenosDB
     - **Massive Scalability:** Optional Cellular Mesh topology (`{ rtc: { cells: true } }`) enables horizontal scaling to large-scale networks by organizing peers into cells with bridge interconnections. ([GenosRTC Cells](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md))
 - **Optional Fallback Server (GenosSRV):** A zero-dependency superpeer (`dist/genossrv.min.js`) that keeps the room always available — durable memory, catch-up for returning peers, 24/7 governance, and optionally the room's own signaling. One file, one command, one-click deployable. ([Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md))
 - **Optimized Data Handling:** Efficiently serializes data with MessagePack and compresses it with Pako to reduce storage footprint and network payload.
-- **Extensible & Modular:** The core is lightweight, but its capabilities can be easily extended with external modules for features like geospatial queries, AI and natural-language queries.
+- **Extensible & Modular:** The core is lightweight, but its capabilities can be easily extended with external modules for features like geospatial queries and AI.
 
 ## Project Status
 
