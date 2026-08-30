@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The oplog joined the graph's debounced persistence cycle.** It used to write its full window to localStorage synchronously on every operation, so a burst of N ops paid N whole-window serializations on the main thread — the reason busy rooms could feel frozen once the window filled. `saveDelay` (default 200 ms) now governs both stores, and a burst costs one write.
 
-- **The bundled GenosRTC resolves its relay list from jsDelivr** — multi-CDN with automatic failover — refreshing on every boot and keeping its own copy in localStorage, so a peer that ever fetched a list can never be muted by a dead endpoint; an empty resolution now says so on the console. Updating the list needs no release: edit `relays.json` in the public repo and push.
+- **The bundled GenosRTC hardens its relay-list resolution.** The list is refreshed on every boot (cache-busted, so a browser never serves a stale copy) and kept in localStorage as the peer's own fallback — a peer that ever fetched a list can no longer be muted by an unreachable endpoint, and when no list is available at all the console now says so instead of staying silent.
 
 ## [0.29.0] - 2026-08-30
 
