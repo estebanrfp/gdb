@@ -830,7 +830,7 @@ Three shapes live here, and picking the wrong one is the most common mistake in 
 | What it is | A lesson: explanation, one call, its result | A bench: you run something, look, adjust, run again | An instrument: it reports a process that changes on its own |
 | Shape | **Centred column**, page scrolls | **Two panels**, input left / output right, each scrolling on its own | **Full-bleed**, page does not scroll |
 | Width | The widest block that must be read intact: ~640px for prose, ~720px with code, ~440px for stat cards alone | ~380–440px for the input panel; the output takes the rest | The viewport |
-| Examples | `todolist` · `paste` · `singleNode` | `traversal-depth` · `query-operators` · `query-natural-language` | `todo-tester` · `mesh-cells-monitor` · `graph-p2p` |
+| Examples | `todolist` · `paste` · `singleNode` | `traversal-depth` · `query-operators` | `todo-tester` · `mesh-cells-monitor` · `graph-p2p` |
 
 **The bench is the default for anything that tests.** Its point is not extra space, it is **simultaneity**: the lesson of a testbed is *"this input produces this output"*, and a single column puts the two halves of that sentence a scroll apart — you run the query, scroll down to read the answer, scroll back up to change something, and never see both at once. Side by side, the comparison is free and a long result never pushes the controls out of reach.
 
@@ -856,7 +856,7 @@ Legibility is not the trade-off people expect, because **the panels stay narrow*
 
 **Two outputs instead of an input and an output.** Some benches compare rather than transform — two live queries, two peers, before and after. The shape is the same and the reason is the same: the lesson is what the *difference* between the panels does, so both have to be on screen at once. Give the columns equal width (`repeat(2, minmax(0, 1fr))`), the same treatment, and put whatever input exists in a band above both, since it belongs to neither. `status-lists.html` is the worked example: press a button in one column and watch the row appear in the other.
 
-**A catalogue is a third column, not a longer input panel.** When the lesson is a *language* rather than a single call — every operator, every prompt, every geo shape — the bench splits its input in two: a catalogue you pick from on the left, and the query itself, editable, above its own output. Picking writes into the field instead of running out of sight, so an example is also a starting point. `query-operators.html` is the worked example, with `query-natural-language.html` and `query-geo.html` as its siblings; the three share one skeleton and differ only in what the output is (cells, posts, a map).
+**A catalogue is a third column, not a longer input panel.** When the lesson is a *language* rather than a single call — every operator, every geo shape — the bench splits its input in two: a catalogue you pick from on the left, and the query itself, editable, above its own output. Picking writes into the field instead of running out of sight, so an example is also a starting point. `query-operators.html` is the worked example, with `query-geo.html` as its sibling; the two share one skeleton and differ only in what the output is (cells, a map).
 
 ```css
 .bench { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 0; }
