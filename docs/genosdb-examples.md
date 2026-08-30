@@ -26,9 +26,6 @@ The smallest thing GenosDB does, and the shape of everything else: `db.get(id, c
 ### [Two Live Queries Over One Graph](https://estebanrfp.github.io/gdb/examples/status-lists.html)
 Two `db.map()` subscriptions watching different filters, side by side. A node belongs to whichever query it currently matches, so flipping one field makes the engine work both out for you — `removed` from one list, `added` to the other, in the same write. Press a button in one column and watch the row appear in the other: no routing code, because the queries **are** the routing.
 
-### [Automated Tester — Write Pressure](https://estebanrfp.github.io/gdb/examples/todo-tester.html)
-A load generator for the `todoList` graph: it inserts, updates and deletes at a chosen interval and reports every write as it happens. Open it beside `todolist.html` and the list fills, changes and empties on its own — replication with nobody typing. The page only writes and never subscribes; what watches the result is the other window.
-
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.
 
@@ -113,6 +110,9 @@ A live viewer of GenosDB's governance engine, which resolves each user's role by
 ---
 
 ## Tools & Testbeds
+
+### [Automated Tester — Write Pressure](https://estebanrfp.github.io/gdb/examples/todo-tester.html)
+A load generator for the `todoList` graph: it inserts, updates and deletes at a chosen interval and reports every write as it happens. Open it beside `todolist.html` and the list fills, changes and empties on its own — replication with nobody typing. The page only writes and never subscribes; what watches the result is the other window.
 
 ### [GenosDB - Mesh Network Monitor](https://estebanrfp.github.io/gdb/examples/mesh-cells-monitor.html)
 **The reference monitor** for GenosDB networks: an interactive force-directed graph (D3.js) of the Cellular Mesh topology — cells, bridges, peers you can drag — with live network metrics, dynamic TTL, a per-cell peer roster, and Fallback Servers identified as violet `SRV` nodes. Uniquely, it also taps the sync protocol itself (`db.use`): every real database operation (PUT / DEL / LINK) is animated traveling across cells and bridges, so you watch GenosDB work — not just its chat channel. Messages and network events are logged side by side, so a burst of joins never buries the conversation.
