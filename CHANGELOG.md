@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Default signaling relays now resolve at runtime from `https://relays.genosdb.com/relays.json` — a dead public relay is pruned by editing that JSON, never by shipping a release.** The bundled GenosRTC (0.30.0) no longer embeds a relay list. When `rtc` is enabled without `relayUrls`, the transport fetches the published list once per session (5-second timeout, sanitized to unique `wss://` URLs, served order preserved so peers keep deterministic relay selection) inside the `await gdb(...)` the app already performs; the browser's HTTP cache honours the endpoint's 5-minute TTL, so repeat loads resolve from disk and an updated list reaches the whole network within minutes. Passing `rtc: { relayUrls }` skips the endpoint entirely — the request is not even constructed, so sovereign deployments keep zero third-party contact. If the endpoint is unreachable, the app still boots offline-first: that session simply has no public signaling and the next load retries. `genossrv.min.js` carries the same behaviour — a fresh list on every boot, and zero fetches when relays are configured or the embedded `--relay` is on.
+- **Improved the signaling mechanism of the bundled GenosRTC.** Custom `rtc.relayUrls` keep working exactly as before.
 
 ## [0.28.1] - 2026-08-29
 
