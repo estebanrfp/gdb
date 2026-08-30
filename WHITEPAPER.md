@@ -117,7 +117,7 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 ### 4.1 Available Modules
 
 -   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
--   **Geo Module**: Enabled with `geo: true`. Adds geospatial indexing and queries.
+-   **Geo Module**: Enabled with `geo: true`. Adds the geospatial operators `$near` and `$bbox` to queries.
 
 **Example (Enabling Modules)**:
 ```javascript
@@ -223,7 +223,7 @@ GenosDB uses an oplog for delta synchronization, storing recent operations. Conf
 Compared to alternatives like GunDB and OrbitDB, GenosDB offers:
 -   A simpler, more intuitive API.
 -   Integrated P2P streaming via GenosRTC.
--   Advanced query operators (`$text`, `$edge`) and indexing modules.
+-   Advanced query operators (`$text`, `$edge`) and optional modules.
 -   Robust, built-in security with RBAC and WebAuthn.
 -   A modular architecture for greater flexibility.
 
