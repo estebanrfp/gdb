@@ -95,9 +95,6 @@ A role grants **verbs**, never ownership: `delete` means "this signer may remove
 ### [Passkeys — WebAuthn Identity](https://estebanrfp.github.io/gdb/examples/webauthn.html)
 The identity lifecycle on its own, with nothing else on the page: generate a mnemonic, wrap it in a **passkey** (`protectCurrentIdentityWithWebAuthn`), log out, and get back in with the device alone (`loginCurrentUserWithWebAuthn`) — the phrase never typed a second time. Reports what the Security Manager says about the session as it changes, so the difference between *the phrase is the identity* and *the passkey only unlocks it here* is on screen rather than in a comment. Needs HTTPS or `localhost`: an IP address is never a valid Relying Party ID, and the page says so instead of failing.
 
-### [Oplog Audit Module](https://estebanrfp.github.io/gdb/examples/todolist-audit.html)
-Provides real-time auditing of oplog entries, detect spam and prohibited content
-
 ### [Permission as Data — ACLs Testbed](https://estebanrfp.github.io/gdb/examples/acls.html)
 Where `docs.html` shows sharing as a product — press Share, someone gains access, and what got written stays out of sight — this bench shows the ACL itself: pick a note and you get the table, one row per address, the level it holds, and the four writes that change it. Three mechanisms stack up, and all three have to open: a new identity is a `guest` and cannot write at all, the superadmin's engine promotes it to `user`, and a `user` still only touches the nodes it owns or was granted. Sign in as Bob and open a note Alice granted `read`: the field is inert — not because the page disabled it, but because the middleware on every peer would reject the write.
 

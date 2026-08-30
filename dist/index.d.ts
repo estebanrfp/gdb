@@ -263,12 +263,8 @@ declare module "genosdb" {
     rtc?: boolean | RTCOptions
     /** Enable the Security Manager (zero-trust, WebAuthn, governance). */
     sm?: SMOptions
-    /** Load the AI module. */
-    ai?: boolean | object
     /** Load the Geo module ($near / $bbox operators). */
     geo?: boolean
-    /** Load the Audit module. */
-    audit?: boolean
     /** Optional encryption key. */
     password?: string
     /** Enable internal debug logging. Defaults to `false`. */

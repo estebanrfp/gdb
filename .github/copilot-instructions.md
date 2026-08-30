@@ -34,7 +34,7 @@ Reference: gdb/README.md for features; GenosRTC/README.md for API.
 
 ## Documentation References
 - **API & Guides**: docs/genosdb-api-reference.md (API details), docs/crud-operations-guide.md (CRUD overview), docs/map-guide.md (query language).
-- **Modules**: docs/sm-architecture.md (Security Manager), docs/ai-module.md (AI queries), docs/geo-module.md (geo queries).
+- **Modules**: docs/sm-architecture.md (Security Manager), docs/geo-module.md (geo queries).
 - **P2P & Sync**: docs/genosrtc-guide.md (GenosRTC usage), docs/genosdb-hybrid-delta-protocol.md (sync protocol), docs/genosdb-distributed-trust-model.md (trust model).
 - **Advanced**: docs/genosdb-hybrid-logical-clock.md (HLC for CRDTs), docs/zero-trust-security-model.md (security), docs/genosdb-fallback-server.md (superpeer server).
 

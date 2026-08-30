@@ -14,7 +14,6 @@ const db4 = await gdb("my-db", {
   },
   sm: { superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"] },
   geo: true,
-  audit: true,
 })
 
 // ── CRUD ────────────────────────────────────────────────────────────

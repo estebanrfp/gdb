@@ -52,11 +52,6 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 | Delta Sync,       |       | Cross-Tab Sync    |       | Persistent Storage|
 | Conflict Resolver |       |                   |       |                   |
 +-------------------+       +-------------------+       +-------------------+
-          |
-          v
-+---------------------------+
-|    Audit Module  Analysis |
-+---------------------------+
 ```
 
 ## 3. Query Capabilities
@@ -123,14 +118,12 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 
 -   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
 -   **Geo Module**: Enabled with `geo: true`. Adds geospatial indexing and queries.
--   **Audit Module**: Enabled with `audit: true`. Analyzes oplog data for problematic content.
 
 **Example (Enabling Modules)**:
 ```javascript
 const db = await gdb("my-db", {
   rtc: true,
-  sm: { superAdmins: ["0x1234..."], customRoles: { editor: { can: ["write"], inherits: ["guest"] } } },
-  audit: { prompt: "detect offensive content or spam" }
+  sm: { superAdmins: ["0x1234..."], customRoles: { editor: { can: ["write"], inherits: ["guest"] } } }
 });
 ```
 

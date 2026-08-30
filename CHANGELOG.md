@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.1] - 2026-08-31
+
+### Changed
+
+- **Leaner distribution.** The npm package and the public repository drop stale build artifacts, and the module loader table matches what actually ships. No changes to the sync protocol or the data path.
+
 ## [0.30.0] - 2026-08-30
 
 ### Added
@@ -673,7 +679,7 @@ const db = await gdb('mydb', {
 
 ### Added
 
-- **Audit Parameter:** Introduced the `audit` parameter to the database factory. This enables real-time auditing of the operation log (oplog) using AI. The audit module can analyze, detect, and act on patterns or prohibited content in oplog entries, providing automated moderation and data integrity features.
+- Internal maintenance.
 
 ## [0.8.3] - 2025-08-19
 
