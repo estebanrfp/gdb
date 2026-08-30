@@ -29,6 +29,9 @@ Two `db.map()` subscriptions watching different filters, side by side. A node be
 ### [Automated Tester — Write Pressure](https://estebanrfp.github.io/gdb/examples/todo-tester.html)
 A load generator for the `todoList` graph: it inserts, updates and deletes at a chosen interval and reports every write as it happens. Open it beside `todolist.html` and the list fills, changes and empties on its own — replication with nobody typing. The page only writes and never subscribes; what watches the result is the other window.
 
+### [Sync Observatory — What Each Encounter Costs](https://estebanrfp.github.io/gdb/examples/sync-observatory.html)
+A working to-do list with the sync layer's decisions counted live: **digest gate** (both sides held identical state — nothing was sent), **delta** (just the missing changes), **full state** (the whole graph). Converge two windows and reload one: every encounter gates green. Then press *Reset replica* — `db.clear()` is local by design, so connected peers sync the graph straight back while the counters narrate the catch-up; a row's 🗑️ (`db.remove`) is the opposite, a replicated write that wins everywhere, even performed offline. Point it at any room with `?db=<name>`.
+
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.
 
