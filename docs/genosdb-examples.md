@@ -29,9 +29,6 @@ Two `db.map()` subscriptions watching different filters, side by side. A node be
 ### [Automated Tester — Write Pressure](https://estebanrfp.github.io/gdb/examples/todo-tester.html)
 A load generator for the `todoList` graph: it inserts, updates and deletes at a chosen interval and reports every write as it happens. Open it beside `todolist.html` and the list fills, changes and empties on its own — replication with nobody typing. The page only writes and never subscribes; what watches the result is the other window.
 
-### [Sync Observatory — What Each Encounter Costs](https://estebanrfp.github.io/gdb/examples/sync-observatory.html)
-A working to-do list with the sync layer's decisions counted live: **digest gate** (both sides held identical state — nothing was sent), **delta** (just the missing changes), **full state** (the whole graph). Converge two windows and reload one: every encounter gates green. Then press *Reset replica* — `db.clear()` is local by design, so connected peers sync the graph straight back while the counters narrate the catch-up; a row's 🗑️ (`db.remove`) is the opposite, a replicated write that wins everywhere, even performed offline. Point it at any room with `?db=<name>`.
-
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.
 
@@ -125,6 +122,9 @@ A minimal instrument for observing how peers partition into cells. Open it in se
 
 ### [Benchmark — Throughput and the Sync Protocol](https://estebanrfp.github.io/gdb/examples/perf-stress-test.html)
 A dedicated environment for benchmarking GenosDB under high-load scenarios: chunked mass insertions with honest metrics (**ops/s over pure write time**, fulfilled vs failed), realtime subscription counters, configurable `saveDelay` / `oplogSize` knobs, and a **Sync Protocol Observatory** that counts `sync` / `deltaSync` / `fullStateSync` messages live so you can watch the Hybrid Delta Protocol switch between delta and full-state catch-up across browsers.
+
+### [Sync Observatory — What Each Encounter Costs](https://estebanrfp.github.io/gdb/examples/sync-observatory.html)
+The Benchmark's minimal companion: a working to-do list with the sync layer's decisions counted live — **digest gate** (both sides held identical state, nothing was sent), **delta** (just the missing changes), **full state** (the whole graph). Converge two windows and reload one: every encounter gates green. Then press *Reset replica* — `db.clear()` is local by design, so connected peers sync the graph straight back while the counters narrate the catch-up; a row's 🗑️ (`db.remove`) is the opposite, a replicated write that wins everywhere, even performed offline. Point it at any room with `?db=<name>`.
 
 ### [Query Operators — The Catalogue](https://estebanrfp.github.io/gdb/examples/query-operators.html)
 Every operator the query language has, each one a preset you can run against a seeded graph of companies and employees: `$edge` traversals (including one nested inside another), `$eq` / `$gte` / `$between` / `$in` / `$exists`, `$and` / `$or` / `$not`, `$regex`. Picking a preset drops it into an editable field before it runs, so every example is also a starting point.
