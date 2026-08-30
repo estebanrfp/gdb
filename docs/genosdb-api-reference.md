@@ -49,7 +49,7 @@ Creates and configures a database connection.
     - `password` `{string}` – Optional encryption key.
     - `debug` `{boolean}` _(optional)_ – If `true`, enables GenosDB's internal debug logging (persistence, synchronization, networking and module activity). The console stays fully silent by default. Defaults to `false`.
     - `saveDelay` `{number}` _(optional)_ – The debounce delay in milliseconds for saving the graph to persistent storage. Higher values reduce disk I/O under heavy write loads but increase the risk of data loss if the browser crashes. Defaults to `200`.
-    - `oplogSize` `{number}` _(optional)_ – The maximum number of recent operations to keep in the operation log for delta-based P2P synchronization. Larger values allow peers to sync efficiently after longer disconnections but consume more memory. Defaults to `20`.
+    - `oplogSize` `{number}` _(optional)_ – The maximum number of recent operations to keep in the operation log for delta-based P2P synchronization. Larger values allow peers to sync efficiently after longer disconnections but consume more memory. Defaults to `200`.
 
 - **Returns**: `gdb` object.
 
