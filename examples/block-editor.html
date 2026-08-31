@@ -383,11 +383,10 @@
       if (orderOf(li) !== order) { li.dataset.order = order; placeSorted(li); }
       const ta = li.querySelector('textarea');
       // Never fight the local cursor: a focused paragraph keeps what you see,
-      // and syncs to the graph's truth on blur (handler above). A paragraph
-      // the live channel painted moments ago is already fresher than this
-      // graph echo — its own debounced put lands right behind and matches.
-      const liveFresh = Date.now() - (liveAt.get(id) ?? 0) < 1000;
-      if (document.activeElement !== ta && !liveFresh && ta.value !== text) {
+      // and syncs to the graph's truth on blur (handler above). The live
+      // channel may have painted this text already — then this is a no-op;
+      // when it differs, the graph is the truth and always lands.
+      if (document.activeElement !== ta && ta.value !== text) {
         ta.value = text;
         grow(ta);
         li.classList.remove('remote');
@@ -412,7 +411,6 @@
     // the engine's own sync channel.
     const presenceChannel = db.room.channel('presence');
     const peerAt = new Map(); // peerId -> { block, start, end } of their caret
-    const liveAt = new Map(); // block id -> when the channel last painted it
     const presenceEl = document.getElementById('presence');
 
     // Same peer, same colour in every window: derive the hue from the peer id.
@@ -489,17 +487,23 @@
     presenceChannel.on('message', (msg, fromPeerId) => {
       if (msg.kind === 'text') {
         const ta = document.getElementById(msg.block)?.querySelector('textarea');
-        if (ta && document.activeElement !== ta) {
-          if (ta.value !== msg.text) { ta.value = msg.text; grow(ta); }
-          // Mark ONLY what the channel actually painted: this window shields
-          // the live view from older graph echoes — never someone else's
-          // paragraph, or the echo would be blocked from landing at all.
-          liveAt.set(msg.block, Date.now());
+        if (ta && document.activeElement !== ta && ta.value !== msg.text) {
+          ta.value = msg.text;
+          grow(ta);
         }
       }
-      peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end });
+      peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end, at: Date.now() });
       renderMarks();
     });
+
+    // The receiver side of self-healing: a caret not re-affirmed within 6s
+    // is gone — a lost "left" message never strands a ghost caret.
+    setInterval(() => {
+      let dropped = false;
+      for (const [peerId, mark] of peerAt)
+        if (mark.block && Date.now() - mark.at > 6000) { peerAt.delete(peerId); dropped = true; }
+      if (dropped) renderMarks();
+    }, 2000);
 
     const updatePresence = () => {
       const n = Object.keys(db.room.getPeers()).length;
@@ -518,11 +522,16 @@
     });
     updatePresence();
 
-    // Awareness heals itself: the current state is re-broadcast every 2s,
-    // so a lost message (channels have no retry) or a late joiner never
-    // leaves a stale or missing caret — Yjs's awareness protocol refreshes
-    // periodically for the same reason.
-    setInterval(() => { if (lastSent?.block) presenceChannel.send(lastSent); }, 2000);
+    // Awareness heals itself: every 2s the REAL state — where the caret
+    // actually is, not the echo of the last event — is re-broadcast, so a
+    // lost message, a missed selectionchange or a late joiner never leaves
+    // a stale caret. Yjs's awareness protocol refreshes the same way.
+    setInterval(() => {
+      const ta = document.activeElement, li = ta?.closest?.('.block');
+      if (li) presenceChannel.send(lastSent = {
+        kind: 'caret', block: li.id, start: ta.selectionStart, end: ta.selectionEnd,
+      });
+    }, 2000);
 
     ghost.onclick = () => insertAfter(null);
 
