@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB Block Editor</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — an editor is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --warn: #f5a623;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-5: 24px;
+      --space-6: 32px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 48px var(--space-5) 30vh;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    .page-head, #doc, .ghost {
+      max-width: 680px;
+      margin-inline: auto;
+    }
+
+    .page-head { margin-bottom: var(--space-6); }
+
+    h1 { margin: 0 0 var(--space-2); font-size: 17px; }
+
+    .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+    /* The document IS the page: paragraphs are content fields, nothing frames
+       them — no border, no background, no buttons. The caret says where you
+       are; the accent makes it findable on a dark page. */
+    .block { position: relative; }
+
+    .block textarea {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      border: none;
+      outline: none;
+      background: none;
+      resize: none;
+      overflow: hidden;
+      padding: 3px 0;
+      color: var(--text-primary);
+      font: 16px/1.6 var(--font);
+      caret-color: var(--accent);
+    }
+
+    .block textarea::placeholder { color: var(--text-tertiary); }
+
+    /* A remote edit landed on this paragraph — the visible proof that only
+       THIS node travelled, while the one you are typing in was never touched. */
+    .block.remote { animation: remote-flash 0.9s ease-out; }
+
+    @keyframes remote-flash {
+      from { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+      to { background: transparent; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .block.remote { animation: none; }
+    }
+
+    /* Remote carets and selections — one transparent text mirror per peer,
+       floating over the textarea. It repeats the paragraph's text with the
+       exact same metrics, so its spans land on the same spot the characters
+       occupy below; only the caret, its name tag and the selection paint. */
+    .mirror {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      padding: 3px 0;
+      font: 16px/1.6 var(--font);
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      color: transparent;
+      pointer-events: none;
+    }
+
+    .remote-sel { border-radius: 2px; }
+
+    .remote-caret {
+      position: relative;
+      border-left: 2px solid;
+      margin-left: -1px;
+    }
+
+    .caret-label {
+      position: absolute;
+      top: -13px;
+      left: -2px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font: 600 9px/1.2 var(--mono);
+      color: var(--bg-primary);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    /* The empty document is a ghost paragraph, not a button. */
+    .ghost {
+      margin: 0;
+      padding: 3px 0;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text-tertiary);
+      cursor: text;
+    }
+
+    .hidden { display: none; }
+
+    /* Ambient connection state: bottom right, far from the content, like
+       every other GenosDB app. */
+    .presence {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="page-head">
+    <h1>Block Editor</h1>
+    <p class="hint">A continuous document over plain GenosDB — one node per
+      paragraph, no CRDT library. Enter splits a paragraph, Backspace at its
+      start merges it back, and edits on different paragraphs never collide.
+      Open a second window: the named caret is the other peer, and their
+      typing arrives character by character over an ephemeral channel while
+      the graph keeps the truth.</p>
+    <p class="hint">Measured beside the public Yjs and Automerge demos, edits
+      land here with less latency and less work per keystroke: one P2P hop
+      and one frame-coalesced message painted straight into a native
+      textarea — instead of a server round-trip plus CRDT encode, integrate
+      and editor-binding on every key. The graph persists and repairs behind
+      the live view, and no server is involved at all.</p>
+  </header>
+
+  <main id="doc"></main>
+  <p id="empty" class="ghost">Click here to start writing…</p>
+  <span class="presence" id="presence">0 peers</span>
+
+  <script type="module">
+    // Collaborative document editing with the plain GenosDB API — no CRDT
+    // library on top. Demonstrates: db.put / db.remove / db.map (one node
+    // per paragraph, ordered by fractional keys), and db.room.channel for
+    // caret/selection awareness over an ephemeral GenosRTC channel.
+    import { gdb } from "../dist/index.js";
+
+    const db = await gdb('blockEditor', { debug: true, rtc: true });
+
+    // ── The technique ────────────────────────────────────────────────────
+    // A document is a SET of paragraph nodes `{ text, order }`, not one big
+    // node.
+    //
+    // 1. Block-level LWW: editing a paragraph rewrites only ITS node, so two
+    //    people editing different paragraphs never overwrite each other —
+    //    there is simply no shared node to fight over. Only two carets
+    //    inside the SAME paragraph still race (last write wins).
+    //
+    // 2. Fractional order keys: a paragraph inserted between order 1 and 2
+    //    gets ~1.5. Two peers inserting into the same gap concurrently mint
+    //    different keys (random point in the gap), so BOTH survive and every
+    //    peer sorts them identically (order, then id as the deterministic
+    //    tie-break). No counters to coordinate, no rebalance to sync. (Real
+    //    apps eventually rebalance or use string keys — floats survive ~50
+    //    splits of the same gap.)
+    //
+    // 3. Structure is graph ops: splitting a paragraph rewrites its node and
+    //    inserts a new one; merging rewrites the previous node and removes
+    //    this one. Concurrent structural edits land on different nodes, so
+    //    they compose instead of conflicting.
+    //
+    // 4. Awareness is ephemeral — and that is not a shortcut, it is how the
+    //    big ones do it: what Yjs calls "awareness" (name, colour, caret,
+    //    selection) is not CRDT data even in Yjs — it travels on a side
+    //    protocol and dies with the session. Here the side protocol is a
+    //    GenosRTC channel carrying { block, start, end } per peer, drawn as
+    //    a live caret with a name tag and a translucent selection. People
+    //    rarely collide inside one paragraph because they can SEE each
+    //    other standing in it — the Notion model.
+    //
+    // 5. Live typing rides the same channel: every keystroke broadcasts the
+    //    paragraph being typed, so remote windows see character-by-character
+    //    motion the instant it happens — the visible experience of a CRDT
+    //    editor — while the debounced db.put remains the truth that
+    //    persists, repairs and survives offline. View over the wire, truth
+    //    in the graph. And none of it needs a server: the graph syncs P2P
+    //    and the awareness rides the same WebRTC mesh.
+    //
+    // 6. Why this feels faster than the Yjs / Automerge demos: the path of
+    //    a keystroke is shorter at every stage. Their demos relay each edit
+    //    through a public sync server (a WebSocket round-trip), after
+    //    encoding it into CRDT operations; the receiver integrates those
+    //    into its structure and re-renders through an editor binding.
+    //    Here a keystroke is one hop over a direct WebRTC data channel,
+    //    coalesced to at most one message per frame, and the receiver
+    //    assigns a string to a native textarea. The CRDT machinery buys
+    //    character-level merging INSIDE one paragraph — this example
+    //    replaces that rare case with block-level LWW plus visible carets,
+    //    and spends the budget where it shows: latency.
+
+    const doc = document.getElementById('doc');
+    const ghost = document.getElementById('empty');
+
+    const orderOf = (li) => parseFloat(li.dataset.order);
+
+    // Deterministic placement: order ascending, node id breaks exact ties.
+    function placeSorted(li) {
+      const next = [...doc.children].find((el) => el !== li &&
+        (orderOf(el) > orderOf(li) ||
+          (orderOf(el) === orderOf(li) && el.id > li.id)));
+      doc.insertBefore(li, next ?? null);
+    }
+
+    // A fresh key strictly between two paragraphs, at a random point in the
+    // gap so concurrent inserts into the same gap almost never tie.
+    function keyBetween(prev, next) {
+      const lo = prev ?? 0;
+      const hi = next ?? lo + 1;
+      return lo + (hi - lo) * (0.25 + Math.random() * 0.5);
+    }
+
+    const grow = (ta) => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+
+    const caretTo = (li, pos) => {
+      const ta = li?.querySelector('textarea');
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    };
+
+    // One debounced save per paragraph, so typing costs one put per pause.
+    const savers = new Map();
+    function scheduleSave(id, li) {
+      clearTimeout(savers.get(id));
+      savers.set(id, setTimeout(() => {
+        savers.delete(id);
+        const ta = li.querySelector('textarea');
+        db.put({ text: ta.value, order: orderOf(li) }, id);
+      }, 250));
+    }
+
+    const cancelSave = (id) => { clearTimeout(savers.get(id)); savers.delete(id); };
+
+    // The DOM paragraph appears when db.map emits, which may be after OR
+    // before put() resolves — both paths hand the caret over.
+    let focusNextId = null;
+
+    async function insertAfter(li) {
+      const next = li?.nextElementSibling;
+      const order = keyBetween(li ? orderOf(li) : undefined,
+        next?.classList.contains('block') ? orderOf(next) : undefined);
+      focusNextId = await db.put({ text: '', order });
+      caretTo(document.getElementById(focusNextId), 0);
+    }
+
+    // Enter: the text left of the caret keeps this node; the text right of
+    // it becomes a NEW node in the gap below. Two ops on two nodes — a
+    // concurrent edit elsewhere in the document is never touched.
+    async function splitBlock(li, ta) {
+      const original = ta.value;
+      const before = original.slice(0, ta.selectionStart);
+      const after = original.slice(ta.selectionEnd);
+      cancelSave(li.id);
+      ta.value = before;
+      grow(ta);
+      const next = li.nextElementSibling;
+      const order = keyBetween(orderOf(li),
+        next?.classList.contains('block') ? orderOf(next) : undefined);
+      // Splitting at the very end changes nothing in this node — write only
+      // what actually changed.
+      if (before !== original) await db.put({ text: before, order: orderOf(li) }, li.id);
+      focusNextId = await db.put({ text: after, order });
+      caretTo(document.getElementById(focusNextId), 0);
+    }
+
+    // Backspace at the start: this paragraph's text joins the previous node,
+    // and this node is removed. The DOM drops it optimistically; the graph
+    // ops confirm it on every peer.
+    async function mergeBlock(prevLi, li, ta) {
+      const prevTa = prevLi.querySelector('textarea');
+      cancelSave(li.id);
+      cancelSave(prevLi.id);
+      const joinAt = prevTa.value.length;
+      prevTa.value += ta.value;
+      grow(prevTa);
+      dropBlock(li);
+      prevTa.focus();
+      prevTa.setSelectionRange(joinAt, joinAt);
+      await db.put({ text: prevTa.value, order: orderOf(prevLi) }, prevLi.id);
+      await db.remove(li.id);
+    }
+
+    function createBlock(id, { text, order }) {
+      const li = document.createElement('div');
+      li.className = 'block';
+      li.id = id;
+      li.dataset.order = order;
+
+      const ta = document.createElement('textarea');
+      ta.rows = 1;
+      ta.value = text;
+      ta.placeholder = '…';
+
+      ta.addEventListener('input', () => {
+        grow(ta);
+        scheduleSave(id, li);
+        liveDirty = true; // this keystroke travels the room NOW, not in 250ms
+        announce();
+        renderMarks(); // my typing shifts the text under a remote caret
+      });
+
+      ta.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          await splitBlock(li, ta);
+        } else if (e.key === 'Backspace' && ta.selectionStart === 0 && ta.selectionEnd === 0) {
+          const prev = li.previousElementSibling;
+          if (!prev?.classList.contains('block')) return;
+          e.preventDefault();
+          await mergeBlock(prev, li, ta);
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          // One-line paragraphs jump straight to their neighbour. In a
+          // wrapped one the native caret walks the visual lines first —
+          // the browser parks it at the boundary, and the next press crosses.
+          const up = e.key === 'ArrowUp';
+          const oneLine = ta.clientHeight < parseFloat(getComputedStyle(ta).lineHeight) * 1.5;
+          const atEdge = up ? ta.selectionStart === 0 : ta.selectionEnd === ta.value.length;
+          if (!oneLine && !atEdge) return;
+          const target = up ? li.previousElementSibling : li.nextElementSibling;
+          if (!target?.classList.contains('block')) return;
+          e.preventDefault();
+          caretTo(target, up ? target.querySelector('textarea').value.length : 0);
+        }
+      });
+
+      // While you type, your view is yours; on blur you rejoin the graph's
+      // truth — which already holds the LWW outcome of any concurrent edit.
+      // A save still pending is flushed first: your own keystrokes never revert.
+      ta.addEventListener('blur', async () => {
+        if (savers.has(id)) {
+          cancelSave(id);
+          await db.put({ text: ta.value, order: orderOf(li) }, id);
+          return;
+        }
+        const { result } = await db.get(id);
+        if (result && ta.value !== result.value.text) { ta.value = result.value.text; grow(ta); }
+      });
+
+      li.append(ta);
+      placeSorted(li);
+      grow(ta);
+      ghost.classList.add('hidden');
+      if (id === focusNextId) { focusNextId = null; ta.focus(); ta.setSelectionRange(0, 0); }
+      renderMarks();
+    }
+
+    function updateBlock(id, { text, order }) {
+      const li = document.getElementById(id);
+      if (!li) return;
+      if (orderOf(li) !== order) { li.dataset.order = order; placeSorted(li); }
+      const ta = li.querySelector('textarea');
+      // Never fight the local cursor: a focused paragraph keeps what you see,
+      // and syncs to the graph's truth on blur (handler above). A paragraph
+      // the live channel painted moments ago is already fresher than this
+      // graph echo — its own debounced put lands right behind and matches.
+      const liveFresh = Date.now() - (liveAt.get(id) ?? 0) < 1000;
+      if (document.activeElement !== ta && !liveFresh && ta.value !== text) {
+        ta.value = text;
+        grow(ta);
+        li.classList.remove('remote');
+        void li.offsetWidth; // restart the flash animation
+        li.classList.add('remote');
+        renderMarks(); // remote text shifted under the remote carets too
+      }
+    }
+
+    function dropBlock(li) {
+      li.remove();
+      if (!doc.children.length) ghost.classList.remove('hidden');
+      renderMarks();
+    }
+
+    // ── Awareness + live typing: ONE ephemeral channel, two kinds ────────
+    // Channel traffic never touches the database — nothing here is persisted.
+    // 'caret' carries where you are; 'text' carries the paragraph you are
+    // typing, keystroke by keystroke, so the room sees each character the
+    // moment it lands — the debounced db.put remains the truth that persists
+    // and repairs. One channel, multiplexed by kind: extra channels degrade
+    // the engine's own sync channel.
+    const presenceChannel = db.room.channel('presence');
+    const peerAt = new Map(); // peerId -> { block, start, end } of their caret
+    const liveAt = new Map(); // block id -> when the channel last painted it
+    const presenceEl = document.getElementById('presence');
+
+    // Same peer, same colour in every window: derive the hue from the peer id.
+    const hueOf = (id) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+    const colorOf = (id) => `hsl(${hueOf(id)} 75% 70%)`;
+
+    // Marks are redrawn as a whole: cheap at this scale, and an announce
+    // that arrives BEFORE its paragraph simply lands on the next createBlock.
+    // Positions are clamped to the local copy of the text — awareness may
+    // outrun the debounced save by a few frames, and that is fine: it is
+    // ephemeral, and the next announce corrects it.
+    function renderMarks() {
+      document.querySelectorAll('.mirror').forEach((m) => m.remove());
+      for (const [peerId, mark] of peerAt) {
+        const li = mark.block && document.getElementById(mark.block);
+        const ta = li?.querySelector('textarea');
+        if (!ta) continue;
+        const text = ta.value;
+        const start = Math.min(mark.start ?? 0, text.length);
+        const end = Math.min(Math.max(mark.end ?? start, start), text.length);
+
+        const mirror = document.createElement('div');
+        mirror.className = 'mirror';
+        mirror.append(text.slice(0, start));
+        if (end > start) {
+          const sel = document.createElement('span');
+          sel.className = 'remote-sel';
+          sel.style.background = `hsl(${hueOf(peerId)} 75% 70% / .25)`;
+          sel.textContent = text.slice(start, end);
+          mirror.append(sel);
+        }
+        const caret = document.createElement('span');
+        caret.className = 'remote-caret';
+        caret.style.borderColor = colorOf(peerId);
+        const label = document.createElement('span');
+        label.className = 'caret-label';
+        label.style.background = colorOf(peerId);
+        label.textContent = peerId.slice(0, 4);
+        caret.append(label);
+        mirror.append(caret, text.slice(end));
+        li.append(mirror);
+      }
+    }
+
+    // Coalesced to one send per frame and deduplicated: selectionchange fires
+    // on every caret step, and channel.send is unthrottled — every call
+    // writes to every peer's data channel. A frame with a keystroke sends
+    // 'text' (which carries the caret too); a frame that only moved the
+    // caret sends 'caret'.
+    let lastSent = null, announceQueued = false, liveDirty = false;
+    function announce() {
+      if (announceQueued) return;
+      announceQueued = true;
+      requestAnimationFrame(() => {
+        announceQueued = false;
+        const ta = document.activeElement;
+        const li = ta?.closest?.('.block');
+        const msg = li
+          ? { kind: liveDirty ? 'text' : 'caret', block: li.id,
+              start: ta.selectionStart, end: ta.selectionEnd,
+              ...(liveDirty && { text: ta.value }) }
+          : { kind: 'caret', block: null };
+        liveDirty = false;
+        if (msg.kind === 'caret' && lastSent && lastSent.block === msg.block &&
+          lastSent.start === msg.start && lastSent.end === msg.end) return;
+        lastSent = msg;
+        presenceChannel.send(msg);
+      });
+    }
+
+    document.addEventListener('selectionchange', announce); // caret moves, focus hops
+    doc.addEventListener('focusout', announce);
+
+    presenceChannel.on('message', (msg, fromPeerId) => {
+      if (msg.kind === 'text') {
+        const ta = document.getElementById(msg.block)?.querySelector('textarea');
+        if (ta && document.activeElement !== ta) {
+          if (ta.value !== msg.text) { ta.value = msg.text; grow(ta); }
+          // Mark ONLY what the channel actually painted: this window shields
+          // the live view from older graph echoes — never someone else's
+          // paragraph, or the echo would be blocked from landing at all.
+          liveAt.set(msg.block, Date.now());
+        }
+      }
+      peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end });
+      renderMarks();
+    });
+
+    const updatePresence = () => {
+      const n = Object.keys(db.room.getPeers()).length;
+      presenceEl.textContent = `${n} peer${n === 1 ? '' : 's'}`;
+    };
+
+    db.room.on('peer:join', (peerId) => {
+      updatePresence();
+      // Late joiners still learn where this caret sits.
+      if (lastSent?.block) presenceChannel.send(lastSent, peerId);
+    });
+    db.room.on('peer:leave', (peerId) => {
+      peerAt.delete(peerId);
+      renderMarks();
+      updatePresence();
+    });
+    updatePresence();
+
+    // Awareness heals itself: the current state is re-broadcast every 2s,
+    // so a lost message (channels have no retry) or a late joiner never
+    // leaves a stale or missing caret — Yjs's awareness protocol refreshes
+    // periodically for the same reason.
+    setInterval(() => { if (lastSent?.block) presenceChannel.send(lastSent); }, 2000);
+
+    ghost.onclick = () => insertAfter(null);
+
+    await db.map({ field: 'order', order: 'asc' }, ({ id, value, action }) => {
+      if (action === 'initial' || action === 'added') createBlock(id, value);
+      if (action === 'updated') updateBlock(id, value);
+      if (action === 'removed') {
+        const li = document.getElementById(id);
+        if (li) dropBlock(li);
+      }
+    });
+  </script>
+</body>
+
+</html>

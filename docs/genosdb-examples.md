@@ -72,6 +72,9 @@ The other half of the geo pair: the playground runs `$near` against coordinates 
 ### [Real-Time collaborative rich‑text editor powered by GenosDB](https://estebanrfp.github.io/gdb/examples/collab.html)
 A real-time collaborative rich‑text editor powered by GenosDB: live typing sync, remote cursors/selections, RBAC + WebAuthn auth, Markdown/HTML split preview with draggable splitter, version history panel, file sharing, and video room.
 
+### [Block Editor — Collaborative Text Without a CRDT](https://estebanrfp.github.io/gdb/examples/block-editor.html)
+A continuous document — the Notion model — over the plain GenosDB API. One node per paragraph, so block-level LWW means edits on different paragraphs never collide; fractional order keys, so concurrent inserts into the same gap both survive, identically ordered everywhere; Enter splits a paragraph into two nodes, Backspace at its start merges them back. What Yjs calls *awareness* rides one ephemeral GenosRTC channel: named colour carets, live selections, and the paragraph being typed broadcast keystroke by keystroke — the character-by-character experience of a CRDT editor, while the debounced graph write remains the truth that persists and repairs. No server and no CRDT library; measured beside the public Yjs/Automerge demos, edits land with less latency and less work per keystroke.
+
 ### [Real-time IoT Thermostat Control powered by GenosDB](https://estebanrfp.github.io/gdb/examples/thermostat.html)
 A real-time peer-to-peer thermostat control demo showcasing GenosDB's reactive synchronization. Multiple users can adjust target temperature, toggle eco-mode (Leaf), and set away status — all changes instantly sync across connected browsers without any backend server. Demonstrates `db.put()`, reactive `db.get()` subscriptions, and P2P room events for peer counting.
 
