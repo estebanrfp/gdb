@@ -514,19 +514,16 @@
     });
     updatePresence();
 
-    // Awareness heals itself from the SENDER: every 2s the real state —
-    // where the caret actually is, not the echo of the last event — is
-    // re-broadcast, so a lost message or a missed selectionchange never
-    // leaves a stale caret; and if focus was lost but the room last heard a
-    // block, the missed "left" is re-sent once. No receiver-side clock: a
-    // background window's throttled timers just slow the refresh, and its
-    // caret stays where it truly is — peer:leave clears departed peers.
+    // The one job the receiver's expiry used to do, moved to the sender
+    // and stripped of clocks: after the caret leaves the document, the
+    // "left" announce is repeated twice at 2s — a lost message cannot
+    // strand a ghost caret — and then the line goes silent. While a caret
+    // is held, nothing is sent here: keystrokes and caret moves already
+    // announce, and peer:leave clears departed peers.
+    let leftBursts = 0;
     setInterval(() => {
-      const ta = document.activeElement, li = ta?.closest?.('.block');
-      if (li) presenceChannel.send(lastSent = {
-        kind: 'caret', block: li.id, start: ta.selectionStart, end: ta.selectionEnd,
-      });
-      else if (lastSent?.block) presenceChannel.send(lastSent = { kind: 'caret', block: null });
+      if (document.activeElement?.closest?.('.block')) { leftBursts = 0; return; }
+      if (lastSent && leftBursts < 2) { leftBursts++; presenceChannel.send({ kind: 'caret', block: null }); }
     }, 2000);
 
     ghost.onclick = () => insertAfter(null);
