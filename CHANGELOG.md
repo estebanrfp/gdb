@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.3] - 2026-08-31
+
+### Changed
+
+- **Peers resolve their default relay list from a CDN.** The bundled transports ship GenosRTC 0.30.2: the list no longer comes from `relays.genosdb.com`, which Spanish ISPs black-hole during football season — measured twice in one evening, 150 seconds without so much as a TCP connection, while the CDN answered normally from the same line. A peer with a cached list survived that; a fresh one found no relays and quietly never met anybody. Same curated list, same public repo, now served from `cdn.jsdelivr.net/gh/estebanrfp/gdb@main/relays.json` — no rate limits, more than one provider behind the address, so a single blocklist cannot cut off discovery. Nothing changes in the API: `rtc.relayUrls` still bypasses the endpoint completely, and the cached-list fallback still covers a failed fetch.
+
 ## [0.31.2] - 2026-08-31
 
 ### Fixed
