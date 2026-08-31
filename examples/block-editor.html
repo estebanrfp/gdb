@@ -115,6 +115,13 @@
       user-select: none;
     }
 
+    /* Whole-document selection (Ctrl/Cmd+A twice): a block-level state,
+       painted like a selection. */
+    .all-selected .block textarea {
+      background: color-mix(in srgb, var(--accent) 22%, transparent);
+      border-radius: 3px;
+    }
+
     /* The empty document is a ghost paragraph, not a button. */
     .ghost {
       margin: 0;
@@ -148,7 +155,8 @@
       start merges it back, and edits on different paragraphs never collide.
       Open a second window: the named caret is the other peer, and their
       typing arrives character by character over an ephemeral channel while
-      the graph keeps the truth.</p>
+      the graph keeps the truth. Press Ctrl/Cmd+A twice to select the whole
+      document.</p>
     <p class="hint">Measured beside the public Yjs and Automerge demos, edits
       land here with less latency and less work per keystroke: one P2P hop
       and one frame-coalesced message painted straight into a native
@@ -333,6 +341,17 @@
       });
 
       ta.addEventListener('keydown', async (e) => {
+        if (allSelected) return; // block-selection mode: the document handles keys
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' &&
+          ta.selectionStart === 0 && ta.selectionEnd === ta.value.length) {
+          // Second Ctrl/Cmd+A — the paragraph is already fully selected:
+          // promote to block selection, the Notion convention. Blocks are
+          // independent nodes, so "select all" is a UI state over the set,
+          // not a bigger native selection.
+          e.preventDefault();
+          setAllSelected(true);
+          return;
+        }
         if (e.key === 'Enter') {
           e.preventDefault();
           await splitBlock(li, ta);
@@ -525,6 +544,31 @@
       if (document.activeElement?.closest?.('.block')) { leftBursts = 0; return; }
       if (lastSent && leftBursts < 2) { leftBursts++; presenceChannel.send({ kind: 'caret', block: null }); }
     }, 2000);
+
+    // ── Whole-document selection ─────────────────────────────────────────
+    let allSelected = false;
+    const setAllSelected = (on) => { allSelected = on; doc.classList.toggle('all-selected', on); };
+    const docText = () => [...doc.querySelectorAll('.block textarea')].map((t) => t.value).join('\n\n');
+    const removeAll = () => { setAllSelected(false); return Promise.all([...doc.children].map((li) => db.remove(li.id))); };
+
+    document.addEventListener('copy', (e) => {
+      if (!allSelected) return;
+      e.preventDefault();
+      e.clipboardData.setData('text/plain', docText());
+    });
+    document.addEventListener('cut', (e) => {
+      if (!allSelected) return;
+      e.preventDefault();
+      e.clipboardData.setData('text/plain', docText());
+      removeAll();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!allSelected) return;
+      if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); removeAll(); }
+      else if (e.key === 'Escape') setAllSelected(false);
+      else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) setAllSelected(false); // typing resumes normal editing
+    });
+    document.addEventListener('pointerdown', () => setAllSelected(false));
 
     ghost.onclick = () => insertAfter(null);
 
