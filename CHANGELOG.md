@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.2] - 2026-08-31
+
+### Fixed
+
+- **The bundled Fallback Server heals like the browser does.** `genossrv.min.js` ships GenosSRV 0.9.1: a failed live send returns its operations to the queue and retries instead of logging and losing them, exact clock ties resolve to the same deterministic winner as the browser engine — in the conflict resolver and in the full-state merge alike — and its vendored transport reports an undeliverable channel instead of staying silent. Browser and server now share the whole 0.31.1 convergence contract; no wire change.
+
 ## [0.31.1] - 2026-08-31
 
 ### Fixed
