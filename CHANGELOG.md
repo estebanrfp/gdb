@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.1] - 2026-08-31
+
+### Fixed
+
+- **A live send that cannot deliver now heals itself.** The live broadcast path used to release its operations before the transport confirmed anything, and a channel racing toward close swallowed them silently — the last write of a session could vanish with no trace and nothing to repair it until the next join. Operations now stay queued until the send resolves; a failed send keeps them and retries every second until the channel heals or the peer rejoins (the bundled GenosRTC now reports an undeliverable channel instead of dropping data); and the join handshake is sent twice, covering channels that report open before being writable — the digest gate makes the repeat free. Event-driven end to end: a room at rest pays nothing — no timers, no extra messages, no background scans.
+
+- **An exact clock tie between two concurrent writers can no longer freeze a node in permanent divergence.** Two peers writing the same node in the same millisecond with equal logical counters used to reject each other's operation forever — and the state digest, blind to values, declared them converged, so no encounter could ever repair it. On a tie, every peer now picks the same winner through a deterministic value comparison, on the live path and on full-state catch-up alike; a tie against a deletion still refuses to resurrect. No wire change and no API surface — older peers interoperate unchanged.
+
 ## [0.31.0] - 2026-08-31
 
 ### Changed
