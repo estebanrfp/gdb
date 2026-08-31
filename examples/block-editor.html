@@ -274,7 +274,7 @@
 
     // The DOM paragraph appears when db.map emits, which may be after OR
     // before put() resolves — both paths hand the caret over.
-    let focusNextId = null;
+    let focusNextId = null, focusNextPos = 0;
 
     async function insertAfter(li) {
       const next = li?.nextElementSibling;
@@ -375,6 +375,35 @@
         }
       });
 
+      // Pasting multi-line text does what the model preaches: every line
+      // becomes its own node. The first line joins the text left of the
+      // caret, the last joins the text right of it, and the caret lands at
+      // the end of what was pasted. Single-line pastes stay native.
+      ta.addEventListener('paste', async (e) => {
+        const pasted = e.clipboardData?.getData('text/plain') ?? '';
+        if (!pasted.includes('\n')) return;
+        e.preventDefault();
+        const lines = pasted.replace(/\r/g, '').split(/\n+/).filter((l, i, arr) => l || arr.length === 1);
+        const after = ta.value.slice(ta.selectionEnd);
+        cancelSave(id);
+        ta.value = ta.value.slice(0, ta.selectionStart) + lines[0];
+        grow(ta);
+        await db.put({ text: ta.value, order: orderOf(li) }, id);
+        let prev = orderOf(li);
+        const nextEl = li.nextElementSibling;
+        const nextOrder = nextEl?.classList.contains('block') ? orderOf(nextEl) : undefined;
+        for (let i = 1; i < lines.length; i++) {
+          const isLast = i === lines.length - 1;
+          const order = keyBetween(prev, nextOrder);
+          const text = isLast ? lines[i] + after : lines[i];
+          if (isLast) { focusNextPos = lines[i].length; focusNextId = await db.put({ text, order }); }
+          else await db.put({ text, order });
+          prev = order;
+        }
+        if (lines.length === 1) { focusNextId = null; caretTo(li, ta.value.length); }
+        else caretTo(document.getElementById(focusNextId), focusNextPos);
+      });
+
       // While you type, your view is yours; on blur you rejoin the graph's
       // truth — which already holds the LWW outcome of any concurrent edit.
       // A save still pending is flushed first: your own keystrokes never revert.
@@ -392,7 +421,12 @@
       placeSorted(li);
       grow(ta);
       ghost.classList.add('hidden');
-      if (id === focusNextId) { focusNextId = null; ta.focus(); ta.setSelectionRange(0, 0); }
+      if (id === focusNextId) {
+        focusNextId = null;
+        ta.focus();
+        ta.setSelectionRange(focusNextPos, focusNextPos);
+        focusNextPos = 0;
+      }
       renderMarks();
     }
 
