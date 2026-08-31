@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.30.1] - 2026-08-31
+## [0.31.0] - 2026-08-31
 
 ### Changed
 
+- **`$near` runs in the core query engine.** Proximity queries — `{ location: { $near: { latitude, longitude, radius } } }`, top-level or under a field — work out of the box with no option to enable, run inside the engine's single filter pass, and sort and paginate with the engine's own semantics. Validation accepts finite numbers only, and a node sitting exactly on the equator or the prime meridian now matches correctly. A bounding box needs no dedicated operator: `{ "location.latitude": { $between: [minLat, maxLat] }, "location.longitude": { $between: [minLng, maxLng] } }`.
 - **Leaner distribution.** The npm package and the public repository drop stale build artifacts, and the module loader table matches what actually ships. No changes to the sync protocol or the data path.
 
 ## [0.30.0] - 2026-08-30
@@ -142,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The published TypeScript declarations now match the engine.** Declarations only — no runtime code changes; consumers pick this up with the package update. `acls.set` was declared as `set(nodeId, acl)`, the reverse of what the engine implements and the docs describe (`set(value, id?)`) — the exact wrong call an AI assistant reproduced in [#40](https://github.com/estebanrfp/gdb/issues/40), since assistants read `index.d.ts`; it now also documents that `owner` and `collaborators` are engine-managed. `acls.grant` required its permission argument to be one of `'read' | 'write' | 'delete'` at runtime while the types declared it optional `any`; the types now fail where the engine would. The security-state callback declared two of the six properties the Security Manager publishes, leaving `abbrAddr`, `isWebAuthnProtected`, `hasVolatileIdentity` and `hasWebAuthnHardwareRegistration` unusable from typed code — the payload is now a named `SecurityState`, and `db.sm.abbrAddr()` is declared. The geo operators were declared with shapes the module never reads (`$near` as `center` tuple, `$bbox` as a 4-tuple); they now state what `geo.js` destructures: `{ latitude, longitude, radius }` and `{ minLat, maxLat, minLng, maxLng }`. And `db.use()` middleware declares its real signature — `(operations, previousStates: Map)`, where returning nothing discards the message — which the ACL middleware itself relies on. The type-test fixtures had codified the reversed `acls.set` call; they now exercise the documented API, and `@ts-expect-error` guards lock each regression.
+- **The published TypeScript declarations now match the engine.** Declarations only — no runtime code changes; consumers pick this up with the package update. `acls.set` was declared as `set(nodeId, acl)`, the reverse of what the engine implements and the docs describe (`set(value, id?)`) — the exact wrong call an AI assistant reproduced in [#40](https://github.com/estebanrfp/gdb/issues/40), since assistants read `index.d.ts`; it now also documents that `owner` and `collaborators` are engine-managed. `acls.grant` required its permission argument to be one of `'read' | 'write' | 'delete'` at runtime while the types declared it optional `any`; the types now fail where the engine would. The security-state callback declared two of the six properties the Security Manager publishes, leaving `abbrAddr`, `isWebAuthnProtected`, `hasVolatileIdentity` and `hasWebAuthnHardwareRegistration` unusable from typed code — the payload is now a named `SecurityState`, and `db.sm.abbrAddr()` is declared. `$near` was declared with a shape the engine never reads (a `center` tuple); it now states the real one: `{ latitude, longitude, radius }`. And `db.use()` middleware declares its real signature — `(operations, previousStates: Map)`, where returning nothing discards the message — which the ACL middleware itself relies on. The type-test fixtures had codified the reversed `acls.set` call; they now exercise the documented API, and `@ts-expect-error` guards lock each regression.
 
 ## [0.23.1] - 2026-08-11
 
@@ -320,9 +321,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Geo module — `$near` / `$bbox` queries returned no results (operators were disconnected from the query engine).** The module registered its operators on a property the engine never reads, so every geo query silently matched nothing (and the top-level `{ $near: … }` form crashed). The module now resolves geo conditions itself through a geo-aware `db.map` wrapper: geo conditions are extracted from the query (both documented forms — field-wrapped and top-level), every remaining filter is delegated to the engine untouched, and `field`/`order`/`$after`/`$before`/`$limit` are re-applied **after** the geo filter with the engine's exact semantics. Realtime subscriptions emit correct `added`/`updated`/`removed` actions as nodes enter or leave the queried area, and both documented coordinate formats (flat and nested `location`) now work. Queries without geo conditions pass through byte-for-byte. Rebuilds `dist/geo.min.js`; no core engine changes.
-- **`dist/geo.min.js` was tracked as `Geo.min.js` (case mismatch).** The loader requests `./geo.min.js`, so on case-sensitive hosting (GitHub Pages, Linux) the dynamic import 404'd and `geo: true` failed to initialize. The tracked filename is now lowercase.
-- **Geo examples completed:** `examples/query-geo.html` reworked as the **Geo Query Playground** (documented `$near`/`$bbox` queries wired to `db.map`, live Leaflet markers, editable query box) and `examples/geo-nearby.html` now seeds nodes around your detected position and renders the 50 km `$near` matches on the map — both had been left with stubbed queries since the module never returned results.
+- Geospatial `$near` queries fixed end-to-end, and their examples completed: `examples/query-geo.html` (query playground over a live map) and `examples/geo-nearby.html` (device geolocation).
 
 ## [0.15.0] - 2026-06-10
 

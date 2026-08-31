@@ -440,21 +440,21 @@
                         <small>The circle is drawn and the map moves there, but nothing is inside it.</small>
                     </li>
 
-                    <li class="group">$bbox — a rectangle</li>
+                    <li class="group">$between — a rectangle</li>
                     <li class="query-item"
-                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
+                        data-query='{"query": {"location.latitude": {"$between": [40.700, 40.800]}, "location.longitude": {"$between": [-74.020, -73.900]}}, "order": "asc", "field": "name"}'>
                         <strong>Inside Manhattan</strong>
-                        <small>Four edges instead of a centre: no distance is computed.</small>
+                        <small>Two plain range checks instead of a centre: no distance is computed.</small>
                     </li>
                     <li class="query-item"
-                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.550, "maxLat": 40.720, "minLng": -74.100, "maxLng": -73.900}}}, "order": "asc", "field": "name"}'>
+                        data-query='{"query": {"location.latitude": {"$between": [40.550, 40.720]}, "location.longitude": {"$between": [-74.100, -73.900]}}, "order": "asc", "field": "name"}'>
                         <strong>Inside the harbour and south</strong>
                         <small>A box that cuts the city the other way.</small>
                     </li>
 
                     <li class="group">Geo with an ordinary filter</li>
                     <li class="query-item"
-                        data-query='{"query": {"location": {"$bbox": {"minLat": 40.700, "maxLat": 40.800, "minLng": -74.020, "maxLng": -73.900}}, "name": {"$regex": "^T"}}, "order": "asc", "field": "name"}'>
+                        data-query='{"query": {"location.latitude": {"$between": [40.700, 40.800]}, "location.longitude": {"$between": [-74.020, -73.900]}, "name": {"$regex": "^T"}}, "order": "asc", "field": "name"}'>
                         <strong>Inside Manhattan, name starting with T</strong>
                         <small>A geo operator is one clause among others: five places are inside the box, two of them
                             are also named like this.</small>
@@ -490,21 +490,23 @@
         /**
          * Geo queries, drawn.
          *
-         * `$near` and `$bbox` are ordinary query operators that happen to take
-         * coordinates. What makes them hard to picture is that the question
+         * `$near` is an ordinary query operator that happens to take
+         * coordinates — and a rectangle needs no operator at all: it is two
+         * `$between` range checks the engine already had. What makes geo
+         * queries hard to picture is that the question
          * itself has a shape — a circle of N kilometres, a rectangle of four
          * edges — and a list of results never shows it. So this page draws the
          * query as well as the answer: the dashed outline IS the operator, and
          * every marker inside it is a node that matched.
          *
          * What to read here, and where:
-         *   · gdb(name, { geo: true })      — enables the operators
          *   · { location: { $near: { latitude, longitude, radius } } }
-         *   · { location: { $bbox: { minLat, maxLat, minLng, maxLng } } }
+         *   · { "location.latitude":  { $between: [min, max] },
+         *       "location.longitude": { $between: [min, max] } }
          *   · order / field                 — ordinary sorting, on top of geo
          *
-         * Coordinates live in a nested `location` object, which is the field the
-         * operators target. The last preset shows a geo clause beside a $regex:
+         * Coordinates live in a nested `location` object; `$near` targets the
+         * field, and dotted paths reach inside it for the ranges. The last preset shows a geo clause beside a $regex:
          * geo is part of the query language, not a separate dialect.
          */
         import { gdb } from "../dist/index.js"
@@ -610,9 +612,9 @@
             if (document.documentElement.dataset.pref === "system") applyTheme("system")
         })
 
-        // `geo: true` is what makes $near and $bbox work; without it they are
-        // unknown operators. No `rtc`: nothing here is about the transport.
-        const db = await gdb("genosdb-geo-queries", { geo: true })
+        // No options at all: $near ships in the core query engine. No `rtc`:
+        // nothing here is about the transport.
+        const db = await gdb("genosdb-geo-queries")
 
         // ── The map ─────────────────────────────────────────────────
         /**
@@ -689,9 +691,10 @@
                 }))
             }
 
-            if (geo.$bbox) {
-                const { minLat, maxLat, minLng, maxLng } = geo.$bbox
-                shapes.push(L.rectangle([[minLat, minLng], [maxLat, maxLng]], {
+            const latB = options?.query?.["location.latitude"]?.$between
+            const lngB = options?.query?.["location.longitude"]?.$between
+            if (latB && lngB) {
+                shapes.push(L.rectangle([[latB[0], lngB[0]], [latB[1], lngB[1]]], {
                     color: accent, weight: 1.5, dashArray: "5 5", fill: true, fillOpacity: .06
                 }))
             }

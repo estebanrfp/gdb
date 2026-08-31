@@ -187,6 +187,7 @@ The `query` field supports an advanced query language with special operators:
 | `$or`      | At least one condition must be true                                                          | `{ $or: [{ age: { $gt: 18 } }, { status: 'active' }] }`  |
 | `$not`     | Negates a condition                                                                          | `{ $not: { age: { $gt: 18 } } }`                         |
 | `$edge`    | Performs a recursive graph traversal, returning all descendant nodes that match a sub-query. | { $edge: { type: 'Person', age: { $gt: 18 } } }          |
+| `$near`    | Proximity match by Haversine distance; coordinates in degrees, radius in km.                 | `{ location: { $near: { latitude: 40.7, longitude: -74, radius: 5 } } }` |
 
 > **Key Note on `$text`:** it always applies to a **specific field** — `{ title: { $text: q } }` — never to the node as a whole. Before matching, both the field and the search term are normalized: accents are folded (`café` matches `cafe`), case is ignored and punctuation is stripped, so no escaping is needed. Arrays are supported: the field matches if any of its entries does. To search several fields at once, combine it with `$or`:
 >

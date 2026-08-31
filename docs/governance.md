@@ -75,8 +75,6 @@ The `if` block is passed verbatim to the query engine, so **every operator avail
   then: { assignRole: "manager" } }
 ```
 
-Operators contributed by optional modules (for example the [geo module](geo-module.md)'s `$near` / `$bbox`) also work when the module is enabled.
-
 ## Where the objective data lives
 
 Rules are evaluated against the **`user:<address>` node** — the same node where the Security Manager stores the user's role. The application writes the user's metrics (points, reputation, counters…) into that node, and the rules read them from there. For objectives based on other data ("created 5 posts"), aggregate a counter into the user node whenever the action happens.

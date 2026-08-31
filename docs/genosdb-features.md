@@ -5,7 +5,6 @@
 *   **Modular Design:** The database is initialized with a lean core, allowing features to be enabled on-demand through modules to optimize performance and bundle size.
     *   `rtc`: Enables the GenosRTC module for all P2P synchronization and real-time communication.
     *   `sm`: Activates the Security Manager for identity, RBAC, and encryption.
-    *   `geo`: Loads the Geo-spatial module.
 
 *   **Storage and Persistence:**
     *   **Primary Storage Engine:** Utilizes **OPFS (Origin Private File System)** for high-performance, sandboxed, and persistent local storage directly in the browser.

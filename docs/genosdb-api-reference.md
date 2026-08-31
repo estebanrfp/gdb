@@ -42,7 +42,6 @@ Creates and configures a database connection.
       - `turnConfig` `{Array<Object>}` – Configuration for TURN servers, now passed inside the `rtc` object.
       - `cells` `{boolean | Object}` – Enable Cellular Mesh overlay for massive scalability. Pass `true` for defaults or `{ cellSize }` (peers per cell, default 10).
     - `sm` `{Object}` – Enables and configures the Security Manager. Provide at least `superAdmins` (an array of authorized addresses).
-    - `geo` `{boolean}` – If `true`, loads the Geo module.
     - `password` `{string}` – Optional encryption key.
     - `debug` `{boolean}` _(optional)_ – If `true`, enables GenosDB's internal debug logging (persistence, synchronization, networking and module activity). The console stays fully silent by default. Defaults to `false`.
     - `saveDelay` `{number}` _(optional)_ – The debounce delay in milliseconds for saving the graph and the operation log to persistent storage. Higher values reduce disk I/O under heavy write loads but increase the risk of data loss if the browser crashes. Defaults to `200`.

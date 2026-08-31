@@ -117,7 +117,6 @@ GenosDB’s extensibility is driven by its modular design, allowing developers t
 ### 4.1 Available Modules
 
 -   **Security Module (SM)**: Enabled with `{ sm: { superAdmins: ["0x1234..."] } }`. Provides RBAC, node-level ACLs, rule-based Governance and WebAuthn.
--   **Geo Module**: Enabled with `geo: true`. Adds the geospatial operators `$near` and `$bbox` to queries.
 
 **Example (Enabling Modules)**:
 ```javascript

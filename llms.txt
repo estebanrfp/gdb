@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.26.1 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.31.0 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -26,9 +26,9 @@ Install: `npm i genosdb` · Current version: 0.26.1 · Runtime dependencies: non
 - The database is created with an **async factory**, never with `new`: `const db = await gdb(name, options)`.
 - Core methods: `put(value, id?)` · `get(id, callback?)` · `map(options?, callback?)` · `link(sourceId, targetId)` · `unlink(sourceId, targetId)` · `remove(id)` · `clear()` · `use(middleware)`.
 - `map` and `get` become reactive when given a callback. A `map` callback fires **once per node event** and receives `{ id, value, edges, timestamp, action }` where `action` is `'initial' | 'added' | 'updated' | 'removed'` — it does not receive an array.
-- Query operators live **inside** `query`: `$eq $ne $gt $gte $lt $lte $in $between $exists $startsWith $endsWith $contains $text $like $regex $not $and $or $edge`, plus `$near`/`$bbox` with the geo module. `$edge` performs recursive graph traversal and also goes inside `query`. `$text` matches per field (accent-insensitive), not across the whole node.
+- Query operators live **inside** `query`: `$eq $ne $gt $gte $lt $lte $in $between $exists $startsWith $endsWith $contains $text $like $regex $not $and $or $edge $near`. `$edge` performs recursive graph traversal and also goes inside `query`. `$text` matches per field (accent-insensitive), not across the whole node.
 - Sorting and pagination via `field`, `order`, `$limit`, `$after`, `$before`.
-- Options for `gdb(name, options)`: `rtc` (`true` or `{ relayUrls, turnConfig, cells }`), `sm`, `geo`, `password`, `debug`, `saveDelay`, `oplogSize`.
+- Options for `gdb(name, options)`: `rtc` (`true` or `{ relayUrls, turnConfig, cells }`), `sm`, `password`, `debug`, `saveDelay`, `oplogSize`.
 - With `rtc` enabled, `db.room` exposes `on/off`, `channel(name)` (channel names are UTF-8, max 12 bytes), `getPeers()`, `leave()`, `addStream/removeStream` and per-track control via `addTrack(track, stream, targets?, meta?)`, `removeTrack(track, targets?)`, `replaceTrack(oldTrack, newTrack, targets?, meta?)`. Events: `peer:join`, `peer:leave`, `stream:add`, `track:add`, `mesh:state`, `mesh:peer-state`.
 - `rtc: { cells: true }` enables Cellular Mesh, which partitions connections so a room scales beyond the point where full-mesh WebRTC collapses.
 - With `sm` configured, `db.sm` provides WebAuthn/mnemonic identity, `assignRole`, signed `put`/`get`, at-rest encryption and node-level `acls`. Roles are declared as `customRoles: { role: { can: [...], inherits: [...] } }` — note `customRoles`, not `roles`. Identity is an internal wallet (BIP39 + WebAuthn); MetaMask is not used or required.
@@ -36,18 +36,18 @@ Install: `npm i genosdb` · Current version: 0.26.1 · Runtime dependencies: non
 
 ## Documentation
 
-- [API reference](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-api-reference.md): every method, option and operator.
-- [Documentation index](https://github.com/estebanrfp/GenosDB/blob/main/docs/index.md): all guides.
-- [Examples](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-examples.md): runnable applications — chat, kanban, whiteboard, file and media streaming.
-- [Zero-trust security model](https://github.com/estebanrfp/GenosDB/blob/main/docs/zero-trust-security-model.md): what each role can and cannot do.
-- [GenosRTC architecture](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
-- [Cellular Mesh](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
-- [Fallback Server](https://github.com/estebanrfp/GenosDB/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
-- [Whitepaper](https://github.com/estebanrfp/GenosDB/blob/main/WHITEPAPER.md): architecture and design rationale.
+- [API reference](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-api-reference.md): every method, option and operator.
+- [Documentation index](https://github.com/estebanrfp/gdb/blob/main/docs/index.md): all guides.
+- [Examples](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-examples.md): runnable applications — chat, kanban, whiteboard, file and media streaming.
+- [Zero-trust security model](https://github.com/estebanrfp/gdb/blob/main/docs/zero-trust-security-model.md): what each role can and cannot do.
+- [GenosRTC architecture](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
+- [Cellular Mesh](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
+- [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
+- [Whitepaper](https://github.com/estebanrfp/gdb/blob/main/WHITEPAPER.md): architecture and design rationale.
 - [Articles](https://genosdb.com): concepts, comparisons and tutorials.
 
 ## Optional
 
-- [Migration guide](https://github.com/estebanrfp/GenosDB/blob/main/MIGRATION.md): moving from the removed `new GDB()` API.
-- [Changelog](https://github.com/estebanrfp/GenosDB/blob/main/CHANGELOG.md)
-- [Philosophy](https://github.com/estebanrfp/GenosDB/blob/main/PHILOSOPHY.md): why the source is closed and how collaboration works.
+- [Migration guide](https://github.com/estebanrfp/gdb/blob/main/MIGRATION.md): moving from the removed `new GDB()` API.
+- [Changelog](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md)
+- [Philosophy](https://github.com/estebanrfp/gdb/blob/main/PHILOSOPHY.md): why the source is closed and how collaboration works.

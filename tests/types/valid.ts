@@ -13,7 +13,6 @@ const db4 = await gdb("my-db", {
     cells: { cellSize: "auto", bridgesPerEdge: 2, maxCellSize: 50, targetCells: 100, debug: false },
   },
   sm: { superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"] },
-  geo: true,
 })
 
 // ── CRUD ────────────────────────────────────────────────────────────
@@ -113,7 +112,7 @@ await sm.clearSecurity()
 
 console.log(db2.selfId)
 
-// ── Geo module shapes (geo-module.md) ────────────────────────────────
-const db5 = await gdb("typed-geo", { geo: true })
+// ── $near shapes (core operator, both query forms) ───────────────────
+const db5 = await gdb("typed-geo")
 await db5.map({ query: { location: { $near: { latitude: 40.7589, longitude: -73.9851, radius: 5 } } } })
-await db5.map({ query: { location: { $bbox: { minLat: 40.7, maxLat: 40.8, minLng: -74.02, maxLng: -73.9 } } } })
+await db5.map({ query: { $near: { latitude: 40.7589, longitude: -73.9851, radius: 5 } } })

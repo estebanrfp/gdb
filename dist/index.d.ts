@@ -52,10 +52,8 @@ declare module "genosdb" {
     $or?: Query[]
     /** Recursive graph traversal: sub-query applied to every descendant. */
     $edge?: Query
-    /** Geo module: proximity search, radius in km (requires `geo: true`). */
+    /** Proximity search by Haversine distance, radius in km. */
     $near?: { latitude: number; longitude: number; radius: number }
-    /** Geo module: bounding-box search (requires `geo: true`). */
-    $bbox?: { minLat: number; maxLat: number; minLng: number; maxLng: number }
   }
 
   /** MongoDB-style filter: field names to literals or operator objects. */
@@ -263,8 +261,6 @@ declare module "genosdb" {
     rtc?: boolean | RTCOptions
     /** Enable the Security Manager (zero-trust, WebAuthn, governance). */
     sm?: SMOptions
-    /** Load the Geo module ($near / $bbox operators). */
-    geo?: boolean
     /** Optional encryption key. */
     password?: string
     /** Enable internal debug logging. Defaults to `false`. */

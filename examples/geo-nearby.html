@@ -356,7 +356,6 @@
          * the query is asked again with your new coordinates.
          *
          * What to read here, and where:
-         *   · gdb(name, { geo: true })   — enables $near / $bbox
          *   · db.map({ query: { location: { $near: { latitude, longitude, radius } } } })
          *   · navigator.geolocation.watchPosition — the only part that is not GenosDB
          *
@@ -455,10 +454,10 @@
             if (document.documentElement.dataset.pref === "system") applyTheme("system")
         })
 
-        // `geo: true` is what makes $near work; without it it is an unknown
-        // operator. No `rtc`: the neighbours are seeded locally around you, and
+        // No options at all: $near ships in the core query engine. No `rtc`:
+        // the neighbours are seeded locally around you, and
         // a peer would only replay someone else's neighbourhood into yours.
-        const db = await gdb("genosdb-geo-nearby", { geo: true })
+        const db = await gdb("genosdb-geo-nearby")
 
         // ── The map ─────────────────────────────────────────────────
         /**
