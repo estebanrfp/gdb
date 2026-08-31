@@ -492,18 +492,10 @@
           grow(ta);
         }
       }
-      peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end, at: Date.now() });
+      peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end });
       renderMarks();
     });
 
-    // The receiver side of self-healing: a caret not re-affirmed within 6s
-    // is gone — a lost "left" message never strands a ghost caret.
-    setInterval(() => {
-      let dropped = false;
-      for (const [peerId, mark] of peerAt)
-        if (mark.block && Date.now() - mark.at > 6000) { peerAt.delete(peerId); dropped = true; }
-      if (dropped) renderMarks();
-    }, 2000);
 
     const updatePresence = () => {
       const n = Object.keys(db.room.getPeers()).length;
@@ -522,15 +514,19 @@
     });
     updatePresence();
 
-    // Awareness heals itself: every 2s the REAL state — where the caret
-    // actually is, not the echo of the last event — is re-broadcast, so a
-    // lost message, a missed selectionchange or a late joiner never leaves
-    // a stale caret. Yjs's awareness protocol refreshes the same way.
+    // Awareness heals itself from the SENDER: every 2s the real state —
+    // where the caret actually is, not the echo of the last event — is
+    // re-broadcast, so a lost message or a missed selectionchange never
+    // leaves a stale caret; and if focus was lost but the room last heard a
+    // block, the missed "left" is re-sent once. No receiver-side clock: a
+    // background window's throttled timers just slow the refresh, and its
+    // caret stays where it truly is — peer:leave clears departed peers.
     setInterval(() => {
       const ta = document.activeElement, li = ta?.closest?.('.block');
       if (li) presenceChannel.send(lastSent = {
         kind: 'caret', block: li.id, start: ta.selectionStart, end: ta.selectionEnd,
       });
+      else if (lastSent?.block) presenceChannel.send(lastSent = { kind: 'caret', block: null });
     }, 2000);
 
     ghost.onclick = () => insertAfter(null);
