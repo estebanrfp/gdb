@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.4] - 2026-09-02
+
+### Fixed
+
+- **The last writes before a tab closes now reach the oplog.** The oplog joined the 200 ms debounced save in 0.30.0, but unlike the graph — saved as soon as the thread is idle — it always waited the full timer, so a write made under 200 ms before the tab closed kept its node and lost its oplog entry: on the device's return its catch-up window no longer named the write, peers already up to date asked for no full state, and the write never travelled by delta. The window now flushes the moment the page goes hidden (backgrounded, navigated away or closed), the last moment a browser reliably lets a page write.
+
 ## [0.33.3] - 2026-09-02
 
 ### Fixed
