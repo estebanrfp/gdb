@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-09-02
+
+### Security
+
+- **Edges are signed like values.** A `link` or `unlink` now signs the resulting edge set of its source node, and that receipt stays on the node — so a peer catching up takes an edge set only from an author allowed to link on that node, and only if it is newer than the one it holds. Until now a full state copied a node's edges unsigned: a peer in the room could hand a newcomer a legitimate node with invented or removed relations. Wire-breaking for `link`/`unlink` — update a room's peers together; a superadmin's sign-in re-signs every edge set written before. Bundled Fallback Server carries the same rule.
+
+### Fixed
+
+- **A linked node travels through catch-up again.** Linking a node advanced its clock past the one its author signed, so the node's receipt no longer verified on delta or full state and newcomers never received it; a `put` followed at once by a `link` lost its receipt outright. Every receipt now keeps the signed clock, and a write is only considered superseded by a newer value, not by a clock a link moved.
+
 ## [0.32.2] - 2026-09-02
 
 ### Fixed

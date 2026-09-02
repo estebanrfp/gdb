@@ -21,7 +21,7 @@ Any peer may run modified code, and the network — relays, superpeers, other pe
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.32.2.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.0.
 
 | guarantee | status |
 |---|---|
@@ -35,6 +35,7 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | The Fallback Server relays proofs, never authority: it verifies incoming operations and refuses roles it cannot verify against its constitution. | ✓ |
 | A passkey protects the private key with a secret only the authenticator yields; nothing on disk decrypts it. | ✓ |
 | An id the receiver has never seen belongs to whoever creates it first — use unguessable ids (`db.put` without an id generates one). | design rule |
+| Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused. | ✓ |
 
 ## Supported Versions
 

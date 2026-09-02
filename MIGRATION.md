@@ -10,6 +10,7 @@ Changes between engine versions are documented in the [CHANGELOG](CHANGELOG.md).
 
 - **0.27.0** — owned nodes written by earlier versions carry no provenance and stop travelling through catch-up: re-save an identity's owned nodes once after upgrading, and redeploy GenosSRV alongside your clients.
 - **0.28.0** — `db.sm.put` records use the key-envelope format exclusively: records encrypted by earlier releases no longer decrypt, so re-save durable encrypted data once after upgrading.
+- **0.33.0** — `link`/`unlink` sign the edge set they leave behind, and only signed sets travel through catch-up. Update a room's peers together; sign in once as a superadmin and its sweep re-signs every edge set written before (and repairs nodes a link had left untransportable in 0.32.x). Redeploy the Fallback Server from this release.
 - **0.32.0** — every node, tombstone and edge travels with its author's signature; state written by earlier versions carries none and stops travelling through catch-up until a superadmin signs in once, which re-signs everything it holds. Only an identity or a superadmin may write a `user:` node. Redeploy GenosSRV 0.10.0 with `GDB_SUPERADMINS` set. Passkeys created earlier keep working and gain PRF protection when protected again.
 
 ---
