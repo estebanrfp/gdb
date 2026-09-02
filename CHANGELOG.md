@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The ACL middleware is gone.** Since 0.32.0 the authorship gate judges every operation at apply time — live, delta and full state — against the node's owner and collaborators, so the middleware that re-checked the live path against a snapshot of the previous state was a second verdict with nothing to add. Removing it changes no guarantee: the ACL and envelope suites pass unchanged, and the browser now matches the bundled Fallback Server, which never had one. `db.use` middleware keeps receiving `(operations, previousStates)`.
 
+### Fixed
+
+- **A removed node no longer breaks its sources' signed edge sets.** `db.remove` rewrote the edge list of every node pointing to the removed one without re-signing it, so those sets failed verification and stopped travelling through full state: once the original links left the oplog window, a newcomer received the node with no relations at all. A removed node's id now stays in the lists that pointed to it as an inert reference — `$edge` skips it, `link` refuses it, `unlink` drops it and signs the new set. On the delta path a replayed older link no longer overrides a newer signed set. Bundled Fallback Server carries both fixes.
+
 ## [0.33.1] - 2026-09-02
 
 ### Security

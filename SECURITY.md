@@ -35,7 +35,7 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | The Fallback Server relays proofs, never authority: it verifies incoming operations and refuses roles it cannot verify against its constitution. | ✓ |
 | A passkey protects the private key with a secret only the authenticator yields; nothing on disk decrypts it. | ✓ |
 | An id that begins with its owner's address (`0x…:`) is created and written only by that owner and its collaborators, on every peer — the engine names owned nodes that way when it generates the id. Under any other id, a node the receiver has never seen belongs to whoever creates it first. | ✓ |
-| Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused. | ✓ |
+| Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused; a removal rewrites no other node's set. | ✓ |
 
 ## Supported Versions
 

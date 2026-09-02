@@ -139,9 +139,9 @@ In this example:
 
    - Each node carries an `edges` array of target IDs. `db.map()` callbacks expose it alongside `id`, `value`, and `timestamp`.
 
-3. **Edge Cleanup**:
+3. **Edges to a removed node**:
 
-   - When a node is deleted with `db.remove()`, references to it in other nodes' edges are cleaned up automatically — no dangling edges. To remove a single relationship while keeping both nodes, use `db.unlink()`.
+   - When a node is deleted with `db.remove()`, references to it stay in other nodes' `edges` as inert ids: `$edge` traversals skip a missing target and `link` refuses one. An edge set changes only by a signed `link`/`unlink`, so drop the reference with `db.unlink()`, which signs the source's new set.
 
 4. **Persistence & Notifications**:
    - All changes made by `link` are persisted to storage and emitted to listeners and peers, keeping the graph consistent across the network.
