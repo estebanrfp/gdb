@@ -477,7 +477,7 @@
          *   · db.put(value, id)          — an update, addressed by that id
          *   · db.link(from, to)          — a directed edge, source → target
          *   · db.unlink(from, to)        — that edge undone; both nodes stay
-         *   · db.remove(id)              — a node, and every edge pointing at it
+         *   · db.remove(id)              — a node; edges pointing at it vanish from every read
          *   · db.map({}, callback)       — a subscription: the canvas is redrawn
          *                                  by the same path a remote change takes
          *   · db.map({ query })          — one read, for the highlight
@@ -894,7 +894,7 @@
         const removeNode = async (id) => {
             const confirmed = await confirmAction({
                 title: `Delete "${labelOf(nodes.get(id)?.value)}"?`,
-                body: "The node goes, and so does every edge pointing at it. There is no undo.",
+                body: "The node goes, and every edge pointing at it vanishes with it, on every peer. There is no undo.",
                 confirmLabel: "Delete"
             })
             if (!confirmed) return

@@ -321,7 +321,7 @@
 
       updateStatus("Loading tasks...");
       const { unsubscribe } = await db.map(
-        { field: 'createdAt', order: 'asc' },
+        { query: { owner: db.sm.getActiveEthAddress() }, field: 'createdAt', order: 'asc' },
         ({ id, value, action }) => {
         if (action === 'initial' || action === 'added') {
           handleAddTask(id, value);
@@ -456,7 +456,8 @@
       await db.put({
         text: taskTextSpan.textContent,
         completed,
-        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now()
+        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now(),
+        owner: db.sm.getActiveEthAddress()
       }, id);
     }
 
@@ -468,7 +469,8 @@
       await db.put({
         text: newText.trim(),
         completed,
-        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now()
+        createdAt: parseInt(li.dataset.createdAt, 10) || Date.now(),
+        owner: db.sm.getActiveEthAddress()
       }, id);
       // The update will be handled by the db.map listener, which calls handleUpdateTask
     }
@@ -479,7 +481,7 @@
 
     async function addTask() {
       if (!taskInput.value.trim()) return;
-      await db.put({ text: taskInput.value.trim(), completed: false, createdAt: Date.now() });
+      await db.put({ text: taskInput.value.trim(), completed: false, createdAt: Date.now(), owner: db.sm.getActiveEthAddress() });
       taskInput.value = '';
     }
 
@@ -577,6 +579,11 @@
           rtc: true,
           sm: {
             superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"],
+            // Every identity keeps its own list: the base role is opened on purpose
+            // (since 0.32.0 a guest's writes are refused by every peer on every
+            // path), and each task carries its owner, so only its owner may write
+            // or delete it — every peer checks that against the signature.
+            customRoles: { guest: { can: ["read", "sync", "write", "delete"] } }
           }
         });
 

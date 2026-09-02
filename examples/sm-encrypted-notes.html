@@ -1130,7 +1130,15 @@
             // Not for production — it logs every operation.
             debug: true,
             rtc: true,
-            sm: { superAdmins: [SUPERADMIN.address] }
+            sm: {
+                superAdmins: [SUPERADMIN.address],
+                // Every identity here writes its own notes, so the base role is
+                // opened on purpose — authorization only. Since 0.32.0 a guest's
+                // writes are refused on every path by every peer, catch-up
+                // included, so a closed ladder would keep each visitor's notes on
+                // their own device. Ownership is still tested by the decrypt.
+                customRoles: { guest: { can: ["read", "sync", "write", "delete"] } }
+            }
         })
 
         // A mandatory door: Esc is native to <dialog> and must be refused

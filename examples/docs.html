@@ -869,8 +869,9 @@
          *
          * Every document is a node whose `owner` and `collaborators` decide who may
          * read, edit or delete it. Permissions are enforced by every peer, not by a
-         * server: the ACL middleware re-checks each incoming operation against the
-         * cryptographically verified signer, so a tampered client changes nothing.
+         * server: the authorship gate checks each incoming operation, on every
+         * path, against the cryptographically verified signer, so a tampered
+         * client changes nothing.
          *
          * What to read here, and where:
          *   · gdb(name, { rtc, sm })          — boot with the Security Manager + ACLs
@@ -1448,7 +1449,7 @@
                 if (currentPermission === "delete") {
                     // `acls.set` gates its local guard on 'write' alone, so a 'delete'
                     // collaborator has to write through db.put. Access is not being
-                    // bypassed: the ACL middleware runs on this and every other peer
+                    // bypassed: the authorship gate runs on this and every other peer
                     // and accepts 'delete' for a put. Merge by hand so the node keeps
                     // its owner and collaborators.
                     const { result } = await db.get(currentDocId)
