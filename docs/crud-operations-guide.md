@@ -9,7 +9,7 @@
 | `get(id)`                        | Retrieves the node with the specified ID and returns its value directly.                                                                                                                                                                                            |
 | `link(sourceId, targetId)`       | Creates a unidirectional relationship between two nodes identified by `sourceId` and `targetId`. Ensures both nodes exist before creating the link.                                                                                                                 |
 | `map({}, ({ ...fields }) => {})` | Iterates over all nodes in the database. Executes callback for each node with destructured fields (e.g., id, value, edges, timestamp, action). If realtime is true, listens for future updates. If iterable is false, passes all nodes as an array to the callback. |
-| `remove(id)`                     | Deletes a node by its ID. Also removes references to this node in other nodes' edges. Triggers real-time synchronization.                                                                                                            |
+| `remove(id)`                     | Deletes a node by its ID. Edges pointing to it disappear from `get`, `map` and `$edge` on every peer. Triggers real-time synchronization.                                                                                                            |
 | `clear()`                        | Deletes all nodes, relationships, and indexes from the database. Removes associated files from OPFS.                                                                                                                                                                |
 
 ---

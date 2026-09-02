@@ -1,7 +1,7 @@
 ### **Method: `remove(id)`**
 
 #### **Description**
-The `remove` method deletes a node from the graph by its unique identifier (`id`). Edges that pointed to it stay on their source nodes as inert references — traversals skip them and `db.unlink()` drops them — because an edge set is changed only by a signed `link`/`unlink`. Once the node is removed, the changes are persisted to storage, and listeners are notified of the deletion.
+The `remove` method deletes a node from the graph by its unique identifier (`id`). Edges that pointed to it disappear from every read — `get`, `map` and `$edge` — on every peer. No other node is rewritten: an edge set changes only by a signed `link`/`unlink`, so the source keeps the id in its signed set and the relation returns if the id is ever created again. Once the node is removed, the changes are persisted to storage, and listeners are notified of the deletion.
 
 This method is useful for removing nodes from the graph while ensuring data consistency and real-time updates.
 
@@ -22,7 +22,7 @@ This method is useful for removing nodes from the graph while ensuring data cons
    - The node with the specified `id` is deleted from the graph.
 
 3. **Edges pointing to it**:
-   - They stay on their source nodes as inert references: `$edge` traversals skip a missing target and `db.link()` refuses one. An edge set changes only by a signed `link`/`unlink`, so `remove` never rewrites another node's set; drop the reference with `db.unlink()`.
+   - They disappear from `get`, `map` and `$edge` on every peer: reads resolve `edges` against the nodes the peer holds. The source's signed edge set is not rewritten — an edge set changes only by a signed `link`/`unlink` — so `db.unlink()` drops the reference for good, and creating the id again restores the relation.
 
 4. **Persistence**:
    - Changes are saved to persistent storage (e.g., OPFS) using `saveGraphToOPFS`.
@@ -82,13 +82,12 @@ const nodeId2 = await db.put({ name: "Bob", age: 30 });
 await db.link(nodeId1, nodeId2);
 
 await db.remove(nodeId2);
-console.log((await db.get(nodeId1)).result.edges); // [nodeId2] — an inert reference
-await db.unlink(nodeId1, nodeId2);               // drops it, signing node1's new edge set
+console.log((await db.get(nodeId1)).result.edges); // [] — on every peer
 ```
 
 In this example:
 - A relationship (edge) is created between two nodes.
-- Removing the second node leaves the reference on the first; `unlink` drops it.
+- Removing the second node makes the edge disappear from every read of the first.
 
 ---
 
@@ -97,7 +96,7 @@ In this example:
    - If the specified `id` does not exist in the graph, the method logs an error message (`Nodo con ID '<id>' no encontrado.`) and exits without making changes.
 
 2. **Edges**:
-   - Edges pointing to the removed node are not rewritten: they stay as inert references until their source is `unlink`ed. Sets are signed by their last `link`/`unlink`, and `remove` holds no signature over other nodes' sets.
+   - Reads resolve `edges` against existing nodes, so an edge to the removed node vanishes from `get`, `map` and `$edge` everywhere. The source's signed set is not rewritten — `remove` holds no signature over other nodes' sets — which is why creating the id again restores the relation, and why `db.unlink()` is how to drop it for good.
 
 3. **Persistence**:
    - All changes made by `remove` are persisted to storage using `saveGraphToOPFS`. This ensures durability of the graph.
@@ -109,7 +108,7 @@ In this example:
 
 #### **Use Cases**
 1. **Deleting Records**: Use `remove` to delete nodes from the graph when records are no longer needed (e.g., users, products).
-2. **Keeping relations honest**: a removal never rewrites other nodes' signed edge sets; drop stale references with `unlink`.
+2. **Keeping relations honest**: a removal never rewrites other nodes' signed edge sets, and no read ever shows an edge to a node that does not exist.
 3. **Real-Time Updates**: The notification mechanism allows other parts of the application (or other peers) to react to the deletion in real time.
 
 ---
@@ -117,7 +116,7 @@ In this example:
 #### **Best Practices**
 - **Validate IDs**: Always ensure that the `id` you pass to `remove` exists in the graph to avoid unnecessary error messages.
 - **Handle Errors Gracefully**: If your application relies on the removal of nodes, consider wrapping the `remove` call in a try-catch block to handle errors programmatically.
-- **Test Edge Cases**: Test scenarios where nodes have multiple edges or where the graph is heavily interconnected, so your traversals handle inert references.
+- **Test Edge Cases**: Test scenarios where nodes have multiple edges or where the graph is heavily interconnected.
 
 ---
 

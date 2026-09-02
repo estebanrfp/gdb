@@ -289,7 +289,7 @@ declare module "genosdb" {
     link(sourceId: string, targetId: string): Promise<void>
     /** Remove a directed edge between two nodes; both nodes stay. */
     unlink(sourceId: string, targetId: string): Promise<void>
-    /** Delete a node and its references. */
+    /** Delete a node; edges pointing to it disappear from every read. */
     remove(id: string): Promise<void>
     /** Delete every node and index. */
     clear(): Promise<void>

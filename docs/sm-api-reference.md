@@ -503,7 +503,7 @@ const db = await gdb("my-db", {
 
 - **Node Ownership**: The creator of a node is automatically the owner with full permissions.
 - **Granular Permissions**: Grant/revoke specific permissions ('read', 'write', 'delete') per user per node.
-- **Automatic Enforcement**: Middleware validates permissions before operations are applied.
+- **Enforced on every path**: the authorship gate checks owner and collaborators on every operation a peer applies, live or through catch-up.
 - **Integration with Roles**: ACL permissions are checked in addition to RBAC roles.
 
 ### `db.sm.acls.set(value, id?)`

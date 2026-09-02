@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.3] - 2026-09-02
+
+### Fixed
+
+- **Edges to a removed node disappear from every read, on every peer.** Since 0.33.2 a removal leaves the removed id in the signed edge sets that pointed to it, and `get` and `map` returned it — an app listing `edges` had to filter it out itself, as it always had to on every peer but the remover's. Reads now resolve `edges` against the nodes the peer holds, exactly as `$edge` already traversed them: a removed target vanishes from `get`, `map` and its realtime events (the source reports `updated` with its remaining relations), and a target that arrives later appears. Nothing changes in the signed set, on the wire or in storage — an edge set is still rewritten only by a signed `link`/`unlink`, and creating a removed id again restores its relations. Bundled Fallback Server carries the same view.
+
 ## [0.33.2] - 2026-09-02
 
 ### Changed

@@ -228,7 +228,7 @@ await db.unlink(sourceId, targetId)
 
 ### `async remove(id)`
 
-Deletes a node and its references.
+Deletes a node. Edges pointing to it disappear from `get`, `map` and `$edge` on every peer; the sources' signed edge sets are not rewritten.
 
 - **Parameters**:
   - `id` `{string}`

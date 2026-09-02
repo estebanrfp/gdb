@@ -141,7 +141,7 @@ In this example:
 
 3. **Edges to a removed node**:
 
-   - When a node is deleted with `db.remove()`, references to it stay in other nodes' `edges` as inert ids: `$edge` traversals skip a missing target and `link` refuses one. An edge set changes only by a signed `link`/`unlink`, so drop the reference with `db.unlink()`, which signs the source's new set.
+   - When a node is deleted with `db.remove()`, edges pointing to it disappear from `get`, `map` and `$edge` on every peer. The source's signed edge set is not rewritten — an edge set changes only by a signed `link`/`unlink` — so creating the id again restores the relation, and `db.unlink()` drops it for good.
 
 4. **Persistence & Notifications**:
    - All changes made by `link` are persisted to storage and emitted to listeners and peers, keeping the graph consistent across the network.

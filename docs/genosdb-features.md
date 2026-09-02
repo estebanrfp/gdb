@@ -24,7 +24,7 @@
 *   **Main Functionalities (CRUD & Graph Operations):**
     *   `put(value, id?)`: Creates or updates a node in the graph.
     *   `get(id, callback?)`: Retrieves a single node by its ID. Can enter a **reactive mode** by providing a callback, which will be invoked with any subsequent changes to that specific node.
-    *   `remove(id)`: Deletes a node and removes all references (edges) to it from other nodes.
+    *   `remove(id)`: Deletes a node; edges pointing to it disappear from every read, on every peer.
     *   `link(sourceId, targetId)`: Creates a directed relationship (edge) from a source node to a target node.
     *   `clear()`: Atomically removes all nodes and indexes from the database.
 
