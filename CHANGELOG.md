@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-09-02
+
+### Security
+
+- **Every operation is judged by its author's signature, on every path.** State arriving through catch-up (`deltaSync`, `fullStateSync`) used to be applied by clock alone, so a peer in the room could inject or delete plain data, or forge a role node, by relaying it. Every node, tombstone and edge now travels as the operation its author signed and is applied only if that author may make it — RBAC for plain data, owner or collaborator for ACL nodes, a superadmin's receipt for roles. Full state goes through the same path as live operations. A relay needs no authority: the receipt travels with the node.
+- **A role is set only by a superadmin's signed write.** A `user:` node belongs to its identity, which may rewrite it; only a superadmin in `superAdmins` sets `role` or `expiresAt`. The superadmin's write stays on the node as its receipt and travels with it, so any peer relays a promotion and every peer verifies it.
+- **A passkey protects the private key with a secret only the authenticator yields.** WebAuthn PRF replaces the stored challenge; nothing on disk decrypts the key. Reloads resume silently; a new browser session asks the authenticator. Authenticators without PRF fall back to the previous scheme and say so. The API is unchanged.
+- **Update a room's peers together, and redeploy the Fallback Server with its constitution.** State written by earlier versions carries no receipt and stops travelling through catch-up until a superadmin signs in once, which re-signs everything it holds. GenosSRV 0.10.0 verifies incoming operations and role receipts against `GDB_SUPERADMINS`. Bundled GenosRTC 0.31.0 stretches room passwords (wire-breaking for rooms with a password) and caps inflated payloads. See [MIGRATION.md](MIGRATION.md).
+
 ## [0.31.3] - 2026-08-31
 
 ### Changed

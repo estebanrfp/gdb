@@ -19,7 +19,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
 
 1.  **Identity Management (via `db.sm`)**
     *   **Ethereum Identities:** Each user is identified by a cryptographic key pair (public/private address). All actions are tied to this identity.
-    *   **WebAuthn Protection:** Instead of traditional passwords, users' private keys are encrypted using secrets derived from WebAuthn interactions (e.g., biometrics, FIDO2 security keys). This provides passwordless, phishing-resistant security. The `db.sm.protectCurrentIdentityWithWebAuthn()` and `db.sm.loginCurrentUserWithWebAuthn()` functions manage this flow.
+    *   **WebAuthn Protection:** users' private keys are encrypted with a secret the authenticator itself yields — the WebAuthn PRF extension, after user verification — so nothing stored on the device decrypts the key. A reload resumes the session; a new browser session asks the authenticator again. Authenticators without PRF fall back to a device-bound secret and say so in the console. `db.sm.protectCurrentIdentityWithWebAuthn()` and `db.sm.loginCurrentUserWithWebAuthn()` manage this flow.
     *   **Mnemonic Recovery:** For account creation and backup, the SM supports standard BIP39 mnemonic phrases via `db.sm.startNewUserRegistration()` and `db.sm.loginOrRecoverUserWithMnemonic()`.
     *   **Session Management:** The SM's internal `SoftwareWalletManager` handles the creation of new identities, secure loading of existing ones, and session logout (`db.sm.clearSecurity()`). It ensures sensitive cryptographic material (the private key) is only held in memory when a user is actively authenticated.
 
@@ -68,16 +68,9 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
     d.  If both checks pass, the operation is applied to Peer B's local graph. Otherwise, it is rejected.
 6.  Unsigned or invalid operations are discarded, preserving the integrity of the database.
 
-**Security in Full State Synchronization:**
+**Security in state reconciliation:**
 
-A full state is a catch-up message rather than a stream of individual operations, and it is handled differently from live writes:
-
-*   **Signed envelope:** the message is verified when it carries a signature; malformed or invalidly signed payloads are discarded.
-*   **Room admission:** peers only exchange state after completing the signaling handshake, which requires the room's `password` when one is configured.
-*   **Unforgeable root of trust:** `superAdmins` is local configuration on each peer, never data — an incoming graph cannot change who that peer recognises as a superadmin.
-*   **Non-destructive reconciliation:** incoming state is merged node by node through the Hybrid Logical Clock. The newer version of each node wins and nodes held only by the receiver are preserved, so a peer cannot erase data it does not have.
-
-Live operations remain individually verified — signature, sender role and permission — as described above.
+Catch-up (`deltaSync` / `fullStateSync`) is judged exactly like live traffic. Every node, tombstone and edge travels as the operation its author signed and is applied only if that author may make it — RBAC for plain data, owner or collaborator for ACL nodes, a superadmin's receipt for roles. A relay needs no authority of its own: the receipt travels with the node, so a Fallback Server or any peer can serve state it could not have written. `superAdmins` stays local configuration on each peer, never data.
 
 **Conclusion:**
 

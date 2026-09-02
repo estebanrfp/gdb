@@ -87,6 +87,8 @@ Rules are evaluated against the **`user:<address>` node** — the same node wher
 > await db.put({ ...result.value, points: newPoints }, id)
 > ```
 
+> **Who writes a metric decides what the rule is worth.** Only the user's own session or a superadmin may write a `user:` node. A metric the user writes into their own node is self-reported, so a rule on it is self-service promotion. For merit that must resist a modified client, have an authority compute it — the Fallback Server or a superadmin counting signed nodes and writing the result. Time-based objectives (`offsetTimestamp`) need no metric at all.
+
 ## Conflict resolution: last-match-wins
 
 When several rules match the same user node in a cycle, **the last one in the list wins**. Order your rules **easy → hard** so each tier overrides the ones above it — and a merit ladder then needs **no explicit demotion rules**: losing the condition simply lets a lower rule win again.

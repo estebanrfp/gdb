@@ -373,6 +373,7 @@ class TaskManager {
 - **Real-Time Checks**: Permissions are checked before each operation
 - **Cryptographic Verification**: Operations are signed and verified by all peers
 - **Enforced against malicious peers**: every write to an owned node is checked against its cryptographically-verified author — on the live operation path and on the state-reconciliation paths (`deltaSync` / `fullStateSync`) alike, so a modified peer cannot write a node it does not own, even by bypassing the UI
+- **Unguessable ids**: each peer takes the first signed creation of an id as its owner, so a predictable id could be claimed first on a peer that has never seen the original. Let the engine generate ids, or use ids nobody can predict
 
 ### Best Practices
 

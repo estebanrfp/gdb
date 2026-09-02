@@ -15,6 +15,27 @@ GenosDB is **zero-trust and serverless**: every operation is cryptographically s
 
 Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
 
+## Threat model
+
+Any peer may run modified code, and the network — relays, superpeers, other peers — is hostile. A peer decides on its own copy only; every other peer verifies what it receives and applies nothing it cannot verify. Out of scope: a stolen mnemonic or an unlocked device — that is the identity itself.
+
+## Verified guarantees
+
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.32.0.
+
+| guarantee | status |
+|---|---|
+| Every operation is signed by its author and verified by every peer — live, delta and full state alike. What is not signed does not travel. | ✓ |
+| A new identity is a write-blocked `guest` until a superadmin signs a promotion. Only a superadmin sets a role, on every path. | ✓ |
+| A promotion reaches a peer that was away through any relay, receipt intact. | ✓ |
+| Node ACLs hold against a modified peer, on live operations and on state reconciliation. | ✓ |
+| Read access to encrypted records is cryptographic: `grant` wraps a key, `revoke` rotates it. | ✓ |
+| Governance promotes only with a superadmin's signature, from a browser or 24/7 from the Fallback Server. | ✓ |
+| An expired role is a guest on every peer. | ✓ |
+| The Fallback Server relays proofs, never authority: it verifies incoming operations and refuses roles it cannot verify against its constitution. | ✓ |
+| A passkey protects the private key with a secret only the authenticator yields; nothing on disk decrypts it. | ✓ |
+| An id the receiver has never seen belongs to whoever creates it first — use unguessable ids (`db.put` without an id generates one). | design rule |
+
 ## Supported Versions
 
 We provide security updates for all versions of our project:

@@ -270,7 +270,7 @@ document
 2.  **Metadata Support**: Metadata (like file name, type, and a unique ID) is packaged into a single object along with the file content (`ArrayBuffer`). This entire object is what's sent through the channel.
 3.  **Broadcasting Files**: The `fileChannel.send()` method transmits the object (metadata + payload) to all peers in the channel.
 4.  **Receiving Files**: The `fileChannel.on('message', ...)` event receives the object. The recipient can then extract the metadata and payload to reconstruct and save the file.
-5.  **Encryption**: By initializing `GDB` with a `password`, all data channel communications, including files, are end-to-end encrypted.
+5.  **Password**: a room `password` encrypts the signaling handshake — the SDP carrying each connection's DTLS fingerprint — so only peers that hold it can negotiate a connection; WebRTC then encrypts the data channel between the two peers. Set a password on any room whose plain data must not be readable by a relay that knows the room name.
 
 ---
 
