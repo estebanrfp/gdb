@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.1] - 2026-09-02
+
+### Security
+
+- **An id can name its owner.** An id that begins with an address and a colon (`0x…:`) belongs to that address on every peer: only the owner and its collaborators create, write, link or delete it, even on a peer that never saw the node. Until now a room member with write access could recreate an owned node under its id as their own, and a peer that had not seen the original kept the copy and refused the owner's for good. `db.put` and `sm.put` now name owned nodes that way when they generate the id; ids you choose keep their old semantics unless you prefix them with the owner. Bundled Fallback Server carries the same rule.
+
 ## [0.33.0] - 2026-09-02
 
 ### Security

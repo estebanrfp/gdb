@@ -373,7 +373,7 @@ class TaskManager {
 - **Real-Time Checks**: Permissions are checked before each operation
 - **Cryptographic Verification**: Operations are signed and verified by all peers
 - **Enforced against malicious peers**: every write to an owned node is checked against its cryptographically-verified author — on the live operation path and on the state-reconciliation paths (`deltaSync` / `fullStateSync`) alike, so a modified peer cannot write a node it does not own, even by bypassing the UI
-- **Unguessable ids**: each peer takes the first signed creation of an id as its owner, so a predictable id could be claimed first on a peer that has never seen the original. Let the engine generate ids, or use ids nobody can predict
+- **Owner-named ids**: an id that begins with the owner's address and a colon (`${owner}:…`) can only be created and written by that owner and its collaborators, on every peer — a peer that never saw the node cannot be handed someone else's copy under that id. `db.put` and `sm.put` name owned nodes that way when they generate the id; give your own ids the same prefix. Under any other id, a peer takes the first signed creation it sees as the owner
 
 ### Best Practices
 
