@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.2] - 2026-09-02
+
+### Fixed
+
+- **The Fallback Server serves rooms without a Security Manager again.** Bundled GenosSRV 0.10.2: since 0.10.0 the server judged every operation by its author's signature even where the room ran no Security Manager, so the plain, unsigned operations those rooms send were all refused and the server held nothing for them — a room relying on it for memory got none. The authorship gate now exists only where the room runs a Security Manager, exactly as the browser core does. Rooms with one are unchanged and still refuse unsigned operations. No API or wire change: every 0.32.x peer interoperates.
+
 ## [0.32.1] - 2026-09-02
 
 ### Security
