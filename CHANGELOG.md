@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1] - 2026-09-02
+
+### Security
+
+- **A verified signature vouches only for what it signed.** The authorship gate memoized recovered authors by signature alone, so a signature it had already verified would lend its author to any other payload presented with it. The cache is now keyed by signature and payload; a reused signature over a different payload is recovered afresh and refused. No API or wire change: 0.32.0 and 0.32.1 peers interoperate. Bundled GenosSRV 0.10.1 carries the same fix.
+
 ## [0.32.0] - 2026-09-02
 
 ### Security
