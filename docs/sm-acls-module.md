@@ -11,7 +11,7 @@ The **Access Control Lists (ACLs)** module provides fine-grained, node-level per
 - **Owner-Based Control**: Node creators are automatically owners with full permissions
 - **Real-Time Synchronization**: Permission changes sync across all peers
 - **Integration with RBAC**: Works alongside existing role-based permissions
-- **Automatic Middleware**: Enforces permissions on all database operations
+- **Enforced on every path**: the authorship gate checks owner and collaborators on every operation a peer applies
 - **Cryptographic Read Control**: on encrypted (`db.sm.put`) nodes, `grant` shares a key envelope and `revoke` rotates the content key — read access is enforced by encryption, not cooperation
 
 ### How permissions work
@@ -31,7 +31,7 @@ the caller is its owner, who then grants access to other addresses.
 
    delete ⊃ write ⊃ read                    everyone else → no access
 
-Every put / remove is re-checked by the ACL middleware on EVERY peer,
+Every put / remove is re-checked by the authorship gate on EVERY peer,
 so a tampered client cannot touch a node it does not own:
 
    owner                       ──►  allow
@@ -369,7 +369,7 @@ class TaskManager {
 - **No Self-Revocation**: Owners cannot revoke their own permissions
 
 ### Permission Validation
-- **Middleware Enforcement**: All operations are validated through ACL middleware
+- **Gate Enforcement**: every operation is validated by the authorship gate at apply time
 - **Real-Time Checks**: Permissions are checked before each operation
 - **Cryptographic Verification**: Operations are signed and verified by all peers
 - **Enforced against malicious peers**: every write to an owned node is checked against its cryptographically-verified author — on the live operation path and on the state-reconciliation paths (`deltaSync` / `fullStateSync`) alike, so a modified peer cannot write a node it does not own, even by bypassing the UI

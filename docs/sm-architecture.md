@@ -47,7 +47,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
     *   **Ownership Model:** The creator of a node automatically becomes the owner with full permissions (`read`, `write`, `delete`). Owners can grant or revoke permissions to other users for their nodes.
     *   **Permission Types:** Supports granular permissions: `'read'` (view node), `'write'` (update node), `'delete'` (remove node).
     *   **Integration with RBAC:** ACL checks are performed in addition to RBAC. A user must have both the role permission and the ACL permission for the operation.
-    *   **Automatic Middleware:** When enabled (`acls: true` in SM config), ACLs register middleware that enforces permissions on all database operations.
+    *   **Enforced on every apply path:** the authorship gate checks owner and collaborators on every operation a peer applies, live or through catch-up.
     *   **Enforced against malicious peers:** the cryptographically-verified author is checked against the node's owner and collaborators wherever a write is applied — live operations and state reconciliation alike — so node-level ACLs are real security against any peer, not just an honest-client convenience.
     *   **API Methods:** Exposed via `db.sm.acls.set()`, `db.sm.acls.grant()`, and `db.sm.acls.revoke()` for creating nodes with ACLs and managing permissions.
 
@@ -63,7 +63,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
 4.  **Peer B** (receiver), regardless of whether it has an active local session, receives the operation.
 5.  The SM on **Peer B**:
     a.  Verifies Peer A's signature.
-    b.  If the signature is valid, it queries the local GDB state for Peer A's assigned role (an **expired** role is downgraded to `guest`), and the cryptographically-verified author is propagated to the per-node ACL middleware.
+    b.  If the signature is valid, it queries the local GDB state for Peer A's assigned role (an **expired** role is downgraded to `guest`), and the cryptographically-verified author is what the per-node authorship gate judges.
     c.  It uses the RBAC rules to confirm that Peer A's role permits the operation.
     d.  If both checks pass, the operation is applied to Peer B's local graph. Otherwise, it is rejected.
 6.  Unsigned or invalid operations are discarded, preserving the integrity of the database.

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.2] - 2026-09-02
+
+### Changed
+
+- **The ACL middleware is gone.** Since 0.32.0 the authorship gate judges every operation at apply time — live, delta and full state — against the node's owner and collaborators, so the middleware that re-checked the live path against a snapshot of the previous state was a second verdict with nothing to add. Removing it changes no guarantee: the ACL and envelope suites pass unchanged, and the browser now matches the bundled Fallback Server, which never had one. `db.use` middleware keeps receiving `(operations, previousStates)`.
+
 ## [0.33.1] - 2026-09-02
 
 ### Security
