@@ -156,8 +156,9 @@ It is recommended to use a separate database instance for each project or browse
 
 The portal above is the **secure default**, where a `SuperAdmin` decides who can
 write. For apps that are open by design — public forums, polls, comment boards —
-grant the base `guest` role `write` (and `link`) permissions via the SM's
-`customRoles` option, and anyone can post immediately. This opens **authorization,
+grant the base `guest` role `write` and `link` — and `delete`, if guests remove
+their own nodes: a removal by a role without it is refused by every other peer —
+via the SM's `customRoles` option, and anyone can post immediately. This opens **authorization,
 not authenticity**: every operation is still signed and peer-verified, so forged
 writes are rejected — you are only letting unpromoted identities participate.
 
