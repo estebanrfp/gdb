@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.5] - 2026-09-03
+
+### Fixed
+
+- **Cellular rooms no longer throw on every peer join.** The bundled transport's overlay returned nothing from `channel.send`, so the engine's join handshake, which chains on it, raised an uncaught `TypeError` for every peer joining a room opened with `cells` while no session was signed in, and the second handshake two seconds later was never scheduled. The bundled transport (0.31.1) now returns a resolved promise on that path; nothing about delivery, retries or traffic changes. The bundled Fallback Server carries the same transport.
+
 ## [0.33.4] - 2026-09-02
 
 ### Changed

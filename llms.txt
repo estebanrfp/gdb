@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.33.4 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.33.5 · Runtime dependencies: none.
 
 ## What it is good for
 

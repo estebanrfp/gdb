@@ -21,7 +21,7 @@ Any peer may run modified code, and the network — relays, superpeers, other pe
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.4.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.5.
 
 | guarantee | status |
 |---|---|
