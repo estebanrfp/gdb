@@ -1313,6 +1313,21 @@
             return millis ? new Date(millis).toLocaleString() : ""
         }
 
+        /**
+         * A field defends itself only while someone is typing in it RIGHT NOW.
+         * `document.activeElement` alone is not that test: a window that lost
+         * the system focus keeps naming its last field, and the document would
+         * stay frozen there until it was clicked again. Anything else adopts
+         * the incoming text and keeps the caret where it was.
+         */
+        const paintField = (field, text) => {
+            if (field.value === text) return
+            if (field === document.activeElement && document.hasFocus()) return
+            const { selectionStart: from, selectionEnd: to } = field
+            field.value = text
+            field.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length))
+        }
+
         const renderEditor = (node) => {
             const { value, timestamp } = node
             const permission = currentPermission = permissionOf(value)
@@ -1328,11 +1343,12 @@
                 : value.owner ? `owner ${db.sm.abbrAddr(value.owner)}` : "unowned"
             el.modified.textContent = localTime(timestamp)
 
-            // Never overwrite the field you are typing in. Autosave means our own
-            // write comes straight back through this callback, and reassigning
-            // .value would jump the caret to the end on every keystroke.
-            if (document.activeElement !== el.title) el.title.value = value.title ?? ""
-            if (document.activeElement !== el.content) el.content.value = value.content ?? ""
+            // Never overwrite the field you are typing in RIGHT NOW. Autosave
+            // means our own write comes straight back through this callback, and
+            // reassigning .value would jump the caret to the end on every
+            // keystroke.
+            paintField(el.title, value.title ?? "")
+            paintField(el.content, value.content ?? "")
 
             el.title.disabled = !canWrite
             el.content.readOnly = !canWrite
