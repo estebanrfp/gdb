@@ -259,6 +259,22 @@
       ta.setSelectionRange(pos, pos);
     };
 
+    // "The user is typing here RIGHT NOW" — document.activeElement alone is
+    // not that: a window that lost the system focus keeps naming its last
+    // textarea, so the paragraph would freeze in the very second window this
+    // example asks you to open.
+    const isMine = (ta) => ta === document.activeElement && document.hasFocus();
+
+    // Remote text lands in a paragraph nobody is typing in. The caret keeps
+    // its offset — clamped to the new text — so a writer who parked it there
+    // and walked away resumes where they were.
+    const paint = (ta, text) => {
+      const { selectionStart: from, selectionEnd: to } = ta;
+      ta.value = text;
+      ta.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length));
+      grow(ta);
+    };
+
     // One debounced save per paragraph, so typing costs one put per pause.
     const savers = new Map();
     function scheduleSave(id, li) {
@@ -435,13 +451,12 @@
       if (!li) return;
       if (orderOf(li) !== order) { li.dataset.order = order; placeSorted(li); }
       const ta = li.querySelector('textarea');
-      // Never fight the local cursor: a focused paragraph keeps what you see,
-      // and syncs to the graph's truth on blur (handler above). The live
-      // channel may have painted this text already — then this is a no-op;
-      // when it differs, the graph is the truth and always lands.
-      if (document.activeElement !== ta && ta.value !== text) {
-        ta.value = text;
-        grow(ta);
+      // Never fight the local cursor: the paragraph being typed in RIGHT NOW
+      // keeps what you see, and syncs to the graph's truth on blur (handler
+      // above). The live channel may have painted this text already — then
+      // this is a no-op; when it differs, the graph is the truth and lands.
+      if (!isMine(ta) && ta.value !== text) {
+        paint(ta, text);
         li.classList.remove('remote');
         void li.offsetWidth; // restart the flash animation
         li.classList.add('remote');
@@ -540,10 +555,7 @@
     presenceChannel.on('message', (msg, fromPeerId) => {
       if (msg.kind === 'text') {
         const ta = document.getElementById(msg.block)?.querySelector('textarea');
-        if (ta && document.activeElement !== ta && ta.value !== msg.text) {
-          ta.value = msg.text;
-          grow(ta);
-        }
+        if (ta && !isMine(ta) && ta.value !== msg.text) paint(ta, msg.text);
       }
       peerAt.set(fromPeerId, { block: msg.block, start: msg.start, end: msg.end });
       renderMarks();

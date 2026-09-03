@@ -1377,8 +1377,37 @@
       tpl.content.querySelectorAll('.cursor, .selection-rect').forEach(el => el.remove());
       return tpl.innerHTML;
     };
+
+    // A repaint replaces the whole DOM, so a cloned Range is left pointing at
+    // destroyed nodes. Measure the caret as a plain character offset into the
+    // editor's text and put it back there afterwards: a remote edit elsewhere
+    // in the document must not throw the local caret to the start of it. (The
+    // presence overlays are empty divs — they add no characters to the count.)
+    const caretOffset = () => {
+      const sel = getSelection();
+      if (!sel?.rangeCount || !editor.contains(sel.anchorNode)) return null;
+      const range = sel.getRangeAt(0), upToCaret = range.cloneRange();
+      upToCaret.selectNodeContents(editor);
+      upToCaret.setEnd(range.endContainer, range.endOffset);
+      return upToCaret.toString().length;
+    };
+
+    const putCaretAt = (offset) => {
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      let seen = 0, node;
+      while ((node = walker.nextNode()) && seen + node.length < offset) seen += node.length;
+      if (node) { range.setStart(node, offset - seen); range.collapse(true); }
+      else { range.selectNodeContents(editor); range.collapse(false); } // the text is shorter now
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+
     const setEditorHTML = (html) => {
+      const at = caretOffset();
       editor.innerHTML = sanitizeHTML(html);
+      if (at !== null) putCaretAt(at);
       // The overlay elements were just wiped with the old DOM; drop the stale refs
       // so the next cursor message recreates them cleanly.
       for (const k of Object.keys(cursorMap)) delete cursorMap[k];
