@@ -946,21 +946,6 @@
         }
 
         /**
-         * A field defends itself only while someone is typing in it RIGHT NOW.
-         * `document.activeElement` alone is not that test: a window that lost
-         * the system focus keeps naming its last field, and the note would stay
-         * frozen there until it was clicked again. Anything else adopts the
-         * incoming text and keeps the caret where it was.
-         */
-        const paintField = (field, text) => {
-            if (field.value === text) return
-            if (field === document.activeElement && document.hasFocus()) return
-            const { selectionStart: from, selectionEnd: to } = field
-            field.value = text
-            field.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length))
-        }
-
-        /**
          * The detail: the note as its owner reads it, and as it is stored.
          *
          * Decryption is attempted rather than assumed — the SM throws
@@ -980,11 +965,12 @@
             let plain = null
             try { plain = await db.sm.decryptDataForCurrentUser(note.secret) } catch { plain = null }
 
-            // Never overwrite the field being typed in RIGHT NOW: autosave means
-            // our own write comes back through this same path, and reassigning
-            // .value would jump the caret to the end on every keystroke.
-            paintField(el.detailTitle, note.title ?? "")
-            paintField(el.detailBody, plain?.content ?? "")
+            // Never overwrite the field being typed in RIGHT NOW: autosave sends
+            // our own write back through this path, and activeElement alone is
+            // not that test — a background window still names its last field.
+            const typing = document.hasFocus() && document.activeElement
+            if (el.detailTitle !== typing) el.detailTitle.value = note.title ?? ""
+            if (el.detailBody !== typing) el.detailBody.value = plain?.content ?? ""
 
             el.detailTitle.disabled = !plain
             el.detailBody.disabled = !plain
@@ -1152,11 +1138,9 @@
                 // writes are refused on every path by every peer, catch-up
                 // included, so a closed ladder would keep each visitor's notes on
                 // their own device. Ownership is still tested by the decrypt.
-                //
-                // The whole ladder is declared, not just the role that changes:
-                // a role with no entry here can do nothing, so naming only
-                // `guest` would leave the demo superadmin unable to write —
-                // saving to its own disk while every peer refused its notes.
+                // The whole ladder is declared, not only the role that changes:
+                // a role absent from it can do nothing, so naming just `guest`
+                // would leave the demo superadmin refused by every peer.
                 customRoles: {
                     superadmin: { can: ["assignRole", "deleteAny"], inherits: ["admin"] },
                     admin: { can: ["delete"], inherits: ["manager"] },
