@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GenosDB Outliner</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <style>
     /* Minimal profile: only the tokens this page paints, with the design
        guide's exact values. Dark, fixed — an editor is a product surface. */
@@ -32,13 +33,59 @@
 
     body {
       margin: 0;
-      padding: 48px var(--space-5) 30vh;
+      height: 100vh;
+      height: 100dvh; /* the mobile address bar is not part of the viewport */
+      overflow: hidden;
       background: var(--bg-primary);
       color: var(--text-primary);
       font: 14px/1.5 var(--font);
     }
 
-    .page-head, .toolbar, .outline, .ghost { max-width: 680px; margin-inline: auto; }
+    /* Two outputs of one graph, side by side: the outline you edit and the
+       graph it is stored as. Each panel scrolls itself; the page never does. */
+    .bench {
+      display: grid;
+      grid-template-columns: var(--outline-width, 50%) 11px minmax(0, 1fr);
+      height: 100vh;
+      height: 100dvh;
+    }
+    .panel { min-width: 0; min-height: 0; overflow: auto; padding: var(--space-5); }
+    .outline-panel { padding-bottom: 30vh; }
+    .graph-panel { display: flex; flex-direction: column; overflow: hidden; }
+
+    /* The line between the panels is the resize control: an 11px hit area
+       around a 1px rule, two short bars centred on it to say it moves. */
+    .splitter { position: relative; cursor: col-resize; touch-action: none; }
+    .splitter::before { content: ""; position: absolute; inset: 0 auto 0 5px; width: 1px; background: var(--border-subtle); }
+    .splitter::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 5px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      border-left: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      background: var(--bg-primary);
+    }
+    .splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+    .splitter:focus-visible { outline: none; }
+    .graph-panel h2 {
+      margin: 0 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 820px) {
+      .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 55%) minmax(0, 45%); }
+      .splitter { display: none; }
+      .outline-panel { border-bottom: 1px solid var(--border-subtle); }
+    }
+
     .page-head { margin-bottom: var(--space-6); }
     h1 { margin: 0 0 var(--space-2); font-size: 17px; }
     .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
@@ -157,35 +204,64 @@
       position: fixed;
       right: var(--space-5);
       bottom: var(--space-5);
-      font-family: var(--mono);
-      font-size: 12px;
+      font: 12px var(--mono);
       color: var(--text-tertiary);
     }
+
+    /* The drawing: a dot per node, a line per edge, laid out by forces and
+       filling the panel. */
+    .graph { flex: 1; min-height: 0; width: 100%; }
+    .g-edge { stroke: var(--border-strong); stroke-width: 1.5; }
+    .g-edge.in { stroke: var(--text-tertiary); }
+    .g-node { cursor: grab; }
+    .g-node:active { cursor: grabbing; }
+    .g-node circle { fill: var(--text-tertiary); }
+    .g-node text { font: 11px var(--font); fill: var(--text-tertiary); user-select: none; }
+    .g-node.in circle { fill: var(--text-secondary); }
+    .g-node.in text { fill: var(--text-primary); }
+    .g-node.here circle { stroke: var(--accent); stroke-width: 2; }
+    .g-node.hit circle, .g-node.hit text { fill: var(--accent); }
+    .g-node:hover circle { fill: var(--accent); }
   </style>
 </head>
 
 <body>
-  <header class="page-head">
-    <h1>Outliner</h1>
-    <p class="hint">A Workflowy-style outline where the tree is the graph itself: every bullet is a
-      node and its children are its edges, so moving a branch is one <code>unlink</code> and one
-      <code>link</code> — nothing is re-serialized, however deep the branch. <kbd>Enter</kbd> splits
-      a bullet, <kbd>Backspace</kbd> at its start merges it into the one above,
-      <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> move it across the tree, <kbd>Alt+↑↓</kbd> reorder it,
-      <kbd>Ctrl/⌘+↑↓</kbd> fold it.</p>
-    <p class="hint">Click a dot to zoom in: the outline re-roots on that bullet and the search runs
-      <code>$edge</code> from it, through every descendant at any depth, in one query. Open a
-      second window and move a whole branch — the other side receives two edge changes, not a
-      document.</p>
-  </header>
+  <div id="bench" class="bench">
+    <section class="panel outline-panel">
+      <header class="page-head">
+        <h1>Outliner</h1>
+        <p class="hint">A Workflowy-style outline where the tree is the graph itself: every bullet
+          is a node and its children are its edges, so moving a branch is one <code>unlink</code>
+          and one <code>link</code> — nothing is re-serialized, however deep the branch.
+          <kbd>Enter</kbd> splits a bullet, <kbd>Backspace</kbd> at its start merges it into the
+          one above, <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> move it across the tree,
+          <kbd>Alt+↑↓</kbd> reorder it, <kbd>Ctrl/⌘+↑↓</kbd> fold it.</p>
+        <p class="hint">On the right, the same outline drawn as the graph it is stored as: a dot
+          per node, a line per edge, laid out by forces — drag a dot and the rest gives way. Click
+          a dot, here or there, to zoom in: the outline re-roots on that bullet and the search runs
+          <code>$edge</code> from it, through every descendant at any depth, in one query. Open a
+          second window and move a whole branch: it swings to its new parent on the drawing, and
+          the other side received two edge changes, not a document.</p>
+      </header>
 
-  <div class="toolbar">
-    <nav id="crumbs" class="crumbs hidden" aria-label="Where you are"></nav>
-    <input id="search" class="search" type="text" placeholder="Search here…" aria-label="Search">
+      <div class="toolbar">
+        <nav id="crumbs" class="crumbs hidden" aria-label="Where you are"></nav>
+        <input id="search" class="search" type="text" placeholder="Search here…" aria-label="Search">
+      </div>
+
+      <ul id="doc" class="outline"></ul>
+      <p id="empty" class="ghost">Click here to start writing…</p>
+    </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the panels"
+      tabindex="0"></div>
+
+    <section class="panel graph-panel" aria-label="The graph">
+      <h2>The graph, as stored</h2>
+      <svg id="graph" class="graph" aria-hidden="true"></svg>
+      <p id="graph-empty" class="ghost">Nothing stored yet.</p>
+    </section>
   </div>
-
-  <ul id="doc" class="outline"></ul>
-  <p id="empty" class="ghost">Click here to start writing…</p>
   <span id="presence" class="presence">0 bullets · 0 peers</span>
 
   <script type="module">
@@ -232,6 +308,7 @@
 
     const $ = (id) => document.getElementById(id)
     const doc = $("doc"), ghost = $("empty"), crumbs = $("crumbs"), search = $("search"), presenceEl = $("presence")
+    const graph = $("graph"), graphEmpty = $("graph-empty"), bench = $("bench"), splitter = $("splitter")
 
     const nodes = new Map()      // id -> { value, edges }: one realtime map keeps it current
     const lis = new Map()        // id -> <li>, created once and moved by the render
@@ -252,18 +329,30 @@
       return lo + (hi - lo) * (0.25 + Math.random() * 0.5)
     }
 
-    // Parents and children, derived from the edges on every change. A bullet
-    // is shown under ONE parent — the lowest id, so every window picks the
-    // same — because two peers moving the same bullet at once can leave it
-    // linked from two; the next move unlinks it from all of them.
+    // Parents and children, derived from the edges on every change. The
+    // outline is a spanning tree of the graph, walked from the bullets no
+    // edge points at, in id order, so every window picks the same tree. Two
+    // peers moving the same bullet at once can leave it linked from two
+    // parents: it shows under the first one the walk reaches, the drawing
+    // shows both edges, and the next move unlinks it from all of them. A
+    // bullet the walk never reaches (a cycle of crossed moves) is taken as
+    // top level, so no node can ever vanish from the view.
     const index = () => {
       parentOf = new Map(); childrenOf = new Map()
-      for (const pid of [...nodes.keys()].sort()) {
-        for (const cid of nodes.get(pid).edges) {
-          if (nodes.has(cid) && !parentOf.has(cid)) parentOf.set(cid, pid)
+      const ids = [...nodes.keys()].sort()
+      const pointedAt = new Set(ids.flatMap((id) => nodes.get(id).edges))
+      const inTree = new Set()
+      const walk = (id) => {
+        for (const cid of nodes.get(id).edges) {
+          if (!nodes.has(cid) || inTree.has(cid)) continue
+          inTree.add(cid)
+          parentOf.set(cid, id)
+          walk(cid)
         }
       }
-      for (const id of nodes.keys()) {
+      for (const id of ids) if (!pointedAt.has(id)) { inTree.add(id); walk(id) }
+      for (const id of ids) if (!inTree.has(id)) { inTree.add(id); walk(id) }
+      for (const id of ids) {
         const pid = parentOf.get(id) ?? ""
         ;(childrenOf.get(pid) ?? childrenOf.set(pid, []).get(pid)).push(id)
       }
@@ -318,6 +407,9 @@
 
       fold.addEventListener("click", () => toggle(id))
       bullet.addEventListener("click", () => zoom(id))
+      // The flash is over when it ends: a class left behind would replay the
+      // animation every time a move re-inserts this <li> somewhere else.
+      li.addEventListener("animationend", () => li.classList.remove("remote"))
       ta.addEventListener("input", () => { grow(ta); scheduleSave(id) })
       ta.addEventListener("keydown", (e) => onKey(e, id, li, ta))
       // While you type, your view is yours; on blur you rejoin the graph's
@@ -391,6 +483,85 @@
       })
     }
 
+    // ── The drawing: the graph as stored, alive ────────────────────────────
+    // A force simulation over the same nodes and edges: dots repel, edges pull
+    // like springs, and a moved branch swings across to its new parent.
+    // Positions live in the simulation and survive every render — the node
+    // and link lists are rebuilt by id on each change and the simulation is
+    // reheated only when the shape changed, so typing moves nothing. Every
+    // edge is drawn, including the second parent a concurrent move can leave;
+    // the zoomed subtree is the part in view, search hits light up here too,
+    // and a click on a dot zooms into it, exactly like the dot beside the
+    // bullet. Dots can be dragged.
+    const svg = d3.select(graph)
+    const linkLayer = svg.append("g"), nodeLayer = svg.append("g")
+    const simNodes = new Map()   // id -> simulation node: x and y outlive the render
+    let shape = ""
+    const sim = d3.forceSimulation()
+      .force("link", d3.forceLink().id((d) => d.id).distance(44).strength(0.7))
+      .force("charge", d3.forceManyBody().strength(-170))
+      .force("collide", d3.forceCollide(15))
+      .force("x", d3.forceX().strength(0.05))
+      .force("y", d3.forceY().strength(0.05))
+      .on("tick", () => {
+        linkLayer.selectAll("line")
+          .attr("x1", (d) => d.source.x).attr("y1", (d) => d.source.y)
+          .attr("x2", (d) => d.target.x).attr("y2", (d) => d.target.y)
+        nodeLayer.selectAll("g").attr("transform", (d) => `translate(${d.x},${d.y})`)
+      })
+
+    const centre = () => {
+      const { width, height } = graph.getBoundingClientRect()
+      sim.force("x").x(width / 2)
+      sim.force("y").y(height / 2)
+      return [width / 2, height / 2]
+    }
+    new ResizeObserver(() => { centre(); sim.alpha(0.3).restart() }).observe(graph)
+
+    const drag = d3.drag()
+      .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
+      .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y })
+      .on("end", (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = d.fy = null })
+
+    const draw = () => {
+      const inView = new Set()
+      const mark = (id) => { inView.add(id); for (const cid of kidsOf(id)) mark(cid) }
+      focusId ? mark(focusId) : nodes.forEach((_, id) => inView.add(id))
+
+      // A new bullet is born beside its parent, so it settles into place
+      // instead of flying in from the middle.
+      const [cx, cy] = centre()
+      for (const id of nodes.keys()) if (!simNodes.has(id)) {
+        const near = simNodes.get(parentOf.get(id))
+        simNodes.set(id, { id, x: (near?.x ?? cx) + (Math.random() - 0.5) * 24, y: (near?.y ?? cy) + (Math.random() - 0.5) * 24 })
+      }
+      for (const id of simNodes.keys()) if (!nodes.has(id)) simNodes.delete(id)
+      const links = []
+      for (const [pid, { edges: out }] of nodes) for (const cid of out) if (nodes.has(cid)) links.push({ source: pid, target: cid, in: inView.has(cid) })
+      const idOf = (end) => end.id ?? end   // a link end is an id before the simulation resolves it
+
+      linkLayer.selectAll("line")
+        .data(links, (d) => `${idOf(d.source)}>${idOf(d.target)}`)
+        .join("line")
+        .attr("class", (d) => `g-edge${d.in ? " in" : ""}`)
+      nodeLayer.selectAll("g")
+        .data([...simNodes.values()], (d) => d.id)
+        .join((enter) => {
+          const g = enter.append("g").call(drag).on("click", (_, d) => zoom(d.id))
+          g.append("circle").attr("r", 5)
+          g.append("text").attr("x", 9).attr("y", 4)
+          return g
+        })
+        .attr("class", (d) => `g-node${inView.has(d.id) ? " in" : ""}${matches?.has(d.id) ? " hit" : ""}${d.id === focusId ? " here" : ""}`)
+        .select("text").text((d) => nodes.get(d.id).value.text.slice(0, 24) || "…")
+
+      sim.nodes([...simNodes.values()])
+      sim.force("link").links(links)
+      const next = `${[...simNodes.keys()].sort()}|${links.map((l) => `${idOf(l.source)}>${idOf(l.target)}`).sort()}`
+      if (next !== shape) { shape = next; sim.alpha(0.8).restart() }
+      graphEmpty.classList.toggle("hidden", nodes.size > 0)
+    }
+
     const updateStatus = () => {
       const peers = Object.keys(db.room.getPeers()).length
       const n = nodes.size
@@ -412,6 +583,7 @@
       seen = new Set()
       syncChildren(focusId, doc, new Set([focusId]))
       for (const id of lis.keys()) if (!nodes.has(id)) lis.delete(id)
+      draw()
       ghost.textContent = visible ? "No bullet here matches." : "Click here to start writing…"
       ghost.classList.toggle("hidden", doc.children.length > 0)
       renderCrumbs()
@@ -609,6 +781,39 @@
 
     db.room.on("peer:join", updateStatus)
     db.room.on("peer:leave", updateStatus)
+
+    // ── The divider between the panels is the resize control ───────────────
+    const MIN_OUTLINE = 320, MIN_GRAPH = 240
+    const setOutlineWidth = (px, persist = true) => {
+      // No ceiling while the bench has no width yet (the first paint): clamping
+      // against 0 would pin the outline to its minimum and store that.
+      const available = bench.clientWidth
+      const ceiling = available ? Math.max(available - MIN_GRAPH, MIN_OUTLINE) : Infinity
+      const width = Math.round(Math.min(Math.max(px, MIN_OUTLINE), ceiling))
+      bench.style.setProperty("--outline-width", `${width}px`)
+      if (persist) localStorage.outlinerSplit = width
+    }
+    if (localStorage.outlinerSplit) setOutlineWidth(Number(localStorage.outlinerSplit), false)
+
+    // Pointer events, not mouse events: one path for mouse, pen and touch, and
+    // setPointerCapture keeps the drag alive when the cursor outruns the strip.
+    splitter.addEventListener("pointerdown", (event) => {
+      event.preventDefault() // no text selection while dragging
+      splitter.setPointerCapture(event.pointerId)
+      const startX = event.clientX
+      const startWidth = bench.firstElementChild.getBoundingClientRect().width
+      const onMove = (move) => setOutlineWidth(startWidth + move.clientX - startX)
+      splitter.addEventListener("pointermove", onMove)
+      splitter.addEventListener("pointerup", () => splitter.removeEventListener("pointermove", onMove), { once: true })
+    })
+    // Reachable without a pointer: the divider answers the arrow keys, which
+    // is what role="separator" promises.
+    splitter.addEventListener("keydown", (event) => {
+      const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key]
+      if (!step) return
+      event.preventDefault()
+      setOutlineWidth(bench.firstElementChild.getBoundingClientRect().width + step)
+    })
 
     // ── The one subscription ───────────────────────────────────────────────
     // Every bullet, with its edges. `edges` arrives already resolved against
