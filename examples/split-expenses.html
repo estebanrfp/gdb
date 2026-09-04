@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB Split Expenses</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — an app is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --bg-tertiary: #1c2026;
+      --bg-elevated: #22262d;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --accent-hover: #6ba1ff;
+      --ok: #34c77b;
+      --danger: #ef5350;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --text-on-accent: #ffffff;
+      --backdrop: rgba(0, 0, 0, .6);
+      --radius-sm: 6px;
+      --radius-lg: 14px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 48px var(--space-5) 30vh;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    .page { max-width: 640px; margin-inline: auto; }
+    .page-head { margin-bottom: var(--space-6); }
+    h1 { margin: 0 0 var(--space-2); font-size: 17px; }
+    h1 span { color: var(--text-tertiary); font-weight: 400; }
+    .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .hint + .hint { margin-top: var(--space-2); }
+    code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+    .hidden { display: none !important; }
+
+    /* Section labels: the rule goes under the label, the content stays bare. */
+    h2 {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin: var(--space-6) 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .meta { font: 12px var(--mono); font-weight: 400; color: var(--text-tertiary); white-space: nowrap; }
+
+    /* ── Buttons: four weights, one vocabulary ─────────────────────────── */
+    button {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--text-tertiary); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+    button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+    button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+    button.danger { background: transparent; border-color: var(--border-strong); color: var(--danger); }
+    button.danger:hover:not(:disabled) { border-color: var(--danger); }
+
+    /* ── Fields you ask something of are drawn ─────────────────────────── */
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text-tertiary); }
+    label { display: block; margin-bottom: var(--space-2); font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+    .actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); margin-left: -13px; }
+    .row { display: flex; gap: var(--space-2); }
+    .row input { flex: 1; min-width: 0; }
+
+    /* ── People ────────────────────────────────────────────────────────── */
+    .chips { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px 4px var(--space-3);
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      font-size: 13px;
+    }
+    .chip.you { border-color: var(--accent); }
+    .chip button { padding: 0 5px; border: none; background: none; color: var(--text-tertiary); font-size: 14px; line-height: 1; }
+    .chip button:hover:not(:disabled) { color: var(--danger); }
+    .you-line { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); font-size: 13px; color: var(--text-secondary); }
+    .you-line select { width: auto; }
+
+    /* ── Rows: balances, transfers, expenses ────────────────────────────── */
+    .rows { list-style: none; margin: 0; padding: 0; }
+    .rows li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); }
+    .rows .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rows .sub { display: block; font-size: 12px; color: var(--text-tertiary); }
+    .amount { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+    .amount.plus { color: var(--ok); }
+    .amount.minus { color: var(--danger); }
+    .amount.zero { color: var(--text-tertiary); }
+    .amount.neutral { color: var(--text-primary); }
+    .arrow { color: var(--text-tertiary); }
+    .empty { padding: var(--space-3) 0; font-size: 13px; color: var(--text-tertiary); }
+    .rows li.settlement .who { color: var(--text-secondary); }
+
+    /* ── The expense form ───────────────────────────────────────────────── */
+    .expense-form { display: grid; grid-template-columns: minmax(0, 1fr) 120px 150px; gap: var(--space-2); margin-bottom: var(--space-4); }
+    .expense-form fieldset { grid-column: 1 / -1; margin: 0; padding: var(--space-2) 0 0; border: none; }
+    .expense-form legend { padding: 0; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .split { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
+    .split label { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 400; color: var(--text-primary); }
+    .split input { accent-color: var(--accent); }
+    .expense-form button { grid-column: 1 / -1; justify-self: start; }
+    @media (max-width: 560px) { .expense-form { grid-template-columns: minmax(0, 1fr); } }
+
+    /* ── Confirm: a question is a dialog, never window.confirm ─────────── */
+    dialog {
+      width: min(440px, calc(100vw - var(--space-6)));
+      padding: var(--space-6);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      color: var(--text-primary);
+      text-align: center;
+    }
+    dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+    .modal-title { margin: 0 0 var(--space-3); font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+    .modal-hint { margin: 0 0 var(--space-5); font-size: 14px; color: var(--text-secondary); }
+    .modal-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+    .modal-actions button { width: 100%; padding: 13px var(--space-4); font-size: 14px; font-weight: 600; }
+
+    /* Ambient state: bottom right, like every other GenosDB app. */
+    .presence { position: fixed; right: var(--space-5); bottom: var(--space-5); font: 12px var(--mono); color: var(--text-tertiary); }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <header class="page-head">
+      <h1 id="title">Split expenses</h1>
+      <p class="hint">A group's shared expenses, with no accounts: the link is the invitation, and
+        whoever opens it is in. Each expense is one node — who paid, how much, split among whom —
+        and nothing else is ever stored. Every balance and every "who pays whom" below is derived
+        on the spot from the whole set, in integer cents, so the totals always sum to zero.</p>
+      <p class="hint">That is why this is the most honest sync demo in the catalogue: open the same
+        link in two windows and they either show the same balances, or you can see they have not
+        converged yet — a balance is a sum over everything that arrived. Settling up writes one more
+        node of the same kind, and the books close by themselves.</p>
+      <div id="actions" class="actions hidden">
+        <button id="copy" class="ghost">Copy link</button>
+        <button id="new-group" class="ghost">New group</button>
+      </div>
+    </header>
+
+    <form id="create" class="hidden">
+      <label for="group-name">Name your group</label>
+      <div class="row">
+        <input id="group-name" type="text" placeholder="e.g. lisbon-trip" required autocomplete="off">
+        <button class="primary">Create</button>
+      </div>
+      <p class="hint">The name becomes the link. Anyone who has it can read and add expenses.</p>
+    </form>
+
+    <section id="app" class="hidden">
+      <h2>People</h2>
+      <ul id="members" class="chips"></ul>
+      <form id="member-form" class="row">
+        <input id="member-name" type="text" placeholder="Add a name" required autocomplete="off">
+        <button>Add</button>
+      </form>
+      <label class="you-line">You are <select id="me" aria-label="Who you are"></select></label>
+
+      <h2>Balances <span id="balance-meta" class="meta"></span></h2>
+      <ul id="balances" class="rows"></ul>
+      <ul id="settle" class="rows"></ul>
+
+      <h2>Expenses <span id="expense-meta" class="meta"></span></h2>
+      <form id="expense-form" class="expense-form">
+        <input id="exp-title" type="text" placeholder="What was it?" required autocomplete="off">
+        <input id="exp-amount" type="number" step="0.01" min="0.01" placeholder="0.00" required aria-label="Amount">
+        <select id="exp-payer" required aria-label="Paid by"></select>
+        <fieldset>
+          <legend>Split among</legend>
+          <div id="exp-split" class="split"></div>
+        </fieldset>
+        <button class="primary">Add expense</button>
+      </form>
+      <ul id="expenses" class="rows"></ul>
+    </section>
+  </main>
+
+  <dialog id="confirm-modal">
+    <h2 class="modal-title" id="confirm-title"></h2>
+    <p class="modal-hint" id="confirm-text"></p>
+    <form method="dialog" class="modal-actions">
+      <button value="ok" id="confirm-ok" class="danger"></button>
+      <button value="cancel" class="ghost">Cancel</button>
+    </form>
+  </dialog>
+
+  <span id="presence" class="presence hidden">0 peers</span>
+
+  <script type="module">
+    // Shared expenses over the plain GenosDB API. Demonstrates: the room as
+    // the group (the database name comes from the link), db.put / db.remove
+    // for people and expenses, two realtime db.map subscriptions, and a view
+    // that is entirely DERIVED — balances and settle-up transfers are
+    // computed from every expense node on every change, never stored.
+    import { gdb } from "../dist/index.js"
+
+    const $ = (id) => document.getElementById(id)
+    const el = {
+      title: $("title"), actions: $("actions"), copy: $("copy"), newGroup: $("new-group"),
+      create: $("create"), groupName: $("group-name"), app: $("app"),
+      members: $("members"), memberForm: $("member-form"), memberName: $("member-name"), me: $("me"),
+      balances: $("balances"), balanceMeta: $("balance-meta"), settle: $("settle"),
+      expenseForm: $("expense-form"), expTitle: $("exp-title"), expAmount: $("exp-amount"),
+      expPayer: $("exp-payer"), expSplit: $("exp-split"), expenses: $("expenses"), expenseMeta: $("expense-meta"),
+      confirmModal: $("confirm-modal"), confirmTitle: $("confirm-title"), confirmText: $("confirm-text"), confirmOk: $("confirm-ok"),
+      presence: $("presence"),
+    }
+
+    // ── The group is the room ──────────────────────────────────────────────
+    // The link carries the group's name, the name is the database name, and
+    // the database name is the room every peer syncs in. No accounts, no
+    // server, no invitation table: holding the link is being in the group.
+    const group = decodeURIComponent(location.hash.slice(1))
+    addEventListener("hashchange", () => location.reload()) // a new group is a new page
+
+    if (!group) {
+      el.create.classList.remove("hidden")
+      el.create.addEventListener("submit", (e) => {
+        e.preventDefault()
+        location.hash = encodeURIComponent(el.groupName.value.trim().toLowerCase().replace(/\s+/g, "-"))
+      })
+      el.groupName.focus()
+    }
+
+    if (group) {
+      const db = await gdb(`split-${group}`, { rtc: true })
+
+      el.title.textContent = group
+      el.app.classList.remove("hidden")
+      el.actions.classList.remove("hidden")
+      el.presence.classList.remove("hidden")
+
+      el.copy.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(location.href); el.copy.textContent = "Copied" }
+        catch { el.copy.textContent = location.href } // no clipboard: the link is on screen to copy by hand
+        setTimeout(() => { el.copy.textContent = "Copy link" }, 1500)
+      })
+      el.newGroup.addEventListener("click", () => { location.hash = "" })
+
+      // ── The model ────────────────────────────────────────────────────────
+      // A person is { type: "member", name, at }. An expense is
+      // { type: "expense", title, cents, payer, split: [memberIds], at } —
+      // a settlement is the same node with kind: "payment", paid by the
+      // debtor and split among exactly one person, the creditor. Amounts are
+      // integer cents: the split rounds down and hands the leftover cents to
+      // the first participants in id order, so every peer computes the same
+      // shares and the balances of a group always sum to exactly zero.
+      const members = new Map(), expenses = new Map()   // id -> value, fed by the subscriptions below
+
+      const money = (cents) => (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const nameOf = (id) => members.get(id)?.name ?? "someone gone"
+
+      // Balance = what you paid − your share of what you took part in, over
+      // EVERY expense. Nothing is cached, nothing is stored: two peers holding
+      // the same expenses show the same balances, and two that do not, do not.
+      const balances = () => {
+        const balance = new Map([...members.keys()].map((id) => [id, 0]))
+        for (const { cents, payer, split } of expenses.values()) {
+          const parts = split.filter((id) => balance.has(id)).sort()
+          if (!parts.length || !balance.has(payer)) continue // an expense whose people are gone counts nothing
+          const share = Math.floor(cents / parts.length), rest = cents - share * parts.length
+          balance.set(payer, balance.get(payer) + cents)
+          parts.forEach((id, i) => balance.set(id, balance.get(id) - share - (i < rest ? 1 : 0)))
+        }
+        return balance
+      }
+
+      // Who pays whom: largest debtor to largest creditor, repeatedly. At most
+      // n − 1 transfers, and the same list on every peer (ties break on id).
+      const settleUp = (balance) => {
+        const byOwed = (a, b) => b.cents - a.cents || (a.id < b.id ? -1 : 1)
+        const debtors = [...balance].filter(([, c]) => c < 0).map(([id, c]) => ({ id, cents: -c })).sort(byOwed)
+        const creditors = [...balance].filter(([, c]) => c > 0).map(([id, c]) => ({ id, cents: c })).sort(byOwed)
+        const transfers = []
+        for (let i = 0, j = 0; i < debtors.length && j < creditors.length;) {
+          const cents = Math.min(debtors[i].cents, creditors[j].cents)
+          transfers.push({ from: debtors[i].id, to: creditors[j].id, cents })
+          if (!(debtors[i].cents -= cents)) i++
+          if (!(creditors[j].cents -= cents)) j++
+        }
+        return transfers
+      }
+
+      // ── Who you are on this device ───────────────────────────────────────
+      // Not an identity, a preference: it picks the default payer and reads
+      // the balances from your side. Remembered per group, on this device.
+      const meKey = `split:${group}:me`
+      const me = () => members.has(localStorage[meKey]) ? localStorage[meKey] : ""
+      el.me.addEventListener("change", () => { localStorage[meKey] = el.me.value; renderMembers(); renderBalances() })
+
+      // ── Rendering ────────────────────────────────────────────────────────
+      const option = (value, text) => { const o = document.createElement("option"); o.value = value; o.textContent = text; return o }
+      const isReferenced = (id) => [...expenses.values()].some(({ payer, split }) => payer === id || split.includes(id))
+
+      const renderMembers = () => {
+        const you = me()
+        el.members.replaceChildren(...[...members].map(([id, { name }]) => {
+          const li = document.createElement("li")
+          li.className = `chip${id === you ? " you" : ""}`
+          li.dataset.member = id
+          li.append(name)
+          const remove = document.createElement("button")
+          remove.textContent = "×"
+          remove.title = isReferenced(id) ? `${name} is on an expense` : `Remove ${name}`
+          remove.setAttribute("aria-label", `Remove ${name}`)
+          remove.disabled = isReferenced(id) // a person on an expense is part of the books
+          remove.addEventListener("click", () => db.remove(id))
+          li.append(remove)
+          return li
+        }))
+        // The selects keep their choice across a rebuild: a member arriving
+        // from a peer must not reset a form you are filling in.
+        const payer = el.expPayer.value || you
+        el.me.replaceChildren(option("", "…"), ...[...members].map(([id, { name }]) => option(id, name)))
+        el.me.value = you
+        el.expPayer.replaceChildren(...[...members].map(([id, { name }]) => option(id, name)))
+        el.expPayer.value = members.has(payer) ? payer : (you || el.expPayer.value)
+        const unchecked = new Set([...el.expSplit.querySelectorAll("input:not(:checked)")].map((i) => i.value))
+        el.expSplit.replaceChildren(...[...members].map(([id, { name }]) => {
+          const label = document.createElement("label")
+          const box = document.createElement("input")
+          box.type = "checkbox"; box.value = id; box.checked = !unchecked.has(id)
+          label.append(box, name)
+          return label
+        }))
+      }
+
+      const amountCell = (cents, signed = true) => {
+        const span = document.createElement("span")
+        // Only a balance carries a sign and a colour; an expense or a transfer is just an amount.
+        span.className = `amount ${!signed ? "neutral" : cents > 0 ? "plus" : cents < 0 ? "minus" : "zero"}`
+        span.textContent = signed && cents > 0 ? `+${money(cents)}` : money(cents)
+        return span
+      }
+
+      const renderBalances = () => {
+        const balance = balances(), you = me()
+        const rows = [...balance].sort(([a, x], [b, y]) => y - x || nameOf(a).localeCompare(nameOf(b)))
+        el.balances.replaceChildren(...rows.map(([id, cents]) => {
+          const li = document.createElement("li")
+          li.dataset.balance = id
+          const who = document.createElement("span")
+          who.className = "who"
+          who.textContent = id === you ? `${nameOf(id)} (you)` : nameOf(id)
+          li.append(who, amountCell(cents))
+          return li
+        }))
+        if (!rows.length) el.balances.replaceChildren(Object.assign(document.createElement("li"), { className: "empty", textContent: "Add the people first." }))
+
+        const transfers = settleUp(balance)
+        el.settle.replaceChildren(...transfers.map(({ from, to, cents }) => {
+          const li = document.createElement("li")
+          li.dataset.transfer = `${from}>${to}`
+          const who = document.createElement("span")
+          who.className = "who"
+          who.append(nameOf(from), " ", Object.assign(document.createElement("span"), { className: "arrow", textContent: "→" }), " ", nameOf(to))
+          const pay = document.createElement("button")
+          pay.textContent = "Mark as paid"
+          pay.title = `${nameOf(from)} paid ${nameOf(to)} ${money(cents)}`
+          // Settling is one more expense: the debtor pays, the creditor is the
+          // only participant, and the derived balances close by themselves.
+          pay.addEventListener("click", () => db.put({ type: "expense", kind: "payment", title: "Settlement", cents, payer: from, split: [to], at: Date.now() }))
+          li.append(who, amountCell(cents, false), pay)
+          return li
+        }))
+        const total = [...expenses.values()].filter((e) => e.kind !== "payment").reduce((sum, e) => sum + e.cents, 0)
+        const mine = you ? balance.get(you) : null
+        el.balanceMeta.textContent = mine === null ? "" : mine > 0 ? `you are owed ${money(mine)}` : mine < 0 ? `you owe ${money(-mine)}` : "you are settled"
+        el.expenseMeta.textContent = `${expenses.size} · total ${money(total)}`
+      }
+
+      const buildExpenseRow = (id, value) => {
+        const li = document.createElement("li")
+        li.id = `exp-${id}`
+        li.dataset.expense = id
+        if (value.kind === "payment") li.classList.add("settlement")
+        const who = document.createElement("span")
+        who.className = "who"
+        who.textContent = value.kind === "payment" ? `${nameOf(value.payer)} paid ${nameOf(value.split[0])}` : value.title
+        const sub = document.createElement("span")
+        sub.className = "sub"
+        sub.textContent = value.kind === "payment"
+          ? new Date(value.at).toLocaleString()
+          : `${nameOf(value.payer)} paid · split ${value.split.length} ways · ${new Date(value.at).toLocaleString()}`
+        who.append(sub)
+        const remove = document.createElement("button")
+        remove.className = "ghost"
+        remove.textContent = "Delete"
+        remove.addEventListener("click", async () => {
+          if (!await confirmAction({ title: "Delete this expense?", body: "It disappears for everyone in the group, and the balances move.", confirmLabel: "Delete" })) return
+          db.remove(id)
+        })
+        li.append(who, amountCell(value.cents, false), remove)
+        return li
+      }
+
+      /** @returns {Promise<boolean>} a <dialog> in place of window.confirm, which would freeze the sync being shown */
+      const confirmAction = ({ title, body, confirmLabel }) => new Promise((resolve) => {
+        el.confirmTitle.textContent = title
+        el.confirmText.textContent = body
+        el.confirmOk.textContent = confirmLabel
+        el.confirmModal.addEventListener("close", () => resolve(el.confirmModal.returnValue === "ok"), { once: true })
+        el.confirmModal.showModal()
+      })
+
+      // ── Writes ───────────────────────────────────────────────────────────
+      el.memberForm.addEventListener("submit", async (e) => {
+        e.preventDefault()
+        const name = el.memberName.value.trim()
+        if (!name) return
+        const id = await db.put({ type: "member", name, at: Date.now() })
+        if (!me()) localStorage[meKey] = id // the first name you add is you, until you say otherwise
+        el.memberName.value = ""
+      })
+
+      el.expenseForm.addEventListener("submit", (e) => {
+        e.preventDefault()
+        const cents = Math.round(Number(el.expAmount.value) * 100)
+        const split = [...el.expSplit.querySelectorAll("input:checked")].map((i) => i.value)
+        if (!cents || !split.length || !el.expPayer.value) return el.expSplit.focus()
+        db.put({ type: "expense", title: el.expTitle.value.trim(), cents, payer: el.expPayer.value, split, at: Date.now() })
+        el.expTitle.value = ""
+        el.expAmount.value = ""
+        el.expTitle.focus()
+      })
+
+      // ── Two subscriptions, one derived view ───────────────────────────────
+      // People and expenses each have their own live query, sorted by the
+      // engine. Every event updates its map and re-derives the balances —
+      // there is no third source of truth to keep in step.
+      await db.map({ query: { type: "member" }, field: "at", order: "asc" }, ({ id, value, action }) => {
+        action === "removed" ? members.delete(id) : members.set(id, value)
+        renderMembers()
+        renderBalances()
+        el.expenses.querySelectorAll("li[data-expense]").forEach((li) => li.replaceWith(buildExpenseRow(li.dataset.expense, expenses.get(li.dataset.expense))))
+      })
+
+      await db.map({ query: { type: "expense" }, field: "at", order: "desc" }, ({ id, value, action }) => {
+        if (action === "removed") { expenses.delete(id); $(`exp-${id}`)?.remove() }
+        else {
+          expenses.set(id, value)
+          const row = buildExpenseRow(id, value)
+          if (action === "initial") el.expenses.append(row)          // arrives already newest-first
+          else if (action === "added") el.expenses.prepend(row)      // newest by definition
+          else $(`exp-${id}`)?.replaceWith(row)                       // updated: rebuilt in place
+        }
+        renderMembers()   // a person on an expense can no longer be removed
+        renderBalances()
+      })
+
+      const updatePresence = () => {
+        const n = Object.keys(db.room.getPeers()).length
+        el.presence.textContent = `${n} peer${n === 1 ? "" : "s"}`
+      }
+      db.room.on("peer:join", updatePresence)
+      db.room.on("peer:leave", updatePresence)
+      updatePresence()
+    }
+  </script>
+</body>
+
+</html>
