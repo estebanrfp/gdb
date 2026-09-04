@@ -44,6 +44,8 @@
     .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
     .hint + .hint { margin-top: var(--space-2); }
     code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+    /* The peer count: fixed bottom-right by convention; a phone moves it up (below). */
+    .presence { position: fixed; right: var(--space-5); bottom: var(--space-5); font: 12px var(--mono); color: var(--text-tertiary); }
 
     /* ── The overlay: what OBS composites ─────────────────────────────────
        Inside OBS the body is transparent and only the elements paint. In an
@@ -254,7 +256,6 @@
     .link-box { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
     .link-box code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .presence { position: fixed; right: var(--space-5); bottom: var(--space-5); font: 12px var(--mono); color: var(--text-tertiary); }
   </style>
 </head>
 
