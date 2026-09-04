@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB — Gaze heat map</title>
+
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the guide's
+       exact values. Dark and fixed — the page is a surface gaze lands on,
+       not an interface to be read. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --accent-hover: #6ba1ff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --text-on-accent: #ffffff;
+      --border-strong: #333a44;
+      --radius-sm: 6px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    [hidden] { display: none !important; }
+
+    /* The camera is a sensor, not a backdrop: the feed the tracker reads is
+       never shown. Present but invisible — a display:none video is a video the
+       browser may stop feeding frames from. */
+    .sensor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    .topleft {
+      position: fixed;
+      top: var(--space-5);
+      left: var(--space-5);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .topleft button { padding: 5px 10px; font-size: 12px; }
+
+    .brand {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+    }
+
+    /* Ambient connection state: bottom right, far from the content. */
+    .presence {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .status {
+      position: fixed;
+      left: var(--space-5);
+      bottom: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+
+    .status.live::before { background: var(--ok); }
+
+    /* These float over a page that is not ours and may be any colour, so they
+       carry their own ground rather than trusting the one underneath. */
+    .brand, .presence, .status, .tuning, .numbers {
+      padding: 5px 9px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+      backdrop-filter: blur(3px);
+      z-index: 2;
+    }
+
+    /* Doubles as the empty state: alone in the room, this line is the lesson. */
+    .hint {
+      margin: 0;
+      max-width: 440px;
+      text-align: center;
+      color: var(--text-tertiary);
+      pointer-events: none;
+    }
+
+    .chooser {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: var(--space-4);
+      padding: var(--space-5);
+      background: var(--bg-primary);
+      text-align: center;
+    }
+
+    .chooser h2 { margin: 0; font-size: 17px; }
+    .chooser p { margin: 0; max-width: 46ch; color: var(--text-secondary); }
+    .chooser .note { font-size: 12px; color: var(--text-tertiary); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+    button {
+      font: inherit;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: var(--text-on-accent);
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    button.secondary {
+      background: var(--bg-secondary);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    button.secondary:hover { background: var(--bg-secondary); border-color: var(--accent); }
+
+    /* The page being read fills the window and is the only thing that scrolls.
+       Everything this example draws floats above it and lets the pointer
+       through, so reading the page is exactly like reading a page. */
+    .page {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* The same heat as the report, over the part of the page in view. Under
+       the points and over the page, and never in the way of either. */
+    .live-heat {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* ── The report ───────────────────────────────────────────────────────
+       No screenshot: the same page, mounted at its full height and scaled to
+       fit, with the heat drawn over it at the same scale. A screenshot would
+       be a stale, lower-resolution copy of something the browser can simply
+       render again. */
+    .report {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      background: var(--bg-primary);
+    }
+
+    .shot {
+      position: relative;
+      overflow: auto;
+      padding: var(--space-5);
+      display: grid;
+      place-items: start center;
+    }
+
+    /* The page and the heat share one stacking context, so one scale applies
+       to both and they cannot drift apart. */
+    .plate {
+      position: relative;
+      transform-origin: top center;
+      box-shadow: 0 0 0 1px var(--border-subtle);
+    }
+
+    .plate iframe {
+      display: block;
+      border: 0;
+      pointer-events: none;
+    }
+
+    .plate canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .numbers {
+      overflow: auto;
+      padding: var(--space-5);
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .numbers h2 { margin: 0 0 var(--space-2); font-size: 15px; }
+    .numbers h3 {
+      margin: var(--space-5) 0 var(--space-2);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-tertiary);
+    }
+    .numbers p { margin: 0 0 var(--space-3); color: var(--text-secondary); font-size: 13px; }
+
+    .numbers table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .numbers th {
+      text-align: left;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      padding-bottom: var(--space-2);
+    }
+    .numbers td {
+      padding: 5px 0;
+      border-top: 1px solid var(--border-subtle);
+      font-family: var(--mono);
+      color: var(--text-primary);
+    }
+    .numbers td:first-child { font-family: var(--font); color: var(--text-secondary); }
+    .numbers td.bar { padding-left: 6px; }
+    .numbers td:not(:first-child) { text-align: right; }
+
+    /* A bar behind the number, so the ranking reads before the digits do. */
+    .numbers td.bar {
+      position: relative;
+      font-family: var(--mono);
+    }
+    .numbers td.bar::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 4px;
+      bottom: 4px;
+      width: calc(var(--share) * 100%);
+      background: var(--accent);
+      opacity: .18;
+      border-radius: 2px;
+    }
+
+    .report .close { position: absolute; top: var(--space-5); left: var(--space-5); }
+
+    .scale {
+      position: absolute;
+      left: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── The gaze points ──────────────────────────────────────────────────
+       A gaze estimate is a region, not a pixel, so it is drawn as one: the
+       halo is the measured error, and the core is the best guess inside it.
+       Sizing it from the number the calibration actually produced keeps the
+       drawing honest — a 12px dot would claim a precision no webcam has. */
+    .gaze {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: grid;
+      place-items: center;
+      width: var(--halo);
+      height: var(--halo);
+      /* Half its own size back, so the transform carries the point itself. */
+      margin: calc(var(--halo) / -2) 0 0 calc(var(--halo) / -2);
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    /* Only the remote ones are eased. Your own point is the one you check the
+       calibration against, so it must land exactly where the model says. */
+    .gaze:not(.local) { transition: transform .06s linear; }
+
+    .gaze.local { color: var(--accent); }
+
+    .gaze .core {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .gaze .tag {
+      position: absolute;
+      top: 100%;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+
+    /* A blink leaves the point where it is and throws a ring off the side of
+       the eye that closed, so the gesture is legible without a caption: left
+       eye, ring to the left. Both eyes throw a whole ring, symmetrically. */
+    .ping {
+      position: absolute;
+      inset: -6px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .ping.left { clip-path: inset(0 50% 0 0); animation: ping-left .55s ease-out forwards; }
+    .ping.right { clip-path: inset(0 0 0 50%); animation: ping-right .55s ease-out forwards; }
+    .ping.both { border-width: 3px; animation: ping-both .55s ease-out forwards; }
+
+    @keyframes ping-left {
+      from { transform: translateX(0) scale(.7); opacity: .9; }
+      to { transform: translateX(-30px) scale(2); opacity: 0; }
+    }
+
+    @keyframes ping-right {
+      from { transform: translateX(0) scale(.7); opacity: .9; }
+      to { transform: translateX(30px) scale(2); opacity: 0; }
+    }
+
+    @keyframes ping-both {
+      from { transform: scale(.7); opacity: .9; }
+      to { transform: scale(2.4); opacity: 0; }
+    }
+
+    /* The one setting worth exposing, so it sits where nothing else does. */
+    .tuning {
+      position: fixed;
+      top: var(--space-5);
+      right: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    .tuning input { width: 130px; accent-color: var(--accent); }
+    .tuning output { min-width: 6ch; color: var(--text-secondary); }
+
+    /* ── Calibration ──────────────────────────────────────────────────────
+       Nothing else on screen while it runs: every other pixel is somewhere
+       the eyes could wander to, and a wandering eye is a bad sample. */
+    .calibration {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      background: var(--bg-primary);
+    }
+
+    .target {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* A ring collapsing onto the dot: the eye follows the shrink and lands on
+       the centre, which is the point being measured. */
+    .target::after {
+      content: "";
+      position: absolute;
+      inset: -22px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: close 1.3s ease-out infinite;
+    }
+
+    @keyframes close {
+      from { transform: scale(1); opacity: .7; }
+      to { transform: scale(.32); opacity: 0; }
+    }
+
+    .target .pip {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+    }
+
+    .progress {
+      position: absolute;
+      left: 50%;
+      bottom: var(--space-5);
+      transform: translateX(-50%);
+      margin: 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- The page under test. It lives in this file and is mounted with srcdoc,
+       so the whole example is still one file and the frame is same-origin —
+       which is what lets the heat be measured against the document rather
+       than against a window, and against named regions rather than pixels.
+
+       Its width is fixed on purpose. Two readers with different window sizes
+       would otherwise lay the same paragraph out in different places, and a
+       heat map that adds them together would be adding up different pages. -->
+  <template id="tpl-page">
+    <meta charset="UTF-8">
+    <style>
+      :root { --ink: #1c2024; --muted: #5b6570; --line: #e3e7eb; --brand: #2f6fed; }
+      * { box-sizing: border-box; }
+      body {
+        width: 760px;
+        margin: 0 auto;
+        padding: 56px 40px 90px;
+        background: #fdfdfd;
+        color: var(--ink);
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      h1 { margin: 0 0 12px; font-size: 40px; line-height: 1.15; letter-spacing: -.02em; }
+      h2 { margin: 0 0 10px; font-size: 21px; }
+      h3 { margin: 0 0 6px; font-size: 16px; }
+      p { margin: 0 0 16px; }
+      .lede { font-size: 19px; color: var(--muted); margin-bottom: 34px; }
+      .hero {
+        height: 210px;
+        margin: 0 0 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #2f6fed 0%, #7b3fe4 55%, #d9418c 100%);
+      }
+      .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 40px; }
+      .features p { font-size: 14px; color: var(--muted); margin: 0; }
+      pre {
+        margin: 0 0 40px;
+        padding: 18px 20px;
+        border-radius: 8px;
+        background: #14171c;
+        color: #e8eaed;
+        font: 13px/1.6 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        overflow-x: auto;
+      }
+      .cta { padding: 30px; border: 1px solid var(--line); border-radius: 10px; text-align: center; }
+      .cta button {
+        margin-top: 12px;
+        padding: 11px 26px;
+        border: 0;
+        border-radius: 7px;
+        background: var(--brand);
+        color: #fff;
+        font: 600 15px/1 inherit;
+      }
+      footer { margin-top: 46px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    </style>
+
+    <header data-zone="Headline">
+      <h1>Your data, everywhere it is needed. Nowhere else.</h1>
+      <p class="lede">A graph database that syncs itself between browsers over
+        WebRTC, signs every write, and never asks you for a server.</p>
+    </header>
+
+    <div class="hero" data-zone="Hero image"></div>
+
+    <section data-zone="Body">
+      <h2>Written to survive a lost connection</h2>
+      <p>Every peer holds the whole graph. Writes land locally first and
+        reconcile when the network comes back, so an aeroplane, a lift and a
+        flaky café router are all the same event: a delay.</p>
+      <p>What travels is the difference, not the database. Two peers that have
+        already converged exchange nothing at all — a digest tells them so
+        before a single node is put on the wire.</p>
+    </section>
+
+    <div class="features" data-zone="Features">
+      <div><h3>Zero trust</h3><p>Every operation carries a signature. A peer with no role is a peer with no writes.</p></div>
+      <div><h3>Offline first</h3><p>Reads and writes never wait for a network that may not be there.</p></div>
+      <div><h3>No backend</h3><p>No server to run, to scale, to patch, or to be breached.</p></div>
+    </div>
+
+    <pre data-zone="Code sample">const db = await gdb("my-room", { rtc: true })
+
+await db.put({ text: "hello", done: false })
+
+db.map(({ id, value, action }) =&gt; {
+  render(id, value, action)
+})</pre>
+
+    <div class="cta" data-zone="Call to action">
+      <h2>Try it in the time it takes to read this</h2>
+      <p>One import, one line, no account.</p>
+      <button>Read the docs</button>
+    </div>
+
+    <footer data-zone="Footer">Sample page · nothing here is tracked anywhere
+      but in your own browser.</footer>
+  </template>
+
+  <iframe class="page" id="page" title="Page under test"></iframe>
+
+  <div class="topleft">
+    <h1 class="brand">Gaze heat map · GenosDB</h1>
+    <button class="secondary" id="show-heat">Show heat</button>
+    <button class="secondary" id="open-report">Report</button>
+  </div>
+
+  <p class="hint" id="hint" hidden>Nobody is looking yet. Open this page in
+    another window, calibrate there, and the point appears here.</p>
+
+  <canvas class="live-heat" id="live-heat" hidden></canvas>
+  <div class="overlay" id="points"></div>
+
+  <label class="tuning" id="tuning" hidden>
+    steadier
+    <input type="range" id="sensitivity" min="0" max="100" value="50"
+      aria-label="Tracking sensitivity">
+    quicker
+    <output id="cutoff"></output>
+  </label>
+
+  <span class="status" id="status" hidden></span>
+  <span class="presence" id="presence">0 peers</span>
+
+  <!-- The report. Built only when it is opened: a second mount of the same
+       page at its full height, scaled to fit, with the heat over it. -->
+  <div class="report" id="report" hidden>
+    <div class="shot">
+      <div class="plate" id="plate">
+        <iframe id="shot-page" title="Page under test, full height"></iframe>
+        <canvas id="heat"></canvas>
+      </div>
+      <span class="scale" id="scale"></span>
+    </div>
+    <div class="numbers" id="numbers"></div>
+    <button class="secondary close" id="close-report">Back to the page</button>
+  </div>
+
+  <div class="chooser" id="chooser">
+    <h2>Where everyone is looking</h2>
+    <p>Calibrate once against nine points and your gaze becomes a point every
+      other window can see, in your own colour. Wink and that point rings —
+      left eye, right eye or both — in every window at once. Open this page
+      again to watch, or calibrate there too and compare.</p>
+    <div class="actions">
+      <button data-mode="share">Calibrate and share my gaze</button>
+      <button class="secondary" data-mode="watch">Just watch</button>
+    </div>
+    <p class="note">The camera is used only to track: it is never shown, and no
+      frame leaves this browser — what travels is a point. About 4 MB of face
+      model downloads the first time, plus the vision runtime. Needs https away
+      from localhost. Hold your head still while the nine dots run, and press C
+      to calibrate again whenever you move.</p>
+  </div>
+
+  <script type="module">
+    // Two eyes drive one point on the screen, and that point reaches every
+    // other browser over GenosRTC's ephemeral channel — the same presence
+    // layer the live-cursors example uses. Nothing is persisted: the point
+    // exists exactly while a face is being tracked, so the tracking state
+    // travels as much as the point does.
+    //
+    // The camera never leaves the machine. What goes on the wire is two
+    // numbers and the radius of their error, which is why this is a gaze
+    // demo you can run in a room of strangers.
+    import { gdb } from "../dist/index.js"
+
+    const SEND_HZ = 30            // gaze jitter carries no detail above this
+    const MOVE_EPS = 0.002        // fractions of the window
+    // Two thresholds, or a lid resting on the boundary chatters. The window is
+    // what makes one blink one gesture: the eyes rarely close on the same
+    // frame, so the side is read a moment after the first lid drops.
+    const BLINK_ON = 0.5          // blendshape score at which the iris is gone
+    const BLINK_OFF = 0.3
+    const BLINK_WINDOW = 140      // ms
+
+    const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1"
+    const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+
+    // The two eye corners, and the five points around each iris. Which iris
+    // belongs to which eye is settled below by where they are rather than by
+    // the order of these groups — a swapped pair is a silent, catastrophic
+    // mis-calibration, and one distance test costs less than trusting memory.
+    const CORNERS = [[33, 133], [362, 263]]
+    const IRISES = [[468, 469, 470, 471, 472], [473, 474, 475, 476, 477]]
+
+    // Nine fixations on a 3x3 grid, inset from the edge so the dot is never
+    // under a scrollbar or a notch. Corners first — they fix the range the
+    // polynomial has to cover — then the edge midpoints, then the centre.
+    // Not row by row: a predictable order invites the eye to leave early, and
+    // a sample taken while it is already moving belongs to no target at all.
+    const INSET = 0.08
+    const [LO, MID, HI] = [INSET, 0.5, 1 - INSET]
+    const TARGETS = [
+      [LO, LO], [HI, LO], [HI, HI], [LO, HI],
+      [MID, LO], [HI, MID], [MID, HI], [LO, MID],
+      [MID, MID],
+    ]
+    const SETTLE_MS = 700         // the saccade, plus time to actually land
+    const GATHER_MS = 800         // ~24 samples per target at 30 fps
+    const MIN_SAMPLES = 6         // per target, or the calibration is void
+    const RIDGE = 1e-4            // keeps the normal equations conditioned
+
+    // Past these, the head is no longer where it was calibrated and the model
+    // is answering about a face that has moved. Fractions of the interocular
+    // distance, which is the only length in frame with a fixed size.
+    // Document pixels per heat cell. Coarser than a pixel on purpose: the
+    // estimate is worth a couple of centimetres, and a finer grid would be
+    // claiming a resolution the eye tracker does not have. What makes the map
+    // look smooth is the radius it is painted with, not the cell size.
+    const CELL = 64
+    const FLUSH_MS = 3000         // one write per peer per this, never per frame
+
+    const DRIFT_SHIFT = 0.35
+    const DRIFT_SCALE = 0.18
+
+    const db = await gdb("gazeheatmap", { rtc: true })
+    const channel = db.room.channel("gaze")
+
+    const chooser = document.getElementById("chooser")
+    const presence = document.getElementById("presence")
+    const statusEl = document.getElementById("status")
+    const hint = document.getElementById("hint")
+    const points = document.getElementById("points")
+    const report = document.getElementById("report")
+
+    const remote = new Map()      // peerId -> element
+    const peers = new Set()
+
+    // ── The page under test ─────────────────────────────────────────────────
+    // srcdoc inherits this document's origin, so the frame is same-origin and
+    // its scroll position, its height and its named regions can all be read.
+    // That is the whole reason the heat can be measured against the page
+    // instead of against a window.
+    const pageMarkup = document.getElementById("tpl-page").innerHTML
+    const mount = frame => new Promise(resolve => {
+      frame.addEventListener("load", () => resolve(frame.contentDocument), { once: true })
+      frame.srcdoc = pageMarkup
+    })
+    const pageFrame = document.getElementById("page")
+    const pageDoc = await mount(pageFrame)
+
+    /** The article, not the window: its width is fixed, so a position inside it
+     *  means the same paragraph on every peer's screen however wide the window
+     *  is. Heat measured against the window would be heat over a layout that
+     *  only one peer ever saw. */
+    const article = () => pageDoc.body
+
+    /** Where the article starts in the window. Not `offsetLeft`: for a centred
+     *  body that is 0, because its offsetParent is null and the auto margin is
+     *  never counted — and getting it wrong shifts every measurement sideways
+     *  by the width of the margin, silently. */
+    const articleLeft = () => article().getBoundingClientRect().left
+
+    // ── Reading the page ────────────────────────────────────────────────────
+    const heat = new Map()        // "col,row" -> seconds looked at
+    const zoneTime = new Map()    // region name -> seconds
+    const zoneFirst = new Map()   // region name -> ms until it was first looked at
+    const winks = []
+    let watched = 0               // seconds of gaze recorded
+    let startedAt = 0             // monotonic, for "how soon was this looked at"
+    let visitAt = 0               // wall clock, for ordering visits in the graph
+    let flushDue = 0
+    let lastSeen = null           // the last point, in page space, for the winks
+    let dirty = false
+
+    /** Screen to page: the frame scrolls, and two readers scroll differently. */
+    const onPage = (x, y) => {
+      const page = article()
+      const px = x * innerWidth - articleLeft()
+      const py = y * innerHeight + pageFrame.contentWindow.scrollY
+      return { px, py, u: px / page.offsetWidth, v: py / page.scrollHeight }
+    }
+
+    /** The region under the point, by name. Cheaper and far more useful than
+     *  a pixel: "they read the code sample and never reached the button" is a
+     *  sentence, and a pixel is not. */
+    const zoneAt = (x, y) => pageDoc.elementFromPoint(x * innerWidth, y * innerHeight)
+      ?.closest("[data-zone]")?.dataset.zone ?? null
+
+    const record = (x, y, dt) => {
+      if (heatShown) return       // reading the map is not reading the page
+      const { px, py, u, v } = onPage(x, y)
+      if (u < 0 || u > 1 || v < 0 || v > 1) return   // looking past the page
+      const zone = zoneAt(x, y)
+      lastSeen = { u: round3(u), v: round3(v), zone }
+      const cell = `${Math.floor(px / CELL)},${Math.floor(py / CELL)}`
+      heat.set(cell, (heat.get(cell) ?? 0) + dt)
+      watched += dt
+      dirty = true
+      if (!zone) return
+      zoneTime.set(zone, (zoneTime.get(zone) ?? 0) + dt)
+      // Time to first fixation: the number a page is actually judged on.
+      zoneFirst.has(zone) || zoneFirst.set(zone, Math.round(performance.now() - startedAt))
+    }
+
+    const shrink = map => Object.fromEntries([...map].map(([k, t]) => [k, round3(t)]))
+
+    /** One node per peer, rewritten whole. A single writer per node means
+     *  last-write-wins never has to resolve anything, and the sum is done by
+     *  whoever reads — which is the cheapest correct way to add up numbers
+     *  that several peers are producing at once. Three seconds apart, never
+     *  per frame: thirty writes a second would drown the oplog for a map that
+     *  nobody can see change that fast anyway. */
+    const flush = () => {
+      dirty = false
+      return db.put({
+        at: visitAt,
+        seconds: round3(watched),
+        error: round3(model?.error ?? 0),
+        cells: shrink(heat),
+        zones: shrink(zoneTime),
+        first: Object.fromEntries(zoneFirst),
+        winks,
+      }, `heat-${db.selfId}`)
+    }
+
+    // Everyone's visits, including this peer's own once it starts writing.
+    const visits = new Map()
+
+    const updatePresence = () => {
+      presence.textContent = `${peers.size} peer${peers.size === 1 ? "" : "s"}`
+    }
+
+    /** The empty state belongs to a watcher: a peer sharing its own gaze has a
+     *  point on screen already, and would be reading a line that denies it. */
+    const showHint = () => { hint.hidden = sharing || remote.size > 0 }
+
+    const setStatus = (text, live) => {
+      statusEl.textContent = text
+      statusEl.classList.toggle("live", !!live)
+      statusEl.hidden = false
+    }
+
+    // Same peer, same colour in every window: derive the hue from the peer id.
+    // A random colour would disagree from one window to the next.
+    const hueOf = id => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+    const colorOf = id => `hsl(${hueOf(id)} 75% 70%)`
+
+    /** Three decimals of a normalised coordinate is about two pixels on a
+     *  1080p screen — an order of magnitude finer than the estimate itself. */
+    const round3 = n => Math.round(n * 1e3) / 1e3
+
+    // ── The 1€ filter ───────────────────────────────────────────────────────
+    // The tracker does not smooth its own output, and an iris is only about
+    // twenty pixels across at arm's length: one pixel of landmark noise is
+    // centimetres on screen. The cutoff rises with speed, so fixations are
+    // smoothed hard while saccades pass through almost untouched — which is
+    // exactly the shape of eye movement, and why this costs no responsiveness.
+    // The cutoff is the only number that changes how the point feels, so it is
+    // the only one exposed. Everything below is steadier and later; everything
+    // above is quicker and more alive. Measured against a synthetic eye, this
+    // filter is worth about three times more than any calibration grid — which
+    // is why the slider drives it and not the number of dots.
+    const tuning = { cutoff: 1, beta: 1 }
+    const DERIVATE_CUTOFF = 1
+
+    const easing = (cutoff, dt) => {
+      const tau = 2 * Math.PI * cutoff * dt
+      return tau / (tau + 1)
+    }
+
+    const oneEuro = () => {
+      const seen = new Map()
+      return (key, value, dt) => {
+        const last = seen.get(key)
+        if (!last) {
+          seen.set(key, { value, speed: 0 })
+          return value
+        }
+        const speed = last.speed + easing(DERIVATE_CUTOFF, dt) * ((value - last.value) / dt - last.speed)
+        const value2 = last.value + easing(tuning.cutoff + tuning.beta * Math.abs(speed), dt) * (value - last.value)
+        seen.set(key, { value: value2, speed })
+        return value2
+      }
+    }
+
+    // ── The model ───────────────────────────────────────────────────────────
+    // A second-order polynomial in the two gaze features. It is the classical
+    // mapping in eye tracking, and the reason is geometric: the eye rotates
+    // while the screen is flat, so the relationship bends towards the edges,
+    // and a plane cannot follow it. Six terms against nine fixations, which
+    // leaves the system over-determined in the direction that matters.
+    const TERMS = ({ u, v }) => [1, u, v, u * v, u * u, v * v]
+
+    /** Ridge-regularised normal equations, solved by Gauss-Jordan with partial
+     *  pivoting — both screen axes at once, since they share the design matrix
+     *  and differ only in the right-hand side. The ridge term is what keeps
+     *  this solvable when someone holds unusually still and two columns of the
+     *  design matrix end up nearly parallel. */
+    const fit = samples => {
+      const width = TERMS(samples[0]).length
+      const M = Array.from({ length: width }, () => new Float64Array(width + 2))
+      for (const sample of samples) {
+        const terms = TERMS(sample)
+        for (let i = 0; i < width; i++) {
+          for (let j = 0; j < width; j++) M[i][j] += terms[i] * terms[j]
+          M[i][width] += terms[i] * sample.x
+          M[i][width + 1] += terms[i] * sample.y
+        }
+      }
+      for (let i = 0; i < width; i++) M[i][i] += RIDGE
+
+      for (let col = 0; col < width; col++) {
+        let pivot = col
+        for (let row = col + 1; row < width; row++)
+          if (Math.abs(M[row][col]) > Math.abs(M[pivot][col])) pivot = row
+        ;[M[col], M[pivot]] = [M[pivot], M[col]]
+        const head = M[col][col]
+        for (let j = col; j < width + 2; j++) M[col][j] /= head
+        for (let row = 0; row < width; row++) {
+          if (row === col) continue
+          const factor = M[row][col]
+          if (!factor) continue
+          for (let j = col; j < width + 2; j++) M[row][j] -= factor * M[col][j]
+        }
+      }
+      return { x: M.map(row => row[width]), y: M.map(row => row[width + 1]) }
+    }
+
+    const project = (model, feature) => {
+      const terms = TERMS(feature)
+      const along = axis => terms.reduce((total, term, i) => total + term * model[axis][i], 0)
+      return { x: along("x"), y: along("y") }
+    }
+
+    /** Held-out error, not the fit's own: refit nine times, each time without
+     *  one target, and score that target with the model that never saw it.
+     *  The residual on the training points would flatter a six-term polynomial
+     *  given nine fixations — it can bend its way through them — and this
+     *  number is drawn on screen as the radius of the point, so it has to be
+     *  the error a peer will actually experience. */
+    const crossValidate = samples => {
+      let squared = 0
+      let counted = 0
+      for (const [tx, ty] of TARGETS) {
+        const held = samples.filter(s => s.x === tx && s.y === ty)
+        const rest = samples.filter(s => s.x !== tx || s.y !== ty)
+        if (!held.length || rest.length < TERMS(samples[0]).length) continue
+        const model = fit(rest)
+        for (const sample of held) {
+          const seen = project(model, sample)
+          squared += (seen.x - sample.x) ** 2 + (seen.y - sample.y) ** 2
+          counted++
+        }
+      }
+      return counted ? Math.sqrt(squared / counted) : NaN
+    }
+
+    // ── Drawing ─────────────────────────────────────────────────────────────
+    const makePoint = (peerId, local) => {
+      const element = document.createElement("div")
+      element.className = local ? "gaze local" : "gaze"
+      if (!local) element.style.color = colorOf(peerId)
+      element.style.setProperty("--halo", "40px")
+
+      const core = document.createElement("span")
+      core.className = "core"
+      element.append(core)
+
+      if (!local) {
+        const tag = document.createElement("span")
+        tag.className = "tag"
+        tag.textContent = peerId.slice(0, 4)
+        element.append(tag)
+      }
+      points.append(element)
+      return element
+    }
+
+    /** One ring per blink, removed when it finishes: two blinks in a row stack
+     *  instead of restarting a single animation half way through. */
+    const ping = (element, side) => {
+      if (!element || element.hidden) return
+      const ring = document.createElement("span")
+      ring.className = `ping ${side}`
+      ring.addEventListener("animationend", () => ring.remove())
+      element.append(ring)
+    }
+
+    /** Points travel as fractions of the sender's window, never as pixels: the
+     *  message means "here on my screen", and the two screens are not the same
+     *  size. The radius travels the same way, as a fraction of the width. */
+    const place = (element, { x, y, r }) => {
+      element.style.setProperty("--halo", `${Math.max(24, r * innerWidth * 2)}px`)
+      element.style.transform = `translate(${x * innerWidth}px, ${y * innerHeight}px)`
+    }
+
+    // ── The wire ────────────────────────────────────────────────────────────
+    // Two kinds of message travel: a point, and the news that the face is gone.
+    let lastPoint = null
+    let tracking = false
+    let due = 0
+    let sent = { x: Infinity, y: 0 }
+
+    const publish = point => {
+      const now = performance.now()
+      if (now < due) return
+      // An eye resting on one word puts nothing on the wire.
+      if (Math.hypot(point.x - sent.x, point.y - sent.y) < MOVE_EPS) return
+      due = now + 1000 / SEND_HZ
+      sent = point
+      tracking = true
+      lastPoint = { x: round3(point.x), y: round3(point.y), r: round3(point.r) }
+      channel.send(lastPoint)
+      place(localPoint, lastPoint)
+    }
+
+    /** The point is gone for everyone the moment the face is. Points stop on
+     *  their own whenever the eyes hold still, so this cannot be inferred
+     *  from silence. */
+    const stopTracking = status => {
+      setStatus(status)
+      if (!tracking) return
+      tracking = false
+      // Forget what was last sent: when the face comes back the point has to
+      // be re-announced even if it landed in the same place, or it stays gone.
+      sent = { x: Infinity, y: 0 }
+      channel.send({ lost: true })
+      localPoint.hidden = true
+    }
+
+    // ── Blinks ──────────────────────────────────────────────────────────────
+    // ARKit's naming, which MediaPipe follows: "left" is the peer's own left
+    // eye, so the ring leaves on the side that peer feels it on.
+    const lids = { left: false, right: false }
+    let closing = null
+
+    const fire = () => {
+      closing.fired = true
+      // A blink during the nine dots is just a blink: there is no point to
+      // decorate yet, and the grid is no place to be firing gestures.
+      if (!model || gathering) return
+      const side = closing.left && closing.right ? "both" : closing.left ? "left" : "right"
+      ping(localPoint, side)
+      channel.send({ blink: side })
+      // A wink is an interaction, so it is kept where it landed rather than
+      // only shown: the report counts them per region.
+      if (lastSeen) {
+        winks.push({ ...lastSeen, side, at: Date.now() })
+        dirty = true
+      }
+    }
+
+    /** Reads both lids, fires the gesture once per blink, and answers whether
+     *  the iris is hidden right now — which is the reason the point holds
+     *  still rather than following the estimate into the eyelid. */
+    const readBlink = (left, right, now) => {
+      lids.left = left > (lids.left ? BLINK_OFF : BLINK_ON)
+      lids.right = right > (lids.right ? BLINK_OFF : BLINK_ON)
+      const shut = lids.left || lids.right
+
+      if (shut) {
+        closing ??= { since: now, left: false, right: false }
+        closing.left ||= lids.left
+        closing.right ||= lids.right
+        // A wink held down must not wait for the eye to open again.
+        if (!closing.fired && now - closing.since > BLINK_WINDOW) fire()
+      } else if (closing) {
+        // A natural blink is shorter than the window, so it is read on the way
+        // back up instead of being lost.
+        if (!closing.fired) fire()
+        closing = null
+      }
+      return shut
+    }
+
+    channel.on("message", (message, fromPeerId) => {
+      // Nothing from anyone else is drawn while a visit is being measured. A
+      // dot moving in the periphery pulls the eye by reflex, so a page read
+      // with other people's gaze on it would produce a heat map of where the
+      // dots went, not of what was read. Live gaze is for whoever is watching
+      // rather than reading — which is the one role it costs nothing.
+      if (sharing) return
+      // A ring belongs to a point that is already on screen; a blink from a
+      // peer whose point has not arrived has nowhere to land.
+      if (message.blink) return ping(remote.get(fromPeerId), message.blink)
+      if (message.lost) {
+        remote.get(fromPeerId)?.remove()
+        remote.delete(fromPeerId)
+        showHint()
+        return
+      }
+      let element = remote.get(fromPeerId)
+      if (!element) remote.set(fromPeerId, element = makePoint(fromPeerId))
+      place(element, message)
+      showHint()
+    })
+
+    db.room.on("peer:join", peerId => {
+      peers.add(peerId)
+      updatePresence()
+      // A peer arriving while someone's eyes rest would face an empty screen:
+      // nothing is sent until the point moves. Greet it with the current one.
+      if (tracking && lastPoint) channel.send(lastPoint, peerId)
+    })
+
+    db.room.on("peer:leave", peerId => {
+      peers.delete(peerId)
+      remote.get(peerId)?.remove()
+      remote.delete(peerId)
+      updatePresence()
+      showHint()
+    })
+
+    // ── The tracker ─────────────────────────────────────────────────────────
+    const localPoint = makePoint("local", true)
+    localPoint.hidden = true
+
+    let sharing = false
+    let model = null
+    let gathering = null
+    let anchor = null             // the head, as it was when calibrated
+
+    const startTracking = async () => {
+      setStatus("loading the face model")
+      const { FilesetResolver, FaceLandmarker } = await import(`${MEDIAPIPE}/vision_bundle.mjs`)
+      const landmarker = await FaceLandmarker.createFromOptions(
+        await FilesetResolver.forVisionTasks(`${MEDIAPIPE}/wasm`),
+        {
+          baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
+          runningMode: "VIDEO",
+          numFaces: 1,
+          // The refined mesh carries the iris; the blendshapes carry the blink.
+          // Both are the point of using this model rather than a face box.
+          outputFaceBlendshapes: true,
+        })
+
+      const video = Object.assign(document.createElement("video"),
+        { className: "sensor", autoplay: true, playsInline: true, muted: true })
+      document.body.append(video)
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      await video.play()
+
+      const smooth = oneEuro()
+      let lastFrame = performance.now()
+
+      /** Landmarks arrive normalised to each axis separately, so a 640x480
+       *  frame has a taller unit on Y than on X. Everything below measures
+       *  distances and angles, which are only meaningful once both axes carry
+       *  the same unit. */
+      const read = (marks, index, aspect) => ({ x: marks[index].x, y: marks[index].y * aspect })
+      const middle = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+      const span = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+
+      /** Where each iris sits inside its own eye, in a frame carried by the
+       *  face itself rather than by the camera.
+       *
+       *  The horizontal axis runs between the two eye centres, so tilting the
+       *  head is cancelled for free and neither eye needs to know which of its
+       *  corners is the inner one. Both offsets are divided by the width of
+       *  the eye they came from, which is the one length in frame that does
+       *  not change when the head moves closer — that division is what makes
+       *  the calibration survive leaning back. */
+      const featuresOf = marks => {
+        const aspect = video.videoHeight / video.videoWidth
+        const eyes = CORNERS.map(([a, b]) => {
+          const [first, second] = [read(marks, a, aspect), read(marks, b, aspect)]
+          return { centre: middle(first, second), width: span(first, second) }
+        })
+        const irises = IRISES.map(group => {
+          const seen = group.map(index => read(marks, index, aspect))
+          return seen.reduce(middle)
+        })
+        // Pair each iris with the eye it is actually inside.
+        if (span(eyes[0].centre, irises[0]) > span(eyes[0].centre, irises[1])) irises.reverse()
+
+        const apart = span(eyes[0].centre, eyes[1].centre)
+        const right = {
+          x: (eyes[1].centre.x - eyes[0].centre.x) / apart,
+          y: (eyes[1].centre.y - eyes[0].centre.y) / apart,
+        }
+        const up = { x: right.y, y: -right.x }
+
+        // One point from two eyes, by averaging what each of them reports.
+        // Not by intersecting their optical axes: at arm's length the angle
+        // between them is smaller than this tracker's own error, so the
+        // intersection would be noise wearing the shape of a measurement.
+        let u = 0
+        let v = 0
+        eyes.forEach((eye, index) => {
+          const offset = { x: irises[index].x - eye.centre.x, y: irises[index].y - eye.centre.y }
+          u += (offset.x * right.x + offset.y * right.y) / eye.width / 2
+          v += (offset.x * up.x + offset.y * up.y) / eye.width / 2
+        })
+        return { u, v, apart, head: middle(eyes[0].centre, eyes[1].centre) }
+      }
+
+      const track = () => {
+        requestAnimationFrame(track)
+        if (!video.videoWidth) return
+
+        const now = performance.now()
+        const dt = Math.min(0.2, (now - lastFrame) / 1000) || 1 / 30
+        lastFrame = now
+
+        const result = landmarker.detectForVideo(video, now)
+        const marks = result.faceLandmarks?.[0]
+        // The way out lives here rather than in the calibration that failed:
+        // this line runs every frame, and would overwrite any message left
+        // behind by the code that has already finished.
+        if (!marks) return stopTracking(model ? "no face in frame" : "no face in frame · press C to calibrate")
+
+        // A blink hides the iris, and the tracker keeps reporting one anyway —
+        // extrapolated, and wrong. Hold the point instead of following it into
+        // the eyelid, and read the gesture on the way past. One eye open is
+        // not half a measurement: the model was calibrated on both averaged
+        // together, so a wink holds the point too rather than jumping to what
+        // the open eye alone reports.
+        const shapes = result.faceBlendshapes?.[0]?.categories ?? []
+        const scoreOf = name => shapes.find(shape => shape.categoryName === name)?.score ?? 0
+        if (readBlink(scoreOf("eyeBlinkLeft"), scoreOf("eyeBlinkRight"), now)) return
+
+        const feature = featuresOf(marks)
+        feature.u = smooth("u", feature.u, dt)
+        feature.v = smooth("v", feature.v, dt)
+
+        if (gathering) {
+          gathering.samples.push({ ...feature, x: gathering.x, y: gathering.y })
+          return
+        }
+        if (!model) return
+
+        // The calibration answers about the head that sat still for it. It
+        // cannot be corrected after the fact from data that never varied, so
+        // the honest thing is to say the head moved rather than to pretend.
+        const shifted = span(feature.head, anchor.head) / anchor.apart > DRIFT_SHIFT ||
+          Math.abs(feature.apart - anchor.apart) / anchor.apart > DRIFT_SCALE
+        if (shifted) setStatus("head moved · press C to calibrate again")
+
+        const seen = project(model, feature)
+        const point = {
+          x: Math.min(1, Math.max(0, seen.x)),
+          y: Math.min(1, Math.max(0, seen.y)),
+          r: model.error,
+        }
+        localPoint.hidden = false
+        publish(point)
+        record(point.x, point.y, dt)
+        // Driven by the loop rather than by a timer: nothing ticks while
+        // nobody is being tracked.
+        if (dirty && now > flushDue) {
+          flushDue = now + FLUSH_MS
+          flush()
+        }
+        if (!shifted) setStatus(`tracking · ±${Math.round(model.error * innerWidth)} px`, true)
+      }
+      track()
+    }
+
+    // ── Calibration ─────────────────────────────────────────────────────────
+    // Nine fixations, each one a settle and then a burst of samples. The
+    // settle is not politeness: a saccade takes a couple of hundred
+    // milliseconds to start and land, and samples taken during it belong to
+    // wherever the eye was coming from.
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+    const calibrate = async () => {
+      const surface = document.createElement("div")
+      surface.className = "calibration"
+      const target = document.createElement("div")
+      target.className = "target"
+      const pip = document.createElement("span")
+      pip.className = "pip"
+      target.append(pip)
+      const progress = document.createElement("p")
+      progress.className = "progress"
+      surface.append(target, progress)
+      document.body.append(surface)
+
+      localPoint.hidden = true
+      const collected = []
+      let enough = true
+
+      for (const [index, [tx, ty]] of TARGETS.entries()) {
+        target.style.transform = `translate(${tx * innerWidth}px, ${ty * innerHeight}px)`
+        progress.textContent = `look at the dot · ${index + 1} / ${TARGETS.length}`
+        await wait(SETTLE_MS)
+        gathering = { x: tx, y: ty, samples: [] }
+        await wait(GATHER_MS)
+        // A target the face was missing for is a hole in the grid, and a
+        // polynomial with a hole in its range will invent whatever it likes
+        // out there. Better to say so than to hand back a bent model.
+        if (gathering.samples.length < MIN_SAMPLES) enough = false
+        collected.push(...gathering.samples)
+        gathering = null
+      }
+      surface.remove()
+
+      if (!enough) return setStatus("calibration needs a face · press C to try again")
+
+      model = fit(collected)
+      model.error = crossValidate(collected)
+      // Where the head sat for the last fixation: the reference the drift
+      // check measures against for as long as this model is the one answering.
+      anchor = collected.at(-1)
+      // The visit starts when there is a model to measure with, so "first
+      // looked at" is counted from the first moment it could have been.
+      startedAt = performance.now()
+      visitAt = Date.now()
+      setStatus(`calibrated · ±${Math.round(model.error * innerWidth)} px`, true)
+    }
+
+    // ── The report ──────────────────────────────────────────────────────────
+    // Not a screenshot: the same page mounted a second time at its full height
+    // and scaled down, with the heat drawn over it. A screenshot would be a
+    // stale, lower-resolution copy of something the browser can just render
+    // again — and it would need a permission, a library, or both.
+    const plate = document.getElementById("plate")
+    const shotFrame = document.getElementById("shot-page")
+    const heatCanvas = document.getElementById("heat")
+    const numbers = document.getElementById("numbers")
+    const scaleOut = document.getElementById("scale")
+    let shotDoc = null
+    let shotScale = 1
+
+    // Transparent where nobody looked, and never a hard edge: the ramp only
+    // says "more" and "less", because that is all the data supports.
+    const RAMP = [
+      [0, [40, 70, 200, 0]],
+      [0.18, [40, 90, 220, 110]],
+      [0.42, [40, 190, 130, 165]],
+      [0.68, [245, 205, 60, 165]],
+      [1, [235, 60, 55, 185]],
+    ]
+    const LUT = new Uint8ClampedArray(256 * 4)
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255
+      const top = RAMP.findIndex(([stop]) => stop >= t)
+      const [from, a] = RAMP[Math.max(0, top - 1)]
+      const [to, b] = RAMP[top < 0 ? RAMP.length - 1 : top]
+      const k = to === from ? 0 : (t - from) / (to - from)
+      for (let c = 0; c < 4; c++) LUT[i * 4 + c] = a[c] + (b[c] - a[c]) * k
+    }
+
+    /** Fit the whole page in the space there is by scaling its own body rather
+     *  than the frame: a scaled frame would still occupy its full size in the
+     *  layout, and the canvas above it would have to be corrected for that.
+     *  Scaled from the inside, the frame is exactly what it shows. */
+    const layout = () => {
+      const page = article()
+      const [width, height] = [page.offsetWidth, page.scrollHeight]
+      const room = document.querySelector(".shot").getBoundingClientRect()
+      shotScale = Math.min(1, (room.width - 56) / width, (room.height - 56) / height)
+      plate.style.width = `${width * shotScale}px`
+      plate.style.height = `${height * shotScale}px`
+      shotFrame.style.width = `${width * shotScale}px`
+      shotFrame.style.height = `${height * shotScale}px`
+      shotDoc.documentElement.style.overflow = "hidden"
+      shotDoc.body.style.transformOrigin = "top left"
+      shotDoc.body.style.transform = `scale(${shotScale})`
+      scaleOut.textContent = `whole page at ${Math.round(shotScale * 100)}%`
+    }
+
+    /** The heat, painted into any canvas at any scale and offset: the report
+     *  uses it on the whole page shrunk to fit, the reader uses it on the part
+     *  of the page currently in view. One painter, so the two can never
+     *  disagree about what the numbers mean. */
+    const paintHeat = (canvas, { scale, offsetX, offsetY, width, height }) => {
+      const page = article()
+      canvas.width = width
+      canvas.height = height
+      const paint = canvas.getContext("2d", { willReadFrequently: true })
+      paint.clearRect(0, 0, width, height)
+      const all = [...visits.values()]
+      if (!all.length) return
+
+      // Everyone on the same scale, so one long stare does not wash out the
+      // rest of the page.
+      const peak = Math.max(0.6, ...all.flatMap(visit => Object.values(visit.cells)))
+
+      paint.globalCompositeOperation = "lighter"
+      for (const visit of all) {
+        // Each contribution is spread by the error that peer measured for
+        // itself when it calibrated: a peer that calibrated badly leaves a
+        // vaguer mark. It is the honest way to add up estimates that are not
+        // equally good, and it costs one multiplication.
+        const radius = Math.max(CELL, (visit.error || 0.04) * page.offsetWidth) * scale
+        for (const [cell, seconds] of Object.entries(visit.cells)) {
+          const [col, row] = cell.split(",").map(Number)
+          const cx = offsetX + (col + 0.5) * CELL * scale
+          const cy = offsetY + (row + 0.5) * CELL * scale
+          // Off-screen cells still cost a gradient and a fill, and while
+          // reading this runs on every scroll frame.
+          if (cx < -radius || cy < -radius || cx > width + radius || cy > height + radius) continue
+          const grad = paint.createRadialGradient(cx, cy, 0, cx, cy, radius)
+          grad.addColorStop(0, `rgba(255,255,255,${Math.min(1, seconds / peak)})`)
+          grad.addColorStop(1, "rgba(255,255,255,0)")
+          paint.fillStyle = grad
+          paint.fillRect(cx - radius, cy - radius, radius * 2, radius * 2)
+        }
+      }
+
+      // One field, coloured in a single pass. Painting each peer in colour and
+      // letting them blend would show every blob's own edge wherever two of
+      // them overlapped, which is a picture of the drawing order rather than
+      // of where people looked.
+      const image = paint.getImageData(0, 0, width, height)
+      const pixels = image.data
+      for (let i = 0; i < pixels.length; i += 4) {
+        const level = pixels[i + 3] * 4
+        pixels[i] = LUT[level]
+        pixels[i + 1] = LUT[level + 1]
+        pixels[i + 2] = LUT[level + 2]
+        pixels[i + 3] = LUT[level + 3]
+      }
+      paint.putImageData(image, 0, 0)
+      paint.globalCompositeOperation = "source-over"
+      return { all, page, paint }
+    }
+
+    const drawReport = () => {
+      const page = article()
+      const painted = paintHeat(heatCanvas, {
+        scale: shotScale,
+        offsetX: 0,
+        offsetY: 0,
+        width: Math.round(page.offsetWidth * shotScale),
+        height: Math.round(page.scrollHeight * shotScale),
+      })
+      const all = [...visits.values()]
+
+      // Winks sit on top as marks, not as heat: they are moments, not seconds.
+      // Only in the report — over the page being read they would be one more
+      // thing pulling at the eye.
+      if (painted) {
+        const { paint } = painted
+        paint.strokeStyle = "rgba(255,255,255,.85)"
+        paint.lineWidth = 2
+        for (const visit of all)
+          for (const wink of visit.winks ?? []) {
+            paint.beginPath()
+            paint.arc(wink.u * page.offsetWidth * shotScale,
+              wink.v * page.scrollHeight * shotScale, 7, 0, 2 * Math.PI)
+            paint.stroke()
+          }
+      }
+      renderNumbers(all, page)
+    }
+
+    const seconds = value => `${value.toFixed(1)} s`
+
+    const renderNumbers = (all, page) => {
+      const totals = new Map()
+      const firsts = new Map()
+      const winkCount = new Map()
+      for (const visit of all) {
+        for (const [zone, time] of Object.entries(visit.zones ?? {}))
+          totals.set(zone, (totals.get(zone) ?? 0) + time)
+        for (const [zone, ms] of Object.entries(visit.first ?? {}))
+          firsts.set(zone, [...(firsts.get(zone) ?? []), ms])
+        for (const wink of visit.winks ?? [])
+          wink.zone && winkCount.set(wink.zone, (winkCount.get(wink.zone) ?? 0) + 1)
+      }
+
+      const looked = [...totals.values()].reduce((sum, time) => sum + time, 0)
+      const errors = all.map(visit => visit.error).filter(Boolean)
+      const cellsSeen = new Set(all.flatMap(visit => Object.keys(visit.cells))).size
+      const cellsTotal = Math.ceil(page.offsetWidth / CELL) * Math.ceil(page.scrollHeight / CELL)
+
+      const rows = [...totals].sort((a, b) => b[1] - a[1]).map(([zone, time]) => {
+        const first = firsts.get(zone) ?? []
+        const soonest = first.length ? Math.min(...first) / 1000 : null
+        return `<tr>
+          <td class="bar" style="--share: ${looked ? time / looked : 0}">${zone}</td>
+          <td>${seconds(time)}</td>
+          <td>${soonest === null ? "—" : `${soonest.toFixed(1)} s`}</td>
+          <td>${winkCount.get(zone) ?? 0}</td>
+        </tr>`
+      }).join("")
+
+      numbers.innerHTML = `
+        <h2>What this page got looked at</h2>
+        <p>${all.length} visit${all.length === 1 ? "" : "s"} ·
+          ${seconds(looked)} of gaze ·
+          ${Math.round(100 * cellsSeen / cellsTotal)}% of the page reached${errors.length
+            ? ` · ±${Math.round(page.offsetWidth * errors.reduce((a, b) => a + b, 0) / errors.length)} px typical error`
+            : ""}</p>
+        <h3>By region</h3>
+        <table>
+          <thead><tr><th>region</th><th>looked</th><th>first</th><th>winks</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="4">Nothing recorded yet.</td></tr>`}</tbody>
+        </table>
+        <h3>How to read this</h3>
+        <p><strong>looked</strong> is total gaze time across every visit.
+          <strong>first</strong> is how quickly anyone reached that region —
+          the number a landing page lives or dies on. <strong>winks</strong>
+          counts deliberate blinks landing there.</p>
+        <p>Every visit is one node in the graph, rewritten by its own peer and
+          summed here. Nothing was uploaded: no frame ever left a browser.</p>`
+    }
+
+    // ── The heat over the page ──────────────────────────────────────────────
+    const liveHeat = document.getElementById("live-heat")
+    const showHeat = document.getElementById("show-heat")
+    let heatShown = false
+    let heatQueued = false
+
+    const drawLiveHeat = () => {
+      heatQueued = false
+      if (!heatShown) return
+      const page = article()
+      paintHeat(liveHeat, {
+        scale: 1,
+        offsetX: articleLeft(),
+        offsetY: -pageFrame.contentWindow.scrollY,
+        width: innerWidth,
+        height: innerHeight,
+      })
+    }
+
+    /** Coalesced to one paint per frame: scroll fires faster than the display
+     *  refreshes, and this one repaints a full-window canvas. */
+    const queueLiveHeat = () => {
+      if (heatQueued || !heatShown) return
+      heatQueued = true
+      requestAnimationFrame(drawLiveHeat)
+    }
+
+    const toggleHeat = () => {
+      heatShown = !heatShown
+      liveHeat.hidden = !heatShown
+      showHeat.textContent = heatShown ? "Hide heat" : "Show heat"
+      drawLiveHeat()
+      // Looking at the map is not reading the page, and it would be recorded
+      // as if it were — the second visit would be a map of the first one.
+      // Nothing is recorded while it is up, and saying so is the point.
+      if (sharing) setStatus(heatShown ? "heat shown · not recording" : "recording", !heatShown)
+    }
+
+    showHeat.addEventListener("click", toggleHeat)
+    pageFrame.contentWindow.addEventListener("scroll", queueLiveHeat)
+
+    const openReport = async () => {
+      report.hidden = false
+      shotDoc ??= await mount(shotFrame)
+      layout()
+      drawReport()
+    }
+
+    document.getElementById("open-report").addEventListener("click", openReport)
+    document.getElementById("close-report").addEventListener("click", () => { report.hidden = true })
+    addEventListener("resize", () => {
+      if (report.hidden || !shotDoc) return
+      layout()
+      drawReport()
+    })
+
+    // ── Reading everyone's ──────────────────────────────────────────────────
+    // Subscribed last on purpose: the callback fires with whatever is already
+    // stored the moment it is registered, and it paints — so everything it
+    // paints with has to exist first.
+    await db.map({ field: "at", order: "asc" }, ({ id, value, action }) => {
+      if (action === "removed") visits.delete(id)
+      else if (value?.cells) visits.set(id, value)
+      if (!report.hidden) drawReport()
+      queueLiveHeat()
+    })
+
+    // ── Mode ────────────────────────────────────────────────────────────────
+    const sensitivity = document.getElementById("sensitivity")
+    const cutoffOut = document.getElementById("cutoff")
+
+    /** Logarithmic, and symmetric around 1 Hz — which is what this example did
+     *  before the knob existed, so dead centre is the behaviour that was
+     *  measured. A linear slider would spend half its travel past the point
+     *  where the point already dances: 0.15 Hz at one end, 6.7 Hz at the
+     *  other, and every step in between the same multiplicative distance. */
+    const CALM = 0.15
+    const applySensitivity = () => {
+      tuning.cutoff = CALM ** (1 - 2 * sensitivity.value / 100)
+      tuning.beta = tuning.cutoff
+      cutoffOut.textContent = `${tuning.cutoff.toFixed(2)} Hz`
+    }
+    sensitivity.addEventListener("input", applySensitivity)
+    applySensitivity()
+
+    const enter = async mode => {
+      chooser.remove()
+      if (mode !== "share") {
+        showHint()
+        return setStatus("watching")
+      }
+      sharing = true
+      // A watcher filters nothing, so the knob belongs to the peer tracking.
+      document.getElementById("tuning").hidden = false
+      await startTracking()
+      await calibrate()
+    }
+
+    chooser.querySelectorAll("[data-mode]").forEach(button =>
+      button.addEventListener("click", () => enter(button.dataset.mode)))
+
+    // The page under test takes the focus as soon as it is scrolled, and a
+    // key pressed there never reaches this document. Same-origin, so both can
+    // be listened to — otherwise the shortcuts would work only until the first
+    // scroll, which is a bug that looks like flakiness.
+    const onKey = event => {
+      const key = event.key.toLowerCase()
+      if (key === "s") return report.hidden ? openReport() : (report.hidden = true)
+      if (key === "h") return toggleHeat()
+      // The surface on screen is the guard: while it is there a calibration
+      // is running, and a second one would interleave two grids into one set
+      // of samples.
+      if (sharing && key === "c" && !document.querySelector(".calibration")) calibrate()
+    }
+    addEventListener("keydown", onKey)
+    pageDoc.addEventListener("keydown", onKey)
+  </script>
+</body>
+
+</html>
