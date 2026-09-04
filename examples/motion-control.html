@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB — Motion control</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the guide's
+       exact values. Dark and fixed — the page is a viewport onto one part. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --accent-hover: #6ba1ff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --text-on-accent: #ffffff;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    [hidden] { display: none !important; }
+
+    /* A-Frame's headset buttons have nothing to offer here, and they sit on
+       top of the peer count. */
+    .a-enter-vr, .a-enter-ar { display: none; }
+
+    /* The camera is a sensor, not a backdrop: the feed the hand tracker reads
+       is never shown. Present but invisible — a display:none video is a video
+       the browser may stop feeding frames from. */
+    .sensor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    /* The scene fills the window; every readable element floats above it. */
+    #stage-root { position: fixed; inset: 0; }
+    #stage-root a-scene { width: 100%; height: 100%; }
+
+    .brand,
+    .presence,
+    .status,
+    .hint,
+    .chooser { position: fixed; z-index: 2; }
+
+    .brand {
+      top: var(--space-5);
+      left: var(--space-5);
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+    }
+
+    /* Ambient connection state: bottom right, far from the content. */
+    .presence {
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .status {
+      left: var(--space-5);
+      bottom: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+
+    .status.live::before { background: var(--ok); }
+
+    /* Doubles as the empty state: alone in the room, this line is the lesson. */
+    .hint {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      max-width: 420px;
+      text-align: center;
+      color: var(--text-tertiary);
+      pointer-events: none;
+    }
+
+    .chooser {
+      inset: 0;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: var(--space-4);
+      padding: var(--space-5);
+      background: var(--bg-primary);
+      text-align: center;
+    }
+
+    .chooser h2 { margin: 0; font-size: 17px; }
+    .chooser p { margin: 0; max-width: 44ch; color: var(--text-secondary); }
+    .chooser a { color: var(--accent); }
+    .chooser .note { font-size: 12px; color: var(--text-tertiary); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+    button {
+      font: inherit;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: var(--text-on-accent);
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    button.secondary {
+      background: var(--bg-secondary);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    button.secondary:hover { background: var(--bg-secondary); border-color: var(--accent); }
+  </style>
+</head>
+
+<body>
+  <h1 class="brand">Motion control · GenosDB</h1>
+
+  <div id="stage-root"></div>
+
+  <p class="hint" id="hint" hidden>Nothing has moved yet. In another window,
+    pick a way to move it — your phone, or your hand.</p>
+
+  <span class="status" id="status" hidden></span>
+  <span class="presence" id="presence">0 peers</span>
+
+  <div class="chooser" id="chooser">
+    <h2>One part, every window</h2>
+    <p>Pick how you move it, then open this page again and watch. Whatever moves
+      the part here moves it there, live.</p>
+    <div class="actions">
+      <button data-mode="phone">Move it — phone motion</button>
+      <button data-mode="hand">Move it — your hand</button>
+      <button class="secondary" data-mode="watch">Watch it</button>
+    </div>
+    <p class="note">Phone motion reads the gyroscope — no camera at all. The
+      hand mode uses one, only to track: it is never shown, and it fetches about
+      20 MB of model the first time. Both need https away from localhost.</p>
+  </div>
+
+  <!-- Built from primitives on purpose: nothing to download, so the part is on
+       screen the instant the pose is. -->
+  <template id="tpl-part">
+    <a-entity scale="0.34 0.34 0.34">
+      <a-cylinder radius="0.36" height="1.1" rotation="0 0 90" color="#8f9aa6" metalness="0.6" roughness="0.35"></a-cylinder>
+      <a-sphere radius="0.3" color="#4c8dff" metalness="0.3" roughness="0.4"></a-sphere>
+      <a-torus position="-0.35 0 0" radius="0.36" radius-tubular="0.05" rotation="0 90 0" color="#c9a227" metalness="0.8" roughness="0.3"></a-torus>
+      <a-torus position="0.35 0 0" radius="0.36" radius-tubular="0.05" rotation="0 90 0" color="#c9a227" metalness="0.8" roughness="0.3"></a-torus>
+      <a-cylinder position="-0.62 0 0" radius="0.56" height="0.12" rotation="0 0 90" color="#aab3bd" metalness="0.7" roughness="0.3"></a-cylinder>
+      <a-cylinder position="0.62 0 0" radius="0.56" height="0.12" rotation="0 0 90" color="#aab3bd" metalness="0.7" roughness="0.3"></a-cylinder>
+      <a-cylinder position="0 0.34 0" radius="0.09" height="0.3" color="#7c8794" metalness="0.6" roughness="0.35"></a-cylinder>
+      <a-box position="0.3 0.52 0" width="1.1" height="0.07" depth="0.12" color="#d5dae0" metalness="0.5" roughness="0.4"></a-box>
+    </a-entity>
+  </template>
+
+  <!-- One scene for every role: whoever is driving sees exactly what the
+       watchers see, because the part is never attached to the tracker. -->
+  <template id="tpl-scene">
+    <a-scene embedded vr-mode-ui="enabled: false" renderer="antialias: true"
+      background="color: #0d0f12" fog="type: linear; color: #0d0f12; near: 4; far: 30">
+      <a-light type="ambient" intensity="0.6"></a-light>
+      <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
+      <a-entity grid-room position="0 0 -18"></a-entity>
+      <a-entity id="stage" pose-target data-part></a-entity>
+      <a-entity camera position="0 0 0" look-controls="enabled: false" wasd-controls="enabled: false"></a-entity>
+    </a-scene>
+  </template>
+
+  <script type="module">
+    // A phone's gyroscope or a hand in front of the camera drives a 3D part,
+    // and its pose reaches every other browser over GenosRTC's ephemeral
+    // channel — the same presence layer the live-cursors example uses. Nothing
+    // is persisted: the part exists exactly while something is tracking it, so
+    // the tracking state travels as much as the pose.
+    import { gdb } from "../dist/index.js"
+
+    const { THREE } = AFRAME
+    const SEND_HZ = 30            // tracker jitter carries no detail above this
+    const MOVE_EPS = 0.002        // metres
+    const TURN_EPS = 0.002        // 1 - |dot| between quaternions
+    const DEG = Math.PI / 180
+
+    // The hand modes are metric: one metre of real space is HAND_SCALE units,
+    // so a hand measured in metres lands in the room at its true size.
+    const HAND_SCALE = 4          // world units per metre
+    const HELD_AT = 0.35          // metres out: where a hand rests in front of a laptop
+    const CAMERA_SPREAD = 0.577   // tan(half the horizontal field of view), ~60°
+    // How far the fingertips sit from the wrist, over how far their knuckles
+    // do: about 1.85 with an open hand and 0.70 with a fist, measured. A ratio
+    // rather than a distance, so it means the same for any hand at any range.
+    // Two thresholds, or the grip chatters on the boundary.
+    const FIST_ON = 1.1
+    const FIST_OFF = 1.4
+    const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1"
+    const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
+
+    const db = await gdb("motioncontrol", { rtc: true })
+    const channel = db.room.channel("pose")
+
+    const chooser = document.getElementById("chooser")
+    const presence = document.getElementById("presence")
+    const statusEl = document.getElementById("status")
+    const hint = document.getElementById("hint")
+
+    const peers = new Set()
+    const updatePresence = () => {
+      presence.textContent = `${peers.size} peer${peers.size === 1 ? "" : "s"}`
+    }
+    const setStatus = (text, live) => {
+      statusEl.textContent = text
+      statusEl.classList.toggle("live", !!live)
+      statusEl.hidden = false
+    }
+
+    // The 1€ filter. The hand tracker does not smooth its own output — VIDEO
+    // mode only reuses the previous frame's crop — so a hand held perfectly
+    // still still wanders a couple of millimetres every frame, which is enough
+    // to cross a pinch threshold and drop whatever is being held. The cutoff
+    // rises with speed: slow movement is smoothed hard, fast movement is barely
+    // touched, so this costs no responsiveness. MediaPipe's own constants
+    // (0.05 / 80) are tuned for its pose pipeline's units and pass hand
+    // landmarks through almost untouched; these are scaled for landmarks
+    // normalised to 0..1. To retune: set BETA to 0, lower MIN_CUTOFF until a
+    // still hand stops shimmering, then raise BETA until fast movement stops
+    // lagging.
+    const MIN_CUTOFF = 1
+    const BETA = 1
+    const DERIVATE_CUTOFF = 1
+
+    const easing = (cutoff, dt) => {
+      const tau = 2 * Math.PI * cutoff * dt
+      return tau / (tau + 1)
+    }
+
+    const oneEuro = () => {
+      const seen = new Map()
+      return (key, value, dt) => {
+        const last = seen.get(key)
+        if (!last) {
+          seen.set(key, { value, speed: 0 })
+          return value
+        }
+        const speed = last.speed + easing(DERIVATE_CUTOFF, dt) * ((value - last.value) / dt - last.speed)
+        const value2 = last.value + easing(MIN_CUTOFF + BETA * Math.abs(speed), dt) * (value - last.value)
+        seen.set(key, { value: value2, speed })
+        return value2
+      }
+    }
+
+    /** Three decimals is a tenth of a millimetre — past that it is only noise on the wire. */
+    const round3 = values => values.map(n => Math.round(n * 1e3) / 1e3)
+
+    // ── The room ────────────────────────────────────────────────────────────
+    // Four grids — floor, ceiling and both side walls — as plain line segments.
+    // The scene's fog dissolves them towards the vanishing point, so the room
+    // reads as depth rather than as a box the part is sitting inside.
+    //
+    // The room stands entirely in front of the camera rather than around it: a
+    // line that crosses the camera plane is dropped instead of clipped, and
+    // that cost the floor and ceiling every one of their perspective lines —
+    // the ones that make the vanishing point. Placed ahead, nothing is lost and
+    // the near edge falls outside the frame anyway.
+    AFRAME.registerComponent("grid-room", {
+      schema: {
+        width: { default: 20 },
+        height: { default: 11 },
+        depth: { default: 34 },
+        cell: { default: 1 },
+        color: { default: "#9aa3ad" },
+        opacity: { default: 0.4 },
+      },
+      init() {
+        const { width, height, depth, cell, color, opacity } = this.data
+        const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity })
+
+        /** A flat grid on the XY plane: cols × rows cells, each `cell` units wide. */
+        const face = (cols, rows) => {
+          const points = []
+          const [halfWidth, halfHeight] = [cols * cell / 2, rows * cell / 2]
+          for (let i = 0; i <= cols; i++) {
+            const x = -halfWidth + i * cell
+            points.push(x, -halfHeight, 0, x, halfHeight, 0)
+          }
+          for (let j = 0; j <= rows; j++) {
+            const y = -halfHeight + j * cell
+            points.push(-halfWidth, y, 0, halfWidth, y, 0)
+          }
+          const geometry = new THREE.BufferGeometry()
+          geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3))
+          return new THREE.LineSegments(geometry, material)
+        }
+
+        const [cols, rows, deep] = [width / cell, height / cell, depth / cell]
+        const quarter = Math.PI / 2
+        const surfaces = [
+          [face(cols, deep), [0, -height / 2, 0], [-quarter, 0, 0]],
+          [face(cols, deep), [0, height / 2, 0], [quarter, 0, 0]],
+          [face(deep, rows), [-width / 2, 0, 0], [0, quarter, 0]],
+          [face(deep, rows), [width / 2, 0, 0], [0, -quarter, 0]],
+        ]
+        for (const [surface, position, rotation] of surfaces) {
+          surface.position.set(...position)
+          surface.rotation.set(...rotation)
+          this.el.object3D.add(surface)
+        }
+      },
+    })
+
+    // ── The part ────────────────────────────────────────────────────────────
+    const target = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), armed: false }
+    let role = null      // "drive" | "watch"
+    let driver = null    // peer whose camera is reporting the part right now
+
+    const applyPose = ({ p, r }) => {
+      target.position.fromArray(p)
+      target.quaternion.fromArray(r)
+      target.armed = true
+      hint.hidden = true
+    }
+
+    /** Tracking stopped: empty the stage and say why. */
+    const clearPose = status => {
+      target.armed = false
+      driver = null
+      if (role === "watch") hint.hidden = false
+      setStatus(status)
+    }
+
+    AFRAME.registerComponent("pose-target", {
+      // Hidden until a pose says where it goes, and hidden again the moment
+      // tracking stops: the part exists only while a camera is reporting it.
+      init() { this.el.object3D.visible = false },
+      tick(time, delta) {
+        const { object3D } = this.el
+        if (!target.armed) {
+          object3D.visible = false
+          this.landed = false
+          return
+        }
+        // The first pose is taken as-is; easing it would fly the part in from
+        // the origin. After that, poses arrive at 30 Hz and the display runs
+        // faster, so each frame closes part of the gap instead of stepping.
+        if (!this.landed) {
+          this.landed = true
+          object3D.position.copy(target.position)
+          object3D.quaternion.copy(target.quaternion)
+          object3D.visible = true
+          return
+        }
+        const k = Math.min(1, delta / 60)
+        object3D.position.lerp(target.position, k)
+        object3D.quaternion.slerp(target.quaternion, k)
+      },
+    })
+
+    // ── Publishing a pose ───────────────────────────────────────────────────
+    // Every source ends here, so quantising, thresholds and rate live in one
+    // place: a tracker that reports no movement puts nothing on the wire, and
+    // the peer driving paints its own pose through the same path a watcher uses.
+    let lastPose = null
+    let tracking = false
+    let due = 0
+    const sent = { position: new THREE.Vector3(Infinity, 0, 0), quaternion: new THREE.Quaternion() }
+
+    const publish = (position, quaternion) => {
+      const now = performance.now()
+      if (now < due) return
+      // A tracker that reports no movement puts nothing on the wire.
+      const still = sent.position.distanceTo(position) < MOVE_EPS &&
+        1 - Math.abs(sent.quaternion.dot(quaternion)) < TURN_EPS
+      if (still) return
+
+      due = now + 1000 / SEND_HZ
+      sent.position.copy(position)
+      sent.quaternion.copy(quaternion)
+      tracking = true
+      lastPose = { p: round3(position.toArray()), r: round3(quaternion.toArray()) }
+      channel.send(lastPose)
+      applyPose(lastPose)
+    }
+
+    /** The part is gone for everyone the moment the tracker loses it. Poses stop
+     *  on their own when nothing moves, so this cannot be inferred from silence. */
+    const stopTracking = status => {
+      if (!tracking) return
+      tracking = false
+      // Forget what was last sent: when tracking comes back the part has to be
+      // re-announced even if it never moved, or it stays gone for everyone.
+      sent.position.set(Infinity, 0, 0)
+      channel.send({ lost: true })
+      clearPose(status)
+    }
+
+    // ── Source: the phone itself ────────────────────────────────────────────
+    // The gyroscope reports orientation directly — no camera, no computer
+    // vision, nothing that can lose sight of anything.
+    const startPhone = async () => {
+      setStatus("waiting for motion")
+      // iOS hands motion data out only after an explicit grant, and only from a
+      // user gesture — the button click that got us here counts as one.
+      const ask = DeviceOrientationEvent.requestPermission
+      if (ask && await ask() !== "granted") return setStatus("motion denied")
+      setTimeout(() => tracking || setStatus("no motion sensor here"), 3000)
+
+      const position = new THREE.Vector3(0, 0, -HELD_AT * HAND_SCALE)
+      const quaternion = new THREE.Quaternion()
+      const euler = new THREE.Euler()
+      const screenTwist = new THREE.Quaternion()
+      const screenAxis = new THREE.Vector3(0, 0, 1)
+      // -90° about X: the device frame has Z up, three.js has Y up.
+      const frameTwist = new THREE.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2)
+
+      addEventListener("deviceorientation", ({ alpha, beta, gamma }) => {
+        if (alpha === null) return  // the event fires empty where there is no sensor
+        euler.set(beta * DEG, alpha * DEG, -gamma * DEG, "YXZ")
+        quaternion.setFromEuler(euler)
+          .multiply(frameTwist)
+          .multiply(screenTwist.setFromAxisAngle(screenAxis, -(screen.orientation?.angle ?? 0) * DEG))
+        publish(position, quaternion)
+        setStatus("phone motion", true)
+      })
+    }
+
+    // ── Source: your hands ──────────────────────────────────────────────────
+    // Close your fist and the part is yours: it follows the hand and copies
+    // its turn, in every axis, until you open your hand again. Nothing is
+    // drawn — the gesture is the whole interface — so the camera stays a
+    // sensor and the wire carries a pose, not a skeleton.
+    const startHand = async () => {
+      setStatus("loading the hand model")
+      const { FilesetResolver, HandLandmarker } = await import(`${MEDIAPIPE}/vision_bundle.mjs`)
+      const landmarker = await HandLandmarker.createFromOptions(
+        await FilesetResolver.forVisionTasks(`${MEDIAPIPE}/wasm`),
+        { baseOptions: { modelAssetPath: HAND_MODEL, delegate: "GPU" }, runningMode: "VIDEO", numHands: 2 })
+
+      const video = Object.assign(document.createElement("video"),
+        { className: "sensor", autoplay: true, playsInline: true, muted: true })
+      document.body.append(video)
+      video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      await video.play()
+      setStatus("make a fist to grab")
+
+      const smooth = oneEuro()
+      let lastFrame = performance.now()
+
+      /** Every landmark filtered on its own, keyed per hand so two hands never
+       *  borrow each other's history. */
+      const settle = (joints, key, dt) => joints.map((joint, i) => ({
+        x: smooth(`${key}${i}x`, joint.x, dt),
+        y: smooth(`${key}${i}y`, joint.y, dt),
+        z: smooth(`${key}${i}z`, joint.z, dt),
+      }))
+
+      // The part starts in front of the camera and stays wherever it is left.
+      const held = { position: new THREE.Vector3(0, 0, -HELD_AT * HAND_SCALE), quaternion: new THREE.Quaternion() }
+      const grab = { hand: -1, offset: new THREE.Vector3(), palm: new THREE.Quaternion(), part: new THREE.Quaternion() }
+
+      const anchor = new THREE.Vector3()
+      const palm = new THREE.Quaternion()
+      const wrist = new THREE.Vector3()
+      const indexBase = new THREE.Vector3()
+      const pinkyBase = new THREE.Vector3()
+      const along = new THREE.Vector3()
+      const across = new THREE.Vector3()
+      const normal = new THREE.Vector3()
+      const basis = new THREE.Matrix4()
+      const turn = new THREE.Quaternion()
+
+      const aspect = () => video.videoHeight / video.videoWidth
+
+      // MediaPipe never says how far away a hand is — but it does say how big
+      // the hand really is, in metres, and how big it looks in the frame. That
+      // ratio is the distance, and everything else is a pinhole camera run
+      // backwards. Without it the wrist sat at a fixed depth for ever, so a
+      // hand could never pull anything closer.
+      const seenSpan = (screen, a, b) =>
+        Math.hypot(screen[a].x - screen[b].x, (screen[a].y - screen[b].y) * aspect())
+      const realSpan = (real, a, b) =>
+        Math.hypot(real[a].x - real[b].x, real[a].y - real[b].y, real[a].z - real[b].z)
+
+      // Averaged over three spans across the palm rather than trusting one:
+      // this ratio is the noisiest thing in the pipeline and it scales
+      // everything, so its noise becomes everyone's.
+      const SPANS = [[0, 5], [0, 17], [5, 17]]
+      const depthOf = (screen, real) =>
+        SPANS.reduce((total, [a, b]) => total + realSpan(real, a, b) / seenSpan(screen, a, b), 0) /
+        (SPANS.length * 2 * CAMERA_SPREAD)
+
+      /** Un-project a frame position at a known distance, mirrored like a mirror:
+       *  a front camera shows you as a mirror does, so the hand you see is the
+       *  one that has to move things. */
+      const place = ({ x, y }, metres, into) => into.set(
+        (0.5 - x) * 2 * CAMERA_SPREAD * metres,
+        (0.5 - y) * 2 * CAMERA_SPREAD * metres * aspect(),
+        -metres).multiplyScalar(HAND_SCALE)
+
+      /** Where the palm faces, from the metric landmarks, which carry the hand's
+       *  true rotation.
+       *
+       *  The two axes are the ones anatomy already keeps square: across the
+       *  knuckles (index → pinky) and up the palm (wrist → between them). Built
+       *  instead from wrist → index and wrist → pinky — two vectors barely 30°
+       *  apart — the cross product of a motionless fist flipped by up to 115°
+       *  between frames, and the part lurched with it.
+       *
+       *  Mirrored afterwards — (x, -y, -z, w) across x — because a mirror
+       *  reverses turns as well as positions, and a basis built on already
+       *  mirrored points is a reflection wearing a rotation, not a rotation. */
+      const facing = (joints, into) => {
+        const read = ({ x, y, z }, v) => v.set(x, -y, -z)   // MediaPipe measures Y downwards
+        read(joints[0], wrist)
+        read(joints[5], indexBase)
+        read(joints[17], pinkyBase)
+        across.subVectors(pinkyBase, indexBase).normalize()
+        along.addVectors(indexBase, pinkyBase).multiplyScalar(0.5).sub(wrist).normalize()
+        normal.crossVectors(across, along).normalize()
+        across.crossVectors(along, normal).normalize()
+        into.setFromRotationMatrix(basis.makeBasis(across, along, normal))
+        into.set(into.x, -into.y, -into.z, into.w)
+      }
+
+      /** Fingertips folded towards the wrist, against their own knuckles. */
+      const FINGERS = [[8, 5], [12, 9], [16, 13], [20, 17]]
+      const curlOf = real => FINGERS.reduce((total, [tip, knuckle]) =>
+        total + realSpan(real, 0, tip) / realSpan(real, 0, knuckle), 0) / FINGERS.length
+
+      const track = () => {
+        requestAnimationFrame(track)
+        const now = performance.now()
+        const result = landmarker.detectForVideo(video, now)
+        const dt = Math.min(0.2, (now - lastFrame) / 1000) || 1 / 30
+        lastFrame = now
+        if (!result.landmarks?.length) {
+          grab.hand = -1
+          return stopTracking("show your hands")
+        }
+
+        // Keyed by which hand it is, so two hands never share a filter.
+        const sides = result.handedness ?? result.handednesses ?? []
+        const named = index => sides[index]?.[0]?.categoryName ?? index
+        const screen = result.landmarks.map((joints, i) => settle(joints, `s${named(i)}`, dt))
+        const metric = result.worldLandmarks.map((joints, i) => settle(joints, `w${named(i)}`, dt))
+
+        screen.forEach((joints, index) => {
+          const real = metric[index]
+          const closed = curlOf(real) < (grab.hand === index ? FIST_OFF : FIST_ON)
+          if (!closed) {
+            if (grab.hand === index) grab.hand = -1
+            return
+          }
+          if (grab.hand >= 0 && grab.hand !== index) return   // the first fist wins
+
+          place(joints[0], smooth(`d${named(index)}`, depthOf(joints, real), dt), anchor)
+          facing(real, palm)
+          // Grabbing records where the part sits relative to the hand, so it
+          // never jumps: from here the hand carries it and turns it.
+          if (grab.hand !== index) {
+            grab.hand = index
+            grab.offset.subVectors(held.position, anchor)
+            grab.palm.copy(palm)
+            grab.part.copy(held.quaternion)
+          }
+          held.position.addVectors(anchor, grab.offset)
+          held.quaternion.copy(turn.copy(grab.palm).invert().premultiply(palm)).multiply(grab.part)
+        })
+
+        publish(held.position, held.quaternion)
+        setStatus(grab.hand >= 0 ? "holding it" : "make a fist to grab", true)
+      }
+      track()
+    }
+
+    // ── The wire ────────────────────────────────────────────────────────────
+    // Two kinds of message travel: a pose, and the news that tracking stopped.
+    channel.on("message", (message, fromPeerId) => {
+      if (message.lost) {
+        if (fromPeerId === driver) clearPose(`tracking lost · ${fromPeerId.slice(0, 4)}`)
+        return
+      }
+      driver = fromPeerId
+      applyPose(message)
+      setStatus(`driven by ${fromPeerId.slice(0, 4)}`, true)
+    })
+
+    db.room.on("peer:join", peerId => {
+      peers.add(peerId)
+      updatePresence()
+      // A peer arriving while nothing moves would face an empty stage: nothing
+      // is sent until the pose changes. Greet it with the current one.
+      if (tracking && lastPose) channel.send(lastPose, peerId)
+    })
+
+    db.room.on("peer:leave", peerId => {
+      peers.delete(peerId)
+      updatePresence()
+      if (peerId === driver) clearPose("waiting for a pose")
+    })
+
+    // ── Mode ────────────────────────────────────────────────────────────────
+    // One scene, one part; the mode only decides what reports its pose.
+    const enter = async mode => {
+      role = mode
+      const fragment = document.getElementById("tpl-scene").content.cloneNode(true)
+      fragment.querySelector("[data-part]").append(document.getElementById("tpl-part").content.cloneNode(true))
+      document.getElementById("stage-root").append(fragment)
+      chooser.remove()
+
+      if (mode === "phone") return startPhone()
+      if (mode === "hand") return startHand()
+
+      hint.hidden = false
+      setStatus("waiting for a pose")
+    }
+
+    chooser.querySelectorAll("[data-mode]").forEach(button =>
+      button.addEventListener("click", () => enter(button.dataset.mode)))
+  </script>
+</body>
+
+</html>

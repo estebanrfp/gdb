@@ -78,6 +78,9 @@ A continuous document — the Notion model — over the plain GenosDB API. One n
 ### [Real-time IoT Thermostat Control powered by GenosDB](https://estebanrfp.github.io/gdb/examples/thermostat.html)
 A real-time peer-to-peer thermostat control demo showcasing GenosDB's reactive synchronization. Multiple users can adjust target temperature, toggle eco-mode (Leaf), and set away status — all changes instantly sync across connected browsers without any backend server. Demonstrates `db.put()`, reactive `db.get()` subscriptions, and P2P room events for peer counting.
 
+### [Motion Control — A Gesture Is the Interface](https://estebanrfp.github.io/gdb/examples/motion-control.html)
+Move a 3D part with your phone's gyroscope or with your bare hand, and watch it move in every other browser. Nothing is persisted: the part exists only while a sensor is reporting it, so what travels over the ephemeral channel is the tracking state as much as the pose — a lost hand empties the stage everywhere, and finding it again fills it back. Close your fist and the part is yours, following your hand and copying its turn in every axis; open your hand and you leave it there. The camera is a sensor and never a backdrop: it is used for tracking and never shown. Demonstrates `db.room.channel()` for pose at 30 Hz, targeted sends to greet an arriving peer, and `peer:join` / `peer:leave` for presence.
+
 ---
 
 ## Security Manager (SM) Examples
