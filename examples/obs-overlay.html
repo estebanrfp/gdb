@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB OBS Overlay</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — a stream overlay is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --bg-tertiary: #1c2026;
+      --bg-elevated: #22262d;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --accent-hover: #6ba1ff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --danger: #ef5350;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --text-on-accent: #ffffff;
+      --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.5 var(--font); color: var(--text-primary); background: var(--bg-primary); }
+    .hidden { display: none !important; }
+    h1 { margin: 0 0 var(--space-2); font-size: 17px; }
+    h1 span { color: var(--text-tertiary); font-weight: 400; }
+    .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .hint + .hint { margin-top: var(--space-2); }
+    code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+
+    /* ── The overlay: what OBS composites ─────────────────────────────────
+       Inside OBS the body is transparent and only the elements paint. In an
+       ordinary browser the same page shows a dark stage with the two links,
+       so the file explains itself when opened by hand. */
+    body.overlay { height: 100vh; overflow: hidden; background: transparent; }
+    body.overlay.stage { background: var(--bg-primary); }
+    .stage-hint {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: var(--space-2);
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+    .stage-hint strong { color: var(--text-secondary); font-weight: 600; }
+    .stage-hint code { font-size: 12px; color: var(--text-secondary); }
+
+    /* Sized in viewport units, so the same file fits a 1920×1080 canvas and
+       a phone preview alike. */
+    .lower-third {
+      position: absolute;
+      left: 5vw;
+      bottom: 14vh;
+      display: grid;
+      justify-items: start;
+      transform: translateX(-115%);
+      transition: transform .55s cubic-bezier(.2, .8, .2, 1);
+    }
+    .lower-third.on { transform: none; }
+    .lower-third .name { padding: .9vh 2.4vh; background: var(--accent); color: var(--text-on-accent); font-size: 4vh; font-weight: 700; letter-spacing: -.01em; }
+    .lower-third .title { padding: .7vh 2.4vh; background: rgba(13, 15, 18, .85); color: var(--text-primary); font-size: 2.4vh; }
+    .lower-third .title:empty { display: none; }
+
+    .ticker {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 6.4vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      background: rgba(13, 15, 18, .85);
+      border-top: .3vh solid var(--accent);
+      transform: translateY(100%);
+      transition: transform .4s ease;
+    }
+    .ticker.on { transform: none; }
+    .ticker span { padding-left: 100vw; white-space: nowrap; font-size: 2.6vh; animation: marquee 22s linear infinite; }
+    @keyframes marquee { to { transform: translateX(-100%); } }
+
+    .timer {
+      position: absolute;
+      top: 5vh;
+      right: 5vw;
+      display: grid;
+      justify-items: end;
+      gap: .4vh;
+      padding: 1.4vh 2.4vh;
+      background: rgba(13, 15, 18, .85);
+      border-left: .4vh solid var(--warn);
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .timer.on { opacity: 1; }
+    .timer .label { font-size: 2vh; color: var(--text-secondary); }
+    .timer .clock { font: 700 6.4vh/1 var(--mono); font-variant-numeric: tabular-nums; }
+    .timer.done .clock { color: var(--warn); }
+
+    /* An alert lives 4 s and never touches the graph. */
+    .alerts { position: absolute; top: 12vh; left: 50%; transform: translateX(-50%); display: grid; gap: 1vh; }
+    .alert {
+      padding: 1.6vh 3.2vh;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-left: .5vh solid var(--ok);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+      font-size: 3vh;
+      font-weight: 600;
+      white-space: nowrap;
+      animation: pop 4s ease-in-out forwards;
+    }
+    @keyframes pop {
+      0% { opacity: 0; transform: translateY(-2vh) scale(.96); }
+      8%, 88% { opacity: 1; transform: none; }
+      100% { opacity: 0; transform: translateY(-1vh); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .lower-third, .ticker, .timer { transition: none; }
+      .ticker span { animation: none; padding-left: 2vw; }
+      .alert { animation: none; }
+    }
+
+    /* ── The control panel: a phone in the streamer's hand ────────────── */
+    .control { max-width: 480px; margin-inline: auto; padding: 40px var(--space-5) 30vh; }
+    .page-head { margin-bottom: var(--space-5); }
+    h2 {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: var(--space-6) 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .field { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+    label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: var(--space-2) var(--space-3);
+      font-family: inherit;
+      font-size: 16px; /* a phone does not zoom into a 16px field */
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text-tertiary); }
+    .row { display: flex; gap: var(--space-2); }
+    .row input { flex: 1; min-width: 0; }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px var(--space-4);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--text-tertiary); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+    button.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+    button.ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-strong); }
+    /* A switch says its state in words, and in colour only when it is on. */
+    button.switch[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); }
+    .actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); margin-left: -13px; }
+
+    .link-box { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+    .link-box code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .presence { position: fixed; right: var(--space-5); bottom: var(--space-5); font: 12px var(--mono); color: var(--text-tertiary); }
+  </style>
+</head>
+
+<body>
+  <!-- What OBS shows: three persistent pieces and the alerts. -->
+  <section id="overlay" class="hidden" aria-label="Overlay">
+    <div id="stage-hint" class="stage-hint hidden">
+      <strong>This is what OBS sees.</strong>
+      <span>Add this page as a Browser Source, and open the control link on your phone:</span>
+      <code id="control-link"></code>
+    </div>
+    <div id="lower-third" class="lower-third"><span id="lt-name" class="name"></span><span id="lt-title" class="title"></span></div>
+    <div id="timer" class="timer"><span id="timer-label" class="label"></span><span id="timer-clock" class="clock">00:00</span></div>
+    <div id="alerts" class="alerts"></div>
+    <div id="ticker" class="ticker"><span id="ticker-text"></span></div>
+  </section>
+
+  <!-- The remote: the same page, opened with /control on the hash. -->
+  <main id="control" class="control hidden">
+    <header class="page-head">
+      <h1>Overlay control <span id="stream-key"></span></h1>
+      <p class="hint">Whatever you change here appears on the overlay the moment it lands — in OBS and in
+        every other window showing this stream — with no server in between. Persistent pieces (the lower
+        third, the ticker, the countdown) are nodes in the graph; alerts ride an ephemeral channel and are
+        never stored.</p>
+      <div class="link-box"><code id="overlay-link"></code><button id="copy-overlay" class="ghost">Copy</button></div>
+    </header>
+
+    <h2>Lower third <button id="lt-on" class="switch" aria-pressed="false">Hidden</button></h2>
+    <div class="field"><label for="lt-name-input">Name</label><input id="lt-name-input" type="text" placeholder="Who is on screen" autocomplete="off"></div>
+    <div class="field"><label for="lt-title-input">Title</label><input id="lt-title-input" type="text" placeholder="What they do" autocomplete="off"></div>
+
+    <h2>Ticker <button id="ticker-on" class="switch" aria-pressed="false">Hidden</button></h2>
+    <div class="field"><label for="ticker-input">Text</label><input id="ticker-input" type="text" placeholder="A line that scrolls along the bottom" autocomplete="off"></div>
+
+    <h2>Countdown <span id="timer-state" class="hint"></span></h2>
+    <div class="field"><label for="timer-label-input">Label</label><input id="timer-label-input" type="text" placeholder="Starting in" autocomplete="off"></div>
+    <div class="row">
+      <input id="timer-minutes" type="number" min="1" max="180" value="5" aria-label="Minutes">
+      <button id="timer-start" class="primary">Start</button>
+      <button id="timer-stop">Stop</button>
+    </div>
+
+    <h2>Alert</h2>
+    <form id="alert-form" class="row">
+      <input id="alert-input" type="text" placeholder="New follower: someone" autocomplete="off" required>
+      <button class="primary">Send</button>
+    </form>
+  </main>
+
+  <!-- No hash yet: name the stream. -->
+  <main id="create" class="control hidden">
+    <header class="page-head">
+      <h1>OBS Overlay</h1>
+      <p class="hint">A stream overlay you control from your phone, with no server: one URL goes into OBS as a
+        Browser Source, the other opens the remote. Both are this file; the name you give the stream is the
+        room they share.</p>
+    </header>
+    <form id="create-form">
+      <div class="field"><label for="stream-name">Name your stream</label><input id="stream-name" type="text" placeholder="e.g. friday-live" required autocomplete="off"></div>
+      <button class="primary">Open the control</button>
+    </form>
+  </main>
+
+  <span id="presence" class="presence hidden">0 peers</span>
+
+  <script type="module">
+    // A remote-controlled OBS overlay over the plain GenosDB API. Demonstrates:
+    // the room as the stream (both views share a database named from the
+    // link), db.put with fixed ids for the three persistent pieces, ONE
+    // realtime db.map feeding every view, a countdown DERIVED from a stored
+    // end time, and db.room.channel for alerts — the ephemeral traffic the API
+    // reference tells you to keep out of the graph.
+    import { gdb } from "../dist/index.js"
+
+    const $ = (id) => document.getElementById(id)
+    const [key, mode] = location.hash.slice(1).split("/")
+    addEventListener("hashchange", () => location.reload()) // a stream is a page
+
+    // ── No hash: name the stream ─────────────────────────────────────────
+    if (!key) {
+      $("create").classList.remove("hidden")
+      $("create-form").addEventListener("submit", (e) => {
+        e.preventDefault()
+        location.hash = `${encodeURIComponent($("stream-name").value.trim().toLowerCase().replace(/\s+/g, "-"))}/control`
+      })
+      $("stream-name").focus()
+    }
+
+    if (key) {
+      const db = await gdb(`overlay-${decodeURIComponent(key)}`, { rtc: true })
+      const base = `${location.origin}${location.pathname}#${key}`
+      const overlayUrl = base, controlUrl = `${base}/control`
+
+      // ── The state: three nodes with fixed ids, one subscription ─────────
+      // Fixed ids are safe here because the database is one stream's own
+      // room. The overlay and every control panel render from the same
+      // subscription, so two phones agree with OBS and with each other.
+      const state = { "lower-third": null, ticker: null, timer: null }
+      const listeners = []
+      const pending = new Map() // id -> { timer, patch }: typed text not yet written
+      await db.map({ query: { type: { $in: ["lower-third", "ticker", "timer"] } } }, ({ id, value, action }) => {
+        // What is being typed here stays on top of whatever just arrived.
+        state[id] = action === "removed" ? null : { ...value, ...pending.get(id)?.patch }
+        listeners.forEach((fn) => fn(id))
+      })
+
+      // A write lands on the local state first, so two changes in the same
+      // instant compose instead of the second reading a state still a frame
+      // behind the first — and it flushes any text still waiting its pause.
+      const write = (id, patch) => {
+        const waiting = pending.get(id)
+        clearTimeout(waiting?.timer)
+        pending.delete(id)
+        return db.put((state[id] = { ...(state[id] ?? {}), type: id, ...waiting?.patch, ...patch }), id)
+      }
+      // Typing changes the local state at once and writes after a pause:
+      // one put per pause, never one per key.
+      const edit = (id, patch) => {
+        const waiting = pending.get(id) ?? { patch: {} }
+        clearTimeout(waiting.timer)
+        waiting.patch = { ...waiting.patch, ...patch }
+        waiting.timer = setTimeout(() => write(id, {}), 250)
+        pending.set(id, waiting)
+        state[id] = { ...(state[id] ?? {}), type: id, ...patch }
+      }
+      const alerts = db.room.channel("alerts")
+
+      const presence = () => {
+        const n = Object.keys(db.room.getPeers()).length
+        $("presence").textContent = `${n} peer${n === 1 ? "" : "s"}`
+      }
+      db.room.on("peer:join", presence)
+      db.room.on("peer:leave", presence)
+      presence()
+
+      // ── Countdown: derived, never ticked over the wire ──────────────────
+      // The graph holds an end time; every screen computes the remaining
+      // time on its own clock, so nothing is sent once per second and every
+      // overlay shows the same number to the second.
+      const remaining = () => Math.max(0, Math.ceil(((state.timer?.endsAt ?? 0) - Date.now()) / 1000))
+      const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
+
+      // ── Overlay ──────────────────────────────────────────────────────────
+      if (mode !== "control") {
+        document.body.classList.add("overlay")
+        $("overlay").classList.remove("hidden")
+        // OBS's Browser Source injects window.obsstudio; anywhere else this is
+        // a stage with the two links, not a transparent page on a white tab.
+        if (!window.obsstudio) {
+          document.body.classList.add("stage")
+          $("stage-hint").classList.remove("hidden")
+          $("control-link").textContent = controlUrl
+          $("presence").classList.remove("hidden")
+        }
+
+        const paint = () => {
+          const lt = state["lower-third"], tk = state.ticker, tm = state.timer
+          $("lt-name").textContent = lt?.name ?? ""
+          $("lt-title").textContent = lt?.title ?? ""
+          $("lower-third").classList.toggle("on", !!lt?.on && !!lt?.name)
+          if ($("ticker-text").textContent !== (tk?.text ?? "")) $("ticker-text").textContent = tk?.text ?? "" // keep the marquee's phase
+          $("ticker").classList.toggle("on", !!tk?.on && !!tk?.text)
+          $("timer-label").textContent = tm?.label ?? ""
+          $("timer").classList.toggle("on", !!tm?.on)
+          tick()
+        }
+        let ticking
+        const tick = () => {
+          clearInterval(ticking)
+          if (!state.timer?.on) return
+          const draw = () => {
+            const s = remaining()
+            $("timer-clock").textContent = clock(s)
+            $("timer").classList.toggle("done", s === 0)
+            if (s === 0) clearInterval(ticking)
+          }
+          draw()
+          ticking = setInterval(draw, 250)
+        }
+        listeners.push(paint)
+        paint()
+
+        alerts.on("message", ({ text }) => {
+          const card = document.createElement("div")
+          card.className = "alert"
+          card.textContent = text
+          $("alerts").append(card)
+          card.addEventListener("animationend", () => card.remove())
+        })
+      }
+
+      // ── Control ──────────────────────────────────────────────────────────
+      if (mode === "control") {
+        $("control").classList.remove("hidden")
+        $("presence").classList.remove("hidden")
+        $("stream-key").textContent = `· ${decodeURIComponent(key)}`
+        $("overlay-link").textContent = overlayUrl
+        $("copy-overlay").addEventListener("click", async () => {
+          try { await navigator.clipboard.writeText(overlayUrl); $("copy-overlay").textContent = "Copied" }
+          catch { $("copy-overlay").textContent = "Select it" }
+          setTimeout(() => { $("copy-overlay").textContent = "Copy" }, 1500)
+        })
+
+        // A field defends itself only while someone is typing in it RIGHT NOW.
+        const paintField = (field, text) => {
+          if (field.value === text || (field === document.activeElement && document.hasFocus())) return
+          field.value = text
+        }
+        const switchTo = (button, on) => { button.setAttribute("aria-pressed", String(on)); button.textContent = on ? "Showing" : "Hidden" }
+
+        const paint = () => {
+          const lt = state["lower-third"], tk = state.ticker, tm = state.timer
+          paintField($("lt-name-input"), lt?.name ?? "")
+          paintField($("lt-title-input"), lt?.title ?? "")
+          switchTo($("lt-on"), !!lt?.on)
+          paintField($("ticker-input"), tk?.text ?? "")
+          switchTo($("ticker-on"), !!tk?.on)
+          paintField($("timer-label-input"), tm?.label ?? "")
+          $("timer-state").textContent = tm?.on ? (remaining() ? `running · ${clock(remaining())}` : "finished") : "off"
+          $("timer-stop").disabled = !tm?.on
+        }
+        listeners.push(paint)
+        paint()
+        setInterval(() => { if (state.timer?.on) paint() }, 1000)
+
+        $("lt-name-input").addEventListener("input", () => edit("lower-third", { name: $("lt-name-input").value.trim() }))
+        $("lt-title-input").addEventListener("input", () => edit("lower-third", { title: $("lt-title-input").value.trim() }))
+        $("ticker-input").addEventListener("input", () => edit("ticker", { text: $("ticker-input").value.trim() }))
+        $("timer-label-input").addEventListener("input", () => edit("timer", { label: $("timer-label-input").value.trim() }))
+        $("lt-on").addEventListener("click", () => write("lower-third", { on: !state["lower-third"]?.on }))
+        $("ticker-on").addEventListener("click", () => write("ticker", { on: !state.ticker?.on }))
+        $("timer-start").addEventListener("click", () => write("timer", { endsAt: Date.now() + Math.max(1, Number($("timer-minutes").value)) * 60_000, on: true }))
+        $("timer-stop").addEventListener("click", () => write("timer", { on: false }))
+
+        // An alert is not state: it is a moment. It goes over the channel to
+        // every overlay listening now and is gone; nothing to sync later.
+        $("alert-form").addEventListener("submit", (e) => {
+          e.preventDefault()
+          alerts.send({ text: $("alert-input").value.trim() })
+          $("alert-input").value = ""
+        })
+      }
+    }
+  </script>
+</body>
+
+</html>

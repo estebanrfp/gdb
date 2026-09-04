@@ -36,6 +36,9 @@ Build complex real-time apps without a backend. This collaborative whiteboard ru
 ### [Real-time IoT Thermostat Control powered by GenosDB](https://estebanrfp.github.io/gdb/examples/thermostat.html)
 A real-time peer-to-peer thermostat control demo showcasing GenosDB's reactive synchronization. Multiple users can adjust target temperature, toggle eco-mode (Leaf), and set away status — all changes instantly sync across connected browsers without any backend server. Demonstrates `db.put()`, reactive `db.get()` subscriptions, and P2P room events for peer counting.
 
+### [OBS Overlay — One Page in OBS, the Remote in Your Hand](https://estebanrfp.github.io/gdb/examples/obs-overlay.html)
+A stream overlay you control from your phone, with no server: the same file is the Browser Source in OBS and the remote control, sharing a room named from the link. The lower third, the ticker and the countdown are three nodes with fixed ids — one subscription paints every screen, and the countdown is derived from a stored end time, so nothing ticks over the wire and every overlay shows the same second — while alerts ride an ephemeral channel and are never stored: the persistent-versus-ephemeral rule of the API reference, on screen. Inside OBS the page is transparent; anywhere else it is a dark stage that shows you the two links.
+
 ### [Infinite Scroll](https://estebanrfp.github.io/gdb/examples/infinite-scroll.html)
 Example of dynamic content loading while scrolling.
 
