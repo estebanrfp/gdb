@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB Outliner</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — an editor is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --warn: #f5a623;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --radius-sm: 6px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --indent: 22px;   /* one level: the guide line lands under the parent's dot */
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 48px var(--space-5) 30vh;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    .page-head, .toolbar, .outline, .ghost { max-width: 680px; margin-inline: auto; }
+    .page-head { margin-bottom: var(--space-6); }
+    h1 { margin: 0 0 var(--space-2); font-size: 17px; }
+    .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .hint + .hint { margin-top: var(--space-2); }
+    code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+    kbd {
+      padding: 1px 5px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      font: 11px/1.4 var(--mono);
+      color: var(--text-primary);
+    }
+
+    /* Where you are, and a search that starts from there. */
+    .toolbar { display: flex; align-items: center; gap: var(--space-3); min-height: 34px; margin-bottom: var(--space-3); }
+    .crumbs {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+    .crumbs button { padding: 0; border: none; background: none; font: inherit; color: var(--text-secondary); cursor: pointer; }
+    .crumbs button:hover { color: var(--text-primary); }
+    .crumbs .here { overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+    /* A field you ask something of is drawn; the bullets below are not. */
+    .search {
+      width: 200px;
+      margin-left: auto;
+      padding: var(--space-2) var(--space-3);
+      font: inherit;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      outline: none;
+    }
+    .search:focus { border-color: var(--accent); }
+    .search::placeholder { color: var(--text-tertiary); }
+
+    /* The tree. Every <li> is a node and its nested <ul> is its edge list —
+       the DOM has the exact shape of the graph. */
+    ul { list-style: none; margin: 0; padding: 0; }
+    .children { margin-left: var(--indent); border-left: 1px solid var(--border-subtle); }
+    .collapsed > .children { display: none; }
+
+    .row { display: grid; grid-template-columns: 14px 18px minmax(0, 1fr); align-items: start; }
+
+    .fold, .bullet {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 30px;
+      padding: 0;
+      border: none;
+      background: none;
+      color: var(--text-tertiary);
+      cursor: pointer;
+    }
+
+    /* The fold chevron shows only where there is something to fold, on hover
+       — and stays while a branch is closed, so a closed branch says so. */
+    .fold { visibility: hidden; }
+    .has-children > .row:hover .fold, .collapsed > .row .fold { visibility: visible; }
+    .fold svg { width: 10px; height: 10px; transform: rotate(90deg); }
+    .collapsed > .row .fold svg { transform: none; }
+    .fold:hover { color: var(--text-primary); }
+
+    /* Click the dot to zoom in. A ring marks a closed branch. */
+    .bullet::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); }
+    .collapsed > .row .bullet::before { box-shadow: 0 0 0 3px var(--border-strong); }
+    .bullet:hover::before { background: var(--accent); }
+
+    /* A bullet is a content field: no border, no background, the caret says
+       where you are. */
+    textarea {
+      display: block;
+      width: 100%;
+      padding: 3px 0;
+      border: none;
+      outline: none;
+      background: none;
+      resize: none;
+      overflow: hidden;
+      color: var(--text-primary);
+      font: 15px/1.6 var(--font);
+      caret-color: var(--accent);
+    }
+    textarea::placeholder { color: var(--text-tertiary); }
+
+    /* A remote edit landed on this bullet — visible proof that only THIS node
+       travelled, while the one you are typing in was never touched. */
+    .remote > .row textarea { animation: remote-flash .9s ease-out; }
+    @keyframes remote-flash {
+      from { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+      to { background: transparent; }
+    }
+    @media (prefers-reduced-motion: reduce) { .remote > .row textarea { animation: none; } }
+
+    /* A search hit; its ancestors stay visible as the path to it. */
+    .hit > .row textarea { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 3px; }
+
+    /* The empty outline is a ghost bullet, not a button. */
+    .ghost { margin: 0; padding: 3px 0 3px 32px; font-size: 15px; line-height: 1.6; color: var(--text-tertiary); cursor: text; }
+    .hidden { display: none; }
+
+    /* Ambient state: bottom right, far from the content, like every other
+       GenosDB app. */
+    .presence {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="page-head">
+    <h1>Outliner</h1>
+    <p class="hint">A Workflowy-style outline where the tree is the graph itself: every bullet is a
+      node and its children are its edges, so moving a branch is one <code>unlink</code> and one
+      <code>link</code> — nothing is re-serialized, however deep the branch. <kbd>Enter</kbd> splits
+      a bullet, <kbd>Backspace</kbd> at its start merges it into the one above,
+      <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> move it across the tree, <kbd>Alt+↑↓</kbd> reorder it,
+      <kbd>Ctrl/⌘+↑↓</kbd> fold it.</p>
+    <p class="hint">Click a dot to zoom in: the outline re-roots on that bullet and the search runs
+      <code>$edge</code> from it, through every descendant at any depth, in one query. Open a
+      second window and move a whole branch — the other side receives two edge changes, not a
+      document.</p>
+  </header>
+
+  <div class="toolbar">
+    <nav id="crumbs" class="crumbs hidden" aria-label="Where you are"></nav>
+    <input id="search" class="search" type="text" placeholder="Search here…" aria-label="Search">
+  </div>
+
+  <ul id="doc" class="outline"></ul>
+  <p id="empty" class="ghost">Click here to start writing…</p>
+  <span id="presence" class="presence">0 bullets · 0 peers</span>
+
+  <script type="module">
+    // A tree is a graph, so it is stored as one. Demonstrates: db.put /
+    // db.remove for bullets, db.link / db.unlink for the tree, ONE realtime
+    // db.map for the whole outline, and the `$edge` operator for a search that
+    // starts at the zoomed bullet and reads its entire subtree in one query.
+    import { gdb } from "../dist/index.js"
+
+    const db = await gdb("outliner", { rtc: true })
+
+    // ── The model ──────────────────────────────────────────────────────────
+    // A bullet is a node { type: "item", text, rank }. Its children are its
+    // edges: link(parent, child). That is the whole schema.
+    //
+    // 1. Moving a branch is two edge operations on two nodes — unlink from the
+    //    old parent, link under the new one. The branch itself, however deep,
+    //    is not touched, not re-serialized, not re-sent: a peer receives two
+    //    small ops and its own copy of the subtree slides.
+    //
+    // 2. Order among siblings is a fractional `rank` on the child (the keys
+    //    block-editor.html uses): inserting between two bullets mints a key
+    //    in the gap, concurrent inserts into the same gap both survive, and
+    //    every peer sorts them identically (rank, then id).
+    //
+    // 3. Text and structure live on different nodes. Typing rewrites the
+    //    bullet; indenting rewrites its parents' edge sets. Two people on
+    //    different bullets never overwrite each other, and a remote change to
+    //    the bullet you are typing in waits until you leave it.
+    //
+    // 4. The top level is virtual: a bullet with no parent is a top-level
+    //    bullet. Nothing is written at boot, so a late joiner never races a
+    //    "root" node against the peers that already hold the outline.
+    //
+    // 5. Only a leaf can be deleted (Backspace on an empty bullet), so a
+    //    removal never orphans a subtree. And `remove` rewrites no other node:
+    //    the parent's edge set keeps an inert id that every read hides — the
+    //    engine's rule since 0.33.3, not this page's.
+    //
+    // 6. Zoom in by clicking a dot: the outline re-roots on that bullet and
+    //    the search box runs { id: focus, $edge: { text: { $text: q } } } —
+    //    one query that walks every descendant at any depth. At the top level
+    //    there is no start node, so the same search is a plain map over all.
+
+    const $ = (id) => document.getElementById(id)
+    const doc = $("doc"), ghost = $("empty"), crumbs = $("crumbs"), search = $("search"), presenceEl = $("presence")
+
+    const nodes = new Map()      // id -> { value, edges }: one realtime map keeps it current
+    const lis = new Map()        // id -> <li>, created once and moved by the render
+    const collapsed = new Set()  // view state of this window, never written to the graph
+    let parentOf = new Map(), childrenOf = new Map()
+    let focusId = location.hash.slice(1)   // "" is the virtual top level
+    let matches = null, visible = null     // search: exact hits, and hits plus their ancestors
+    let pendingFocus = null                // { id, pos }: a caret handed over across a render
+
+    const rankOf = (id) => nodes.get(id)?.value?.rank ?? 0
+    const kidsOf = (id) => childrenOf.get(id) ?? []
+    const siblingsOf = (id) => childrenOf.get(parentOf.get(id) ?? "") ?? []
+
+    // A fresh key strictly between two ranks, at a random point in the gap so
+    // concurrent inserts into the same gap almost never tie.
+    const keyBetween = (prev, next) => {
+      const lo = prev ?? 0, hi = next ?? lo + 1
+      return lo + (hi - lo) * (0.25 + Math.random() * 0.5)
+    }
+
+    // Parents and children, derived from the edges on every change. A bullet
+    // is shown under ONE parent — the lowest id, so every window picks the
+    // same — because two peers moving the same bullet at once can leave it
+    // linked from two; the next move unlinks it from all of them.
+    const index = () => {
+      parentOf = new Map(); childrenOf = new Map()
+      for (const pid of [...nodes.keys()].sort()) {
+        for (const cid of nodes.get(pid).edges) {
+          if (nodes.has(cid) && !parentOf.has(cid)) parentOf.set(cid, pid)
+        }
+      }
+      for (const id of nodes.keys()) {
+        const pid = parentOf.get(id) ?? ""
+        ;(childrenOf.get(pid) ?? childrenOf.set(pid, []).get(pid)).push(id)
+      }
+      for (const kids of childrenOf.values()) kids.sort((a, b) => rankOf(a) - rankOf(b) || (a < b ? -1 : 1))
+    }
+
+    // ── Rendering: the DOM mirrors the graph, moved in place ───────────────
+    const grow = (ta) => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight}px` }
+    const caretTo = (ta, pos) => { if (!ta) return; ta.focus(); ta.setSelectionRange(pos, pos) }
+
+    // "Typing here RIGHT NOW": document.activeElement alone is not that — a
+    // window that lost the system focus keeps naming its last field.
+    const isMine = (ta) => ta === document.activeElement && document.hasFocus()
+
+    // Remote text lands with the caret kept where it was, clamped to the new text.
+    const paint = (ta, text) => {
+      const { selectionStart: from, selectionEnd: to } = ta
+      ta.value = text
+      ta.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length))
+      grow(ta)
+    }
+
+    const createItem = (id) => {
+      const li = document.createElement("li")
+      li.className = "item"
+      li.dataset.id = id
+
+      const row = document.createElement("div")
+      row.className = "row"
+
+      const fold = document.createElement("button")
+      fold.className = "fold"
+      fold.title = "Fold"
+      fold.setAttribute("aria-label", "Fold")
+      fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
+
+      const bullet = document.createElement("button")
+      bullet.className = "bullet"
+      bullet.title = "Zoom in"
+      bullet.setAttribute("aria-label", "Zoom in")
+
+      const ta = document.createElement("textarea")
+      ta.rows = 1
+      ta.placeholder = "…"
+      ta.value = nodes.get(id).value.text
+
+      const kids = document.createElement("ul")
+      kids.className = "children"
+
+      row.append(fold, bullet, ta)
+      li.append(row, kids)
+
+      fold.addEventListener("click", () => toggle(id))
+      bullet.addEventListener("click", () => zoom(id))
+      ta.addEventListener("input", () => { grow(ta); scheduleSave(id) })
+      ta.addEventListener("keydown", (e) => onKey(e, id, li, ta))
+      // While you type, your view is yours; on blur you rejoin the graph's
+      // truth. A save still pending is flushed first: your keystrokes never revert.
+      ta.addEventListener("blur", () => {
+        if (savers.has(id)) return flush(id)
+        const text = nodes.get(id)?.value.text
+        if (text !== undefined && ta.value !== text) paint(ta, text)
+      })
+
+      lis.set(id, li)
+      return li
+    }
+
+    const paintItem = (li, id) => {
+      const ta = li.querySelector("textarea")
+      const { text } = nodes.get(id).value
+      if (!ta.dataset.grown) { grow(ta); ta.dataset.grown = "1" }
+      // Never fight the local caret: the bullet being typed in keeps what you
+      // see and syncs on blur. Anything else adopts the graph's text.
+      if (!isMine(ta) && ta.value !== text) {
+        paint(ta, text)
+        li.classList.remove("remote")
+        void li.offsetWidth // restart the flash
+        li.classList.add("remote")
+      }
+      li.classList.toggle("has-children", kidsOf(id).length > 0)
+      li.classList.toggle("collapsed", !visible && collapsed.has(id))
+      li.classList.toggle("hit", !!matches?.has(id))
+    }
+
+    let seen
+    // Places each wanted <li> at its index, moving it only when it is out of
+    // place, and drops whatever is left over. An <li> is one element for the
+    // life of its node, so a bullet that only moved keeps its textarea. The
+    // index is read against the live children on every step: the recursion
+    // into a branch may pull a later sibling into it (that is what Tab does).
+    const syncChildren = (parentId, ul, path) => {
+      const ids = kidsOf(parentId).filter((id) => !path.has(id) && (!visible || visible.has(id)))
+      ids.forEach((id, i) => {
+        const li = lis.get(id) ?? createItem(id)
+        if (ul.children[i] !== li) ul.insertBefore(li, ul.children[i] ?? null)
+        seen.add(id)
+        paintItem(li, id)
+        // A search shows the whole path to each hit, folded or not.
+        if (visible || !collapsed.has(id)) syncChildren(id, li.lastElementChild, new Set(path).add(id))
+        else li.lastElementChild.replaceChildren()
+      })
+      while (ul.children.length > ids.length) ul.lastElementChild.remove()
+    }
+
+    const renderCrumbs = () => {
+      crumbs.classList.toggle("hidden", !focusId)
+      if (!focusId) return
+      const path = []
+      for (let id = focusId; id; id = parentOf.get(id)) path.unshift(id)
+      const home = document.createElement("button")
+      home.textContent = "Outline"
+      home.addEventListener("click", () => zoom(""))
+      crumbs.replaceChildren(home)
+      path.forEach((id, i) => {
+        const sep = document.createElement("span")
+        sep.textContent = "›"
+        const text = nodes.get(id)?.value.text || "…"
+        const here = i === path.length - 1
+        const el = document.createElement(here ? "span" : "button")
+        if (here) el.className = "here"
+        else el.addEventListener("click", () => zoom(id))
+        el.textContent = text
+        crumbs.append(sep, el)
+      })
+    }
+
+    const updateStatus = () => {
+      const peers = Object.keys(db.room.getPeers()).length
+      const n = nodes.size
+      presenceEl.textContent = `${n} bullet${n === 1 ? "" : "s"} · ${peers} peer${peers === 1 ? "" : "s"}`
+    }
+
+    let renderQueued = false
+    const queueRender = () => {
+      if (renderQueued) return
+      renderQueued = true
+      queueMicrotask(render)   // after every event of one emit, before the frame
+    }
+
+    const render = () => {
+      renderQueued = false
+      const active = document.activeElement
+      const sel = active?.tagName === "TEXTAREA" ? [active.selectionStart, active.selectionEnd] : null
+      index()
+      seen = new Set()
+      syncChildren(focusId, doc, new Set([focusId]))
+      for (const id of lis.keys()) if (!nodes.has(id)) lis.delete(id)
+      ghost.textContent = visible ? "No bullet here matches." : "Click here to start writing…"
+      ghost.classList.toggle("hidden", doc.children.length > 0)
+      renderCrumbs()
+      updateStatus()
+      // Hand the caret over: to the bullet a split or a move asked for, or
+      // back to the one that had it before this render moved its <li>.
+      const li = pendingFocus && lis.get(pendingFocus.id)
+      if (li?.isConnected) {
+        caretTo(li.querySelector("textarea"), pendingFocus.pos)
+        pendingFocus = null
+      } else if (sel && active.isConnected && document.activeElement !== active) {
+        active.focus()
+        active.setSelectionRange(...sel)
+      }
+    }
+
+    // ── Writes ─────────────────────────────────────────────────────────────
+    // One debounced put per bullet, so typing costs one write per pause.
+    const savers = new Map()
+    const scheduleSave = (id) => {
+      clearTimeout(savers.get(id))
+      savers.set(id, setTimeout(() => flush(id), 250))
+    }
+    const cancelSave = (id) => { clearTimeout(savers.get(id)); savers.delete(id) }
+    const flush = (id) => {
+      if (!savers.has(id)) return
+      cancelSave(id)
+      const node = nodes.get(id), ta = lis.get(id)?.querySelector("textarea")
+      if (node && ta) db.put({ ...node.value, text: ta.value }, id)
+    }
+    // The bullet's current text: what is on screen if a save is pending.
+    const textOf = (id) => {
+      const ta = lis.get(id)?.querySelector("textarea")
+      return savers.has(id) && ta ? ta.value : nodes.get(id).value.text
+    }
+
+    const addItem = async (parent, rank, text = "") => {
+      const id = await db.put({ type: "item", text, rank })
+      if (parent) await db.link(parent, id)   // the top level has no parent to link from
+      return id
+    }
+
+    // Enter: the text left of the caret keeps this node; the text right of it
+    // becomes a new node right below — first child when the bullet is open
+    // with children, next sibling otherwise.
+    const split = async (id, ta) => {
+      const original = ta.value
+      const before = original.slice(0, ta.selectionStart), after = original.slice(ta.selectionEnd)
+      cancelSave(id)
+      ta.value = before
+      grow(ta)
+      const kids = kidsOf(id), sibs = siblingsOf(id)
+      const [parent, prev, next] = kids.length && !collapsed.has(id)
+        ? [id, undefined, kids[0]]
+        : [parentOf.get(id) ?? "", id, sibs[sibs.indexOf(id) + 1]]
+      // Against the graph, not the screen: the save the caret outran is in here.
+      if (before !== nodes.get(id).value.text) await db.put({ ...nodes.get(id).value, text: before }, id)
+      const newId = await addItem(parent, keyBetween(prev && rankOf(prev), next && rankOf(next)), after)
+      pendingFocus = { id: newId, pos: 0 }
+      queueRender()
+    }
+
+    // Backspace at the start: this bullet's text joins the one above it and
+    // this node is removed. Only a leaf: a branch has nowhere to put its
+    // children, so it stays until they are gone.
+    const mergeUp = async (e, id, li, ta) => {
+      if (kidsOf(id).length) return
+      const all = visibleItems(), prev = all[all.indexOf(li) - 1]
+      if (!prev) return
+      e.preventDefault()
+      const prevId = prev.dataset.id, prevTa = prev.querySelector("textarea")
+      cancelSave(id)
+      cancelSave(prevId)
+      const joinAt = prevTa.value.length
+      pendingFocus = { id: prevId, pos: joinAt }
+      prevTa.value += ta.value
+      grow(prevTa)
+      caretTo(prevTa, joinAt)
+      if (prevTa.value !== nodes.get(prevId).value.text) await db.put({ ...nodes.get(prevId).value, text: prevTa.value }, prevId)
+      await db.remove(id)
+    }
+
+    // Reparent: link first, so the bullet never has zero parents even for a
+    // frame, then unlink from every parent it had. Rank goes with it.
+    const moveTo = async (id, newParent, rank) => {
+      const ta = lis.get(id)?.querySelector("textarea")
+      pendingFocus = { id, pos: ta?.selectionStart ?? 0 }
+      const value = { ...nodes.get(id).value, text: textOf(id), rank }
+      cancelSave(id)
+      const parents = [...nodes].filter(([, n]) => n.edges.includes(id)).map(([pid]) => pid)
+      await db.put(value, id)
+      if (newParent && !parents.includes(newParent)) await db.link(newParent, id)
+      for (const pid of parents) if (pid !== newParent) await db.unlink(pid, id)
+    }
+
+    // Tab: under the previous sibling, as its last child.
+    const indent = (id) => {
+      const sibs = siblingsOf(id), i = sibs.indexOf(id)
+      if (i < 1) return
+      const newParent = sibs[i - 1], last = kidsOf(newParent).at(-1)
+      collapsed.delete(newParent)
+      return moveTo(id, newParent, keyBetween(last && rankOf(last), undefined))
+    }
+
+    // Shift+Tab: right after its parent, under the grandparent.
+    const outdent = (id) => {
+      const parent = parentOf.get(id)
+      if (!parent || parent === focusId) return
+      const grand = parentOf.get(parent) ?? ""
+      const sibs = childrenOf.get(grand) ?? [], i = sibs.indexOf(parent)
+      return moveTo(id, grand, keyBetween(rankOf(parent), sibs[i + 1] && rankOf(sibs[i + 1])))
+    }
+
+    // Alt+↑/↓: a new rank between the neighbours it lands between.
+    const reorder = async (id, dir) => {
+      const sibs = siblingsOf(id), i = sibs.indexOf(id), j = i + dir
+      if (j < 0 || j >= sibs.length) return
+      const [prev, next] = dir < 0 ? [sibs[j - 1], sibs[j]] : [sibs[j], sibs[j + 1]]
+      const ta = lis.get(id)?.querySelector("textarea")
+      pendingFocus = { id, pos: ta?.selectionStart ?? 0 }
+      const value = { ...nodes.get(id).value, text: textOf(id), rank: keyBetween(prev && rankOf(prev), next && rankOf(next)) }
+      cancelSave(id)
+      await db.put(value, id)
+    }
+
+    // ── View: fold, zoom, navigate, search ─────────────────────────────────
+    const visibleItems = () => [...doc.querySelectorAll(".item")]   // DOM order is visual order
+
+    const toggle = (id) => {
+      if (!kidsOf(id).length) return
+      collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id)
+      queueRender()
+    }
+
+    const zoom = (id) => { location.hash = id }
+    addEventListener("hashchange", () => {
+      focusId = location.hash.slice(1)
+      search.value = ""
+      matches = visible = null
+      queueRender()
+    })
+
+    const navigate = (e, li, ta) => {
+      const up = e.key === "ArrowUp"
+      // One-line bullets jump straight to their neighbour; in a wrapped one
+      // the native caret walks the visual lines first.
+      const oneLine = ta.clientHeight < parseFloat(getComputedStyle(ta).lineHeight) * 1.5
+      const atEdge = up ? ta.selectionStart === 0 : ta.selectionEnd === ta.value.length
+      if (!oneLine && !atEdge) return
+      const all = visibleItems(), target = all[all.indexOf(li) + (up ? -1 : 1)]
+      if (!target) return
+      e.preventDefault()
+      const t = target.querySelector("textarea")
+      caretTo(t, up ? t.value.length : 0)
+    }
+
+    const onKey = (e, id, li, ta) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); return split(id, ta) }
+      if (e.key === "Tab") { e.preventDefault(); return e.shiftKey ? outdent(id) : indent(id) }
+      if (e.key === "Backspace" && ta.selectionStart === 0 && ta.selectionEnd === 0) return mergeUp(e, id, li, ta)
+      if (e.key === "Escape" && focusId) return zoom(parentOf.get(focusId) ?? "")
+      if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); return reorder(id, e.key === "ArrowUp" ? -1 : 1) }
+      if (mod && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault()
+        if (kidsOf(id).length && collapsed.has(id) === (e.key === "ArrowDown")) toggle(id)
+        return
+      }
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") return navigate(e, li, ta)
+    }
+
+    // Zoomed in, `$edge` walks every descendant of the focused bullet and
+    // returns the ones whose text matches — one declarative query, any depth.
+    // At the top level there is no start node: a plain map over all bullets.
+    let searchTimer
+    const applySearch = async () => {
+      const q = search.value.trim()
+      if (!q) { matches = visible = null; return queueRender() }
+      const query = focusId
+        ? { id: focusId, $edge: { type: "item", text: { $text: q } } }
+        : { type: "item", text: { $text: q } }
+      const { results } = await db.map({ query })
+      matches = new Set(results.map((n) => n.id))
+      visible = new Set()
+      for (const id of matches) for (let a = id; a && a !== focusId; a = parentOf.get(a)) visible.add(a)
+      queueRender()
+    }
+    search.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(applySearch, 250) })
+
+    ghost.addEventListener("click", async () => {
+      if (visible) return
+      pendingFocus = { id: await addItem(focusId, keyBetween(), ""), pos: 0 }
+      queueRender()
+    })
+
+    db.room.on("peer:join", updateStatus)
+    db.room.on("peer:leave", updateStatus)
+
+    // ── The one subscription ───────────────────────────────────────────────
+    // Every bullet, with its edges. `edges` arrives already resolved against
+    // the nodes this peer holds, so a removed child is never in a parent's list.
+    await db.map({ query: { type: "item" } }, ({ id, value, edges, action }) => {
+      if (action === "removed") { nodes.delete(id); collapsed.delete(id) }
+      else nodes.set(id, { value, edges })
+      queueRender()
+    })
+    queueRender()
+  </script>
+</body>
+
+</html>
