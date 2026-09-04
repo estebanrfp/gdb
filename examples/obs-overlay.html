@@ -48,9 +48,13 @@
     /* ── The overlay: what OBS composites ─────────────────────────────────
        Inside OBS the body is transparent and only the elements paint. In an
        ordinary browser the same page shows a dark stage with the two links,
-       so the file explains itself when opened by hand. */
-    body.overlay { height: 100vh; overflow: hidden; background: transparent; }
+       and the remote shows it scaled into a monitor. Every piece is sized in
+       container units, so one stylesheet fits a 1920×1080 canvas and a
+       360px monitor alike. */
+    body.overlay { height: 100cqh; overflow: hidden; background: transparent; }
     body.overlay.stage { background: var(--bg-primary); }
+    .overlay { position: absolute; inset: 0; container-type: size; }
+    body.overlay .overlay { position: fixed; }
     .stage-hint {
       position: absolute;
       inset: 0;
@@ -64,20 +68,18 @@
     .stage-hint strong { color: var(--text-secondary); font-weight: 600; }
     .stage-hint code { font-size: 12px; color: var(--text-secondary); }
 
-    /* Sized in viewport units, so the same file fits a 1920×1080 canvas and
-       a phone preview alike. */
     .lower-third {
       position: absolute;
-      left: 5vw;
-      bottom: 14vh;
+      left: 5cqw;
+      bottom: 14cqh;
       display: grid;
       justify-items: start;
       transform: translateX(-115%);
       transition: transform .55s cubic-bezier(.2, .8, .2, 1);
     }
     .lower-third.on { transform: none; }
-    .lower-third .name { padding: .9vh 2.4vh; background: var(--accent); color: var(--text-on-accent); font-size: 4vh; font-weight: 700; letter-spacing: -.01em; }
-    .lower-third .title { padding: .7vh 2.4vh; background: rgba(13, 15, 18, .85); color: var(--text-primary); font-size: 2.4vh; }
+    .lower-third .name { padding: .9cqh 2.4cqh; background: var(--accent); color: var(--text-on-accent); font-size: 4cqh; font-weight: 700; letter-spacing: -.01em; }
+    .lower-third .title { padding: .7cqh 2.4cqh; background: rgba(13, 15, 18, .85); color: var(--text-primary); font-size: 2.4cqh; }
     .lower-third .title:empty { display: none; }
 
     .ticker {
@@ -85,64 +87,119 @@
       left: 0;
       right: 0;
       bottom: 0;
-      height: 6.4vh;
+      height: 6.4cqh;
       display: flex;
       align-items: center;
       overflow: hidden;
       background: rgba(13, 15, 18, .85);
-      border-top: .3vh solid var(--accent);
+      border-top: .3cqh solid var(--accent);
       transform: translateY(100%);
       transition: transform .4s ease;
     }
     .ticker.on { transform: none; }
-    .ticker span { padding-left: 100vw; white-space: nowrap; font-size: 2.6vh; animation: marquee 22s linear infinite; }
+    .ticker span { padding-left: 100cqw; white-space: nowrap; font-size: 2.6cqh; animation: marquee 22s linear infinite; }
     @keyframes marquee { to { transform: translateX(-100%); } }
 
     .timer {
       position: absolute;
-      top: 5vh;
-      right: 5vw;
+      top: 5cqh;
+      right: 5cqw;
       display: grid;
       justify-items: end;
-      gap: .4vh;
-      padding: 1.4vh 2.4vh;
+      gap: .4cqh;
+      padding: 1.4cqh 2.4cqh;
       background: rgba(13, 15, 18, .85);
-      border-left: .4vh solid var(--warn);
+      border-left: .4cqh solid var(--warn);
       opacity: 0;
       transition: opacity .3s;
     }
     .timer.on { opacity: 1; }
-    .timer .label { font-size: 2vh; color: var(--text-secondary); }
-    .timer .clock { font: 700 6.4vh/1 var(--mono); font-variant-numeric: tabular-nums; }
+    .timer .label { font-size: 2cqh; color: var(--text-secondary); }
+    .timer .clock { font: 700 6.4cqh/1 var(--mono); font-variant-numeric: tabular-nums; }
     .timer.done .clock { color: var(--warn); }
 
     /* An alert lives 4 s and never touches the graph. */
-    .alerts { position: absolute; top: 12vh; left: 50%; transform: translateX(-50%); display: grid; gap: 1vh; }
+    .alerts { position: absolute; top: 12cqh; left: 50%; transform: translateX(-50%); display: grid; gap: 1cqh; }
     .alert {
-      padding: 1.6vh 3.2vh;
+      padding: 1.6cqh 3.2cqh;
       background: var(--bg-elevated);
       border: 1px solid var(--border-strong);
-      border-left: .5vh solid var(--ok);
+      border-left: .5cqh solid var(--ok);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow);
-      font-size: 3vh;
+      font-size: 3cqh;
       font-weight: 600;
       white-space: nowrap;
       animation: pop 4s ease-in-out forwards;
     }
     @keyframes pop {
-      0% { opacity: 0; transform: translateY(-2vh) scale(.96); }
+      0% { opacity: 0; transform: translateY(-2cqh) scale(.96); }
       8%, 88% { opacity: 1; transform: none; }
-      100% { opacity: 0; transform: translateY(-1vh); }
+      100% { opacity: 0; transform: translateY(-1cqh); }
     }
     @media (prefers-reduced-motion: reduce) {
       .lower-third, .ticker, .timer { transition: none; }
-      .ticker span { animation: none; padding-left: 2vw; }
+      .ticker span { animation: none; padding-left: 2cqw; }
       .alert { animation: none; }
     }
 
-    /* ── The control panel: a phone in the streamer's hand ────────────── */
-    .control { max-width: 480px; margin-inline: auto; padding: 40px var(--space-5) 30vh; }
+    /* ── The remote: a bench — controls left, what is on air right ─────────
+       Each panel scrolls itself; the page never does. On a phone the monitor
+       sits above the controls, so the hand and the eye stay on one screen. */
+    body.control { height: 100vh; height: 100dvh; overflow: hidden; }
+    .bench {
+      display: grid;
+      grid-template-columns: var(--input-width, 400px) 11px minmax(0, 1fr);
+      height: 100vh;
+      height: 100dvh;
+    }
+    .panel { min-width: 0; min-height: 0; overflow-y: auto; padding: var(--space-5) var(--space-5) 56px; }
+    .monitor-panel { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--space-3); overflow: hidden; }
+    .monitor-panel h2 { margin-top: 0; }
+    .monitor-frame { min-height: 0; display: grid; place-items: center; container-type: size; }
+    .monitor {
+      position: relative;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .monitor-foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+
+    /* The line between the panels is the resize control: an 11px hit area
+       around a 1px rule, two short bars centred on it to say it moves. */
+    .splitter { position: relative; cursor: col-resize; touch-action: none; }
+    .splitter::before { content: ""; position: absolute; inset: 0 auto 0 5px; width: 1px; background: var(--border-subtle); }
+    .splitter::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 5px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      border-left: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      background: var(--bg-primary);
+    }
+    .splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+    .splitter:focus-visible { outline: none; }
+
+    @media (max-width: 820px) {
+      .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+      .splitter { display: none; }
+      .monitor-panel { order: -1; padding: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+      .monitor-frame { container-type: normal; }
+      .monitor { width: 100%; }
+      /* The peer count joins the "On air" row instead of floating over the fields. */
+      .monitor-panel h2 .hint { display: none; }
+      .presence { top: var(--space-4); right: var(--space-4); bottom: auto; }
+    }
+
+    /* No stream named yet: a short page you read. */
+    .create { max-width: 480px; margin-inline: auto; padding: 40px var(--space-5); }
     .page-head { margin-bottom: var(--space-5); }
     h2 {
       display: flex;
@@ -203,7 +260,7 @@
 
 <body>
   <!-- What OBS shows: three persistent pieces and the alerts. -->
-  <section id="overlay" class="hidden" aria-label="Overlay">
+  <section id="overlay" class="overlay hidden" aria-label="Overlay">
     <div id="stage-hint" class="stage-hint hidden">
       <strong>This is what OBS sees.</strong>
       <span>Add this page as a Browser Source, and open the control link on your phone:</span>
@@ -216,40 +273,51 @@
   </section>
 
   <!-- The remote: the same page, opened with /control on the hash. -->
-  <main id="control" class="control hidden">
-    <header class="page-head">
-      <h1>Overlay control <span id="stream-key"></span></h1>
-      <p class="hint">Whatever you change here appears on the overlay the moment it lands — in OBS and in
-        every other window showing this stream — with no server in between. Persistent pieces (the lower
-        third, the ticker, the countdown) are nodes in the graph; alerts ride an ephemeral channel and are
-        never stored.</p>
-      <div class="link-box"><code id="overlay-link"></code><button id="copy-overlay" class="ghost">Copy</button></div>
-    </header>
+  <main id="control" class="bench hidden">
+    <section class="panel input-panel" aria-label="Controls">
+      <header class="page-head">
+        <h1>Overlay control <span id="stream-key"></span></h1>
+        <p class="hint">What you change here is on the overlay the moment it lands — in OBS and on every screen
+          showing this stream, with no server in between.</p>
+      </header>
 
-    <h2>Lower third <button id="lt-on" class="switch" aria-pressed="false">Hidden</button></h2>
-    <div class="field"><label for="lt-name-input">Name</label><input id="lt-name-input" type="text" placeholder="Who is on screen" autocomplete="off"></div>
-    <div class="field"><label for="lt-title-input">Title</label><input id="lt-title-input" type="text" placeholder="What they do" autocomplete="off"></div>
+      <h2>Lower third <button id="lt-on" class="switch" aria-pressed="false">Hidden</button></h2>
+      <div class="field"><label for="lt-name-input">Name</label><input id="lt-name-input" type="text" placeholder="Who is on screen" autocomplete="off"></div>
+      <div class="field"><label for="lt-title-input">Title</label><input id="lt-title-input" type="text" placeholder="What they do" autocomplete="off"></div>
 
-    <h2>Ticker <button id="ticker-on" class="switch" aria-pressed="false">Hidden</button></h2>
-    <div class="field"><label for="ticker-input">Text</label><input id="ticker-input" type="text" placeholder="A line that scrolls along the bottom" autocomplete="off"></div>
+      <h2>Ticker <button id="ticker-on" class="switch" aria-pressed="false">Hidden</button></h2>
+      <div class="field"><label for="ticker-input">Text</label><input id="ticker-input" type="text" placeholder="A line that scrolls along the bottom" autocomplete="off"></div>
 
-    <h2>Countdown <span id="timer-state" class="hint"></span></h2>
-    <div class="field"><label for="timer-label-input">Label</label><input id="timer-label-input" type="text" placeholder="Starting in" autocomplete="off"></div>
-    <div class="row">
-      <input id="timer-minutes" type="number" min="1" max="180" value="5" aria-label="Minutes">
-      <button id="timer-start" class="primary">Start</button>
-      <button id="timer-stop">Stop</button>
-    </div>
+      <h2>Countdown <span id="timer-state" class="hint"></span></h2>
+      <div class="field"><label for="timer-label-input">Label</label><input id="timer-label-input" type="text" placeholder="Starting in" autocomplete="off"></div>
+      <div class="row">
+        <input id="timer-minutes" type="number" min="1" max="180" value="5" aria-label="Minutes">
+        <button id="timer-start" class="primary">Start</button>
+        <button id="timer-stop">Stop</button>
+      </div>
 
-    <h2>Alert</h2>
-    <form id="alert-form" class="row">
-      <input id="alert-input" type="text" placeholder="New follower: someone" autocomplete="off" required>
-      <button class="primary">Send</button>
-    </form>
+      <h2>Alert <span class="hint">shown for a moment, never stored</span></h2>
+      <form id="alert-form" class="row">
+        <input id="alert-input" type="text" placeholder="New follower: someone" autocomplete="off" required>
+        <button class="primary">Send</button>
+      </form>
+    </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the panels" tabindex="0"></div>
+
+    <!-- What is on air right now, from the same subscription the overlay paints from. -->
+    <section class="panel monitor-panel" aria-label="Monitor">
+      <h2>On air <span class="hint">what OBS shows</span></h2>
+      <div class="monitor-frame"><div id="monitor" class="monitor"></div></div>
+      <div class="monitor-foot">
+        <p class="hint">Add this URL to OBS as a Browser Source, 1920 × 1080.</p>
+        <div class="link-box"><code id="overlay-link"></code><button id="copy-overlay" class="ghost">Copy</button></div>
+      </div>
+    </section>
   </main>
 
   <!-- No hash yet: name the stream. -->
-  <main id="create" class="control hidden">
+  <main id="create" class="create hidden">
     <header class="page-head">
       <h1>OBS Overlay</h1>
       <p class="hint">A stream overlay you control from your phone, with no server: one URL goes into OBS as a
@@ -341,57 +409,61 @@
       const remaining = () => Math.max(0, Math.ceil(((state.timer?.endsAt ?? 0) - Date.now()) / 1000))
       const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
 
-      // ── Overlay ──────────────────────────────────────────────────────────
-      if (mode !== "control") {
+      // ── The overlay: painted in OBS and in the remote's monitor alike ────
+      // OBS's Browser Source injects window.obsstudio and gets a transparent
+      // page; a plain browser gets a dark stage with the two links; the remote
+      // gets the same element scaled into its monitor.
+      if (mode === "control") $("monitor").append($("overlay"))
+      else {
         document.body.classList.add("overlay")
-        $("overlay").classList.remove("hidden")
-        // OBS's Browser Source injects window.obsstudio; anywhere else this is
-        // a stage with the two links, not a transparent page on a white tab.
         if (!window.obsstudio) {
           document.body.classList.add("stage")
           $("stage-hint").classList.remove("hidden")
           $("control-link").textContent = controlUrl
           $("presence").classList.remove("hidden")
         }
-
-        const paint = () => {
-          const lt = state["lower-third"], tk = state.ticker, tm = state.timer
-          $("lt-name").textContent = lt?.name ?? ""
-          $("lt-title").textContent = lt?.title ?? ""
-          $("lower-third").classList.toggle("on", !!lt?.on && !!lt?.name)
-          if ($("ticker-text").textContent !== (tk?.text ?? "")) $("ticker-text").textContent = tk?.text ?? "" // keep the marquee's phase
-          $("ticker").classList.toggle("on", !!tk?.on && !!tk?.text)
-          $("timer-label").textContent = tm?.label ?? ""
-          $("timer").classList.toggle("on", !!tm?.on)
-          tick()
-        }
-        let ticking
-        const tick = () => {
-          clearInterval(ticking)
-          if (!state.timer?.on) return
-          const draw = () => {
-            const s = remaining()
-            $("timer-clock").textContent = clock(s)
-            $("timer").classList.toggle("done", s === 0)
-            if (s === 0) clearInterval(ticking)
-          }
-          draw()
-          ticking = setInterval(draw, 250)
-        }
-        listeners.push(paint)
-        paint()
-
-        alerts.on("message", ({ text }) => {
-          const card = document.createElement("div")
-          card.className = "alert"
-          card.textContent = text
-          $("alerts").append(card)
-          card.addEventListener("animationend", () => card.remove())
-        })
       }
+      $("overlay").classList.remove("hidden")
+
+      const paintOverlay = () => {
+        const lt = state["lower-third"], tk = state.ticker, tm = state.timer
+        $("lt-name").textContent = lt?.name ?? ""
+        $("lt-title").textContent = lt?.title ?? ""
+        $("lower-third").classList.toggle("on", !!lt?.on && !!lt?.name)
+        if ($("ticker-text").textContent !== (tk?.text ?? "")) $("ticker-text").textContent = tk?.text ?? "" // keep the marquee's phase
+        $("ticker").classList.toggle("on", !!tk?.on && !!tk?.text)
+        $("timer-label").textContent = tm?.label ?? ""
+        $("timer").classList.toggle("on", !!tm?.on)
+        tick()
+      }
+      let ticking
+      const tick = () => {
+        clearInterval(ticking)
+        if (!state.timer?.on) return
+        const draw = () => {
+          const s = remaining()
+          $("timer-clock").textContent = clock(s)
+          $("timer").classList.toggle("done", s === 0)
+          if (s === 0) clearInterval(ticking)
+        }
+        draw()
+        ticking = setInterval(draw, 250)
+      }
+      listeners.push(paintOverlay)
+      paintOverlay()
+
+      const showAlert = (text) => {
+        const card = document.createElement("div")
+        card.className = "alert"
+        card.textContent = text
+        $("alerts").append(card)
+        card.addEventListener("animationend", () => card.remove())
+      }
+      alerts.on("message", ({ text }) => showAlert(text))
 
       // ── Control ──────────────────────────────────────────────────────────
       if (mode === "control") {
+        document.body.classList.add("control")
         $("control").classList.remove("hidden")
         $("presence").classList.remove("hidden")
         $("stream-key").textContent = `· ${decodeURIComponent(key)}`
@@ -437,8 +509,40 @@
         // every overlay listening now and is gone; nothing to sync later.
         $("alert-form").addEventListener("submit", (e) => {
           e.preventDefault()
-          alerts.send({ text: $("alert-input").value.trim() })
+          const text = $("alert-input").value.trim()
+          alerts.send({ text })
+          showAlert(text) // the channel does not echo: the sender's monitor shows it too
           $("alert-input").value = ""
+        })
+
+        // ── The divider between the panels is the resize control ───────────
+        const bench = $("control"), splitter = $("splitter")
+        const MIN_INPUT = 320, MIN_MONITOR = 320
+        const setInputWidth = (px, persist = true) => {
+          // No ceiling while the bench has no width yet (the first paint).
+          const available = bench.clientWidth
+          const ceiling = available ? Math.max(available - MIN_MONITOR, MIN_INPUT) : Infinity
+          const width = Math.round(Math.min(Math.max(px, MIN_INPUT), ceiling))
+          bench.style.setProperty("--input-width", `${width}px`)
+          if (persist) localStorage.obsOverlaySplit = width
+        }
+        if (localStorage.obsOverlaySplit) setInputWidth(Number(localStorage.obsOverlaySplit), false)
+        // Pointer events, not mouse events: one path for mouse, pen and touch,
+        // and setPointerCapture keeps the drag alive past an 11px strip.
+        splitter.addEventListener("pointerdown", (event) => {
+          event.preventDefault()
+          splitter.setPointerCapture(event.pointerId)
+          const startX = event.clientX
+          const startWidth = bench.firstElementChild.getBoundingClientRect().width
+          const onMove = (move) => setInputWidth(startWidth + move.clientX - startX)
+          splitter.addEventListener("pointermove", onMove)
+          splitter.addEventListener("pointerup", () => splitter.removeEventListener("pointermove", onMove), { once: true })
+        })
+        splitter.addEventListener("keydown", (event) => {
+          const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key]
+          if (!step) return
+          event.preventDefault()
+          setInputWidth(bench.firstElementChild.getBoundingClientRect().width + step)
         })
       }
     }
