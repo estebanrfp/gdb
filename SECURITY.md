@@ -19,11 +19,11 @@ Full details: [zero-trust security model](docs/zero-trust-security-model.md) · 
 
 Any peer may run modified code, and the network — relays, superpeers, other peers — is hostile. A peer decides on its own copy only; every other peer verifies what it receives and applies nothing it cannot verify. Out of scope: a stolen mnemonic or an unlocked device — that is the identity itself.
 
-What the model leaves open inside those bounds, by design: a signature is valid in every room that authorizes that address, so two rooms that share a superadmin share its authority — rooms that must stay isolated carry distinct constitutions. A tombstone lives only in the operation window, so state older than it can return through a laggard's full state. A room opened without `sm` has no gate at all. Among authorized writers last-write-wins decides, with a future clock capped two hours ahead of the receiver. The signaling layer authenticates nothing: a hostile relay or peer can deny discovery or observe metadata, never forge data. And a signed but unauthorized operation costs each receiver one signature recovery before it is refused.
+What the model leaves open inside those bounds, by design: a signature is valid in every room that authorizes that address, so two rooms that share a superadmin share its authority — rooms that must stay isolated carry distinct constitutions. A tombstone lives only in the operation window, so state older than it can return through a laggard's full state. A room opened without `sm` has no gate at all. Among authorized writers last-write-wins decides; a clock more than two hours ahead of the receiver's applies nothing and moves no clock until the receiver's own time reaches it. The signaling layer authenticates nothing: a hostile relay or peer can deny discovery or observe metadata, never forge data. And a signed but unauthorized operation costs each receiver one signature recovery before it is refused.
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.6.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.7.
 
 | guarantee | status |
 |---|---|
@@ -38,6 +38,7 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | A passkey protects the private key with a secret only the authenticator yields; nothing on disk decrypts it. | ✓ |
 | An id that begins with its owner's address (`0x…:`) is created and written only by that owner and its collaborators, on every peer — the engine names owned nodes that way when it generates the id. Under any other id, a node the receiver has never seen belongs to whoever creates it first. | ✓ |
 | Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused; a removal rewrites no other node's set. | ✓ |
+| A clock more than two hours ahead of a receiver's, in a signed operation or in a catch-up envelope, applies nothing and moves no clock; two honest writers converge on the later write. | ✓ |
 
 ## Supported Versions
 

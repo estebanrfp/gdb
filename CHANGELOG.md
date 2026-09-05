@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.7] - 2026-09-06
+
+### Fixed
+
+- **A clock too far ahead is refused, never clamped.** The two-hour cap on a future timestamp lived only in the `upsert` resolver, and it clamped: each receiver stored its own version of the stamp, while the stamps of `remove`, `link`, `unlink` and of a catch-up envelope reached the clock untouched. Measured on the suite's harness: an unsigned `fullStateSync` envelope stamped ten years ahead, sent by a peer with no keys, moved every receiver's clock ten years, and two honest writers on one node then kept their own value for good. Now a stamp more than two hours ahead of the receiver's wall clock applies nothing and moves no clock, on every path; it returns through catch-up once that clock reaches it, and a forged one never applies. Every replica keeps the same stamp for the same operation, so last-write-wins is deterministic again. Pinned by `catch-up/` ("a clock ten years ahead"); mirrored in the Fallback Server.
+
 ## [0.33.6] - 2026-09-05
 
 ### Fixed

@@ -42,12 +42,12 @@ This hierarchical comparison ensures a total ordering of all events in the syste
 
 ##### **Mitigation of Clock Skew and Future Drift**
 
-A significant challenge in distributed systems is clock skew, where a node's physical clock is inaccurate. To protect the system's integrity, a safeguard is in place to handle timestamps that are unreasonably far in the future. A predefined threshold for maximum allowable future drift is established. If an incoming timestamp's physical component exceeds this threshold relative to the node's current time, the physical value is "capped" at this maximum acceptable limit for the purposes of resolution. Its original logical component is preserved. This intelligent adjustment prevents a single misconfigured node from corrupting the temporal ordering of the entire system, ensuring stability without completely discarding the incoming operation.
+A significant challenge in distributed systems is clock skew, where a node's physical clock is inaccurate. A predefined threshold bounds how far ahead of the receiver's own clock an incoming timestamp may run: two hours. An operation, or a synchronisation envelope, whose physical component exceeds that threshold is not applied and does not advance the receiver's clock; it returns through catch-up once the receiver's clock reaches it, and a forged one never applies. Refusing, rather than capping, keeps every replica holding the same timestamp for the same operation, which is what makes last-write-wins deterministic across peers.
 
 ##### **Resolution Decision Flow**
 
 The resolution process is triggered whenever an incoming update targets data that already exists locally.
-1.  First, the incoming timestamp is validated and adjusted for future drift as described above.
+1.  First, an incoming timestamp more than two hours ahead of the local clock is refused, as described above.
 2.  Next, if no local version of the data exists, the incoming change is accepted unconditionally.
 3.  If a local version does exist, the HLC timestamp of the incoming change is compared against the HLC timestamp of the local data.
 4.  If the comparison determines the incoming timestamp is greater, the remote change "wins," and the local data is overwritten.
