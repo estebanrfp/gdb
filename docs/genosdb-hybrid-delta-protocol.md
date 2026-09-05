@@ -53,7 +53,7 @@ A full-state sync is initiated under two specific conditions:
     *   Every applied operation is **recorded in the receiver's Oplog**, so its own window keeps serving future delta syncs.
     *   It advances its `HybridClock` and `globalTimestamp` to the highest timestamp observed, "fast-forwarding" itself so it can immediately participate in future delta syncs from a known-good state.
 
-3.  **Reciprocity:** If the receiver holds nodes the sender lacks, it replies with its own full state, so reconciliation converges in both directions.
+3.  **Reciprocity:** If the receiver holds nodes the sender lacks, it replies once with its own full state, so reconciliation converges in both directions; that reply is terminal and is never answered with another full state.
 
 This dual-mode architecture offers the performance of delta-syncing with the absolute reliability of full-state reconciliation, guaranteeing **eventual consistency** across the network regardless of peer connectivity.
 

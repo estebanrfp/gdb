@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.6] - 2026-09-05
+
+### Fixed
+
+- **A reciprocal full state is terminal.** A peer left holding nodes the sender lacked after merging a full state answered with its own, assuming the sender would take them. Since every node is judged by its author's signature a node can be refused for good, so two peers each holding a node the other refuses — two constitutions naming their own superadmins, or a modified client — answered each other's full states without end: measured at some three hundred whole-graph messages per second in each direction, for as long as the mismatched peer stayed. The reciprocal now carries a flag and is never answered with another full state: one reply and at most one reciprocation per handshake, then silence. Convergence to the union is unchanged, since the reply already carried the first peer's whole graph. The field is additive and older peers interoperate; update a room's peers together to be rid of the exchange entirely. The bundled Fallback Server carries the same rule.
+
 ## [0.33.5] - 2026-09-03
 
 ### Fixed
