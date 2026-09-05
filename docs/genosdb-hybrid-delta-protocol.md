@@ -70,7 +70,7 @@ User identity is established through a cryptographically secure **Ethereum walle
 #### **B. Authorization: Distributed, In-Graph RBAC**
 
 The SM enforces permissions using a decentralized model where rules are embedded and synchronized as part of the graph data itself.
-*   **Role-Based Access Control (RBAC):** The system uses a configurable set of roles (e.g., `superadmin`, `admin`, `user`) with explicit permissions (`can: ['write', 'deleteAny']`).
+*   **Role-Based Access Control (RBAC):** The system uses a configurable set of roles (e.g., `superadmin`, `admin`, `user`) with explicit permissions (`can: ['write', 'delete']`).
 *   **In-Graph Roles:** A user's role is stored in a publicly readable `user:[eth_address]` node within the GDB graph. Security rules are distributed and agreed upon with the same eventual consistency as the data they protect.
 *   **The `SoftwareSecurityManager` (SSM) - The Enforcement Engine:** The SSM is the core enforcement point on every peer. It operates through a GDB middleware that intercepts all incoming data.
 
@@ -87,9 +87,9 @@ This process creates a resilient, zero-trust environment where every peer indepe
 #### **C. Privacy: Transparent End-to-End Encryption**
 
 The SM module provides transparent, user-controlled end-to-end encryption.
-*   **Secure Wrappers:** When a developer uses `db.sm.put()`, the data is not stored in plaintext. It is first encrypted using a key derived from the user's unique private key.
+*   **Secure Wrappers:** When a developer uses `db.sm.put()`, the data is not stored in plaintext. It is sealed with a random per-record content key, which travels on the node wrapped for each authorized reader: the owner, plus any address the owner grants.
 *   **Secure Payload Format:** The value stored in the GDB graph is a specific wrapper object, `_gdbSecurePayloadV1`. This object contains the `_payload` (the ciphertext) and public `_meta` data, including the owner's Ethereum address.
-*   **Conditional Decryption:** When `db.sm.get()` is called, the module inspects the wrapper. If the currently logged-in user's address matches the owner in the metadata, it derives the correct key and decrypts the ciphertext on the fly. For all other users, the method returns the unintelligible ciphertext along with a `decrypted: false` flag, allowing applications to handle the protected data appropriately.
+*   **Conditional Decryption:** When `db.sm.get()` is called, the module inspects the wrapper. A session holding a key envelope, the owner or a reader added with `db.sm.acls.grant`, unwraps the content key and decrypts the ciphertext on the fly; `revoke` rotates that key. For every other session, the method returns the unintelligible ciphertext along with a `decrypted: false` flag, allowing applications to handle the protected data appropriately.
 
 ### **Conclusion**
 

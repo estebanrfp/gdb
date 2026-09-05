@@ -32,11 +32,11 @@ A new user is granted a single, highly-specific "welcome exception" to solve the
 2.  **The Target MUST be their own node:** The `id` of the node being created must be exactly `user:[their_own_eth_address]`.
 3.  **The user MUST NOT already exist:** This is a one-time-only ticket into the network.
 
-**Crucially**, even in this single permitted operation, the system does not trust the incoming data. Our code **forcefully overwrites** the `role` in this new node to `guest`, neutralizing any attempt at self-privilege escalation.
+**Crucially**, even in this single permitted operation, the system does not trust the incoming data. Every peer applies the node only if its `role` is `guest`: a first write claiming any other role is refused, so no identity ever enters above `guest`.
 
 #### Everything They CANNOT Do:
 
-*   **CANNOT choose their role.** If they try to submit `{ "role": "superadmin" }` in their first `write`, the system will ignore it and set the role to `guest`.
+*   **CANNOT choose their role.** If they try to submit `{ "role": "superadmin" }` in their first `write`, every peer refuses the operation; their node exists only once it is written as `guest`.
 *   **CANNOT write to any other node.** Attempting to create a node with `id: "anything_else"` will be denied.
 *   **CANNOT delete anything (`remove`).** The `'delete'` action is not permitted for the `guest` role.
 *   **CANNOT link nodes (`link`).** The `'link'` action is not permitted for the `guest` role.

@@ -63,7 +63,7 @@
 *   **Role-Based Access Control (RBAC):**
     *   **Customizable Role System:** The entire role hierarchy and permission set can be fully customized during database initialization.
     *   **Default Role Hierarchy:** Provides a pre-defined, inheritable role structure for rapid development: `superadmin` > `admin` > `manager` > `user` > `guest`.
-    *   **Granular Permissions:** A comprehensive set of default permissions including `read`, `write`, `link`, `publish`, `delete`, `deleteAny`, and `assignRole`.
+    *   **Granular Permissions:** A comprehensive set of default permissions including `read`, `write`, `link`, `publish`, `delete` and `assignRole`. `deleteAny` is declared in the default ladder but evaluated by nothing: moderation over a node-level ACL is granted by its owner, never inherited from a role.
     *   **Role Management:** The `assignRole` function allows authorized users to assign roles to other peers. Role assignments are stored securely within the graph and can be set with an optional **expiration date**.
     *   **Permission Guarding:** The `executeWithPermission` method provides a robust way to check if the current user has the required permissions before executing a protected client-side action.
 
@@ -74,7 +74,7 @@
     *   **Rule-based, signed:** A superadmin declares advancement rules as native GenosDB queries; while online, the engine resolves each user's role by **last-match-wins** — a merit ladder where climbing overrides the lower tiers and losing the condition auto-demotes — signing every change for peers to verify.
 
 *   **Encrypted Data Storage:**
-    *   **User-Scoped Encryption:** Offers `db.sm.put()` and `db.sm.get()` methods to store and retrieve data that is automatically end-to-end encrypted. Only the user who created the data can decrypt it, providing a mechanism for private, secure notes or user-specific data.
+    *   **User-Scoped Encryption:** Offers `db.sm.put()` and `db.sm.get()` methods to store and retrieve data that is automatically end-to-end encrypted. The owner decrypts it, and so does any reader the owner grants with `db.sm.acls.grant`; `revoke` rotates the record's key, so a revoked reader cannot decrypt anything written afterwards.
 
 ### **5. Technical Implementation & Performance**
 

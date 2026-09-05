@@ -52,6 +52,7 @@ The Security Manager (SM) for GDB integrates several key security aspects:
       - `manager`: `['publish']` + inherits user
       - `admin`: `['delete']` + inherits manager
       - `superadmin`: `['assignRole', 'deleteAny']` + inherits admin
+      - `deleteAny` is declared but evaluated by nothing: moderation over a node-level ACL is granted by its owner with `grant(id, address, 'delete')`, never inherited from a role
     - Role assignments are stored within GDB itself, making them part of the synchronized state.
     - Custom roles can be defined by passing them in the initial configuration
 3.  **P2P Operation Security**:

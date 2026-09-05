@@ -19,6 +19,8 @@ Full details: [zero-trust security model](docs/zero-trust-security-model.md) · 
 
 Any peer may run modified code, and the network — relays, superpeers, other peers — is hostile. A peer decides on its own copy only; every other peer verifies what it receives and applies nothing it cannot verify. Out of scope: a stolen mnemonic or an unlocked device — that is the identity itself.
 
+What the model leaves open inside those bounds, by design: a signature is valid in every room that authorizes that address, so two rooms that share a superadmin share its authority — rooms that must stay isolated carry distinct constitutions. A tombstone lives only in the operation window, so state older than it can return through a laggard's full state. A room opened without `sm` has no gate at all. Among authorized writers last-write-wins decides, with a future clock capped two hours ahead of the receiver. The signaling layer authenticates nothing: a hostile relay or peer can deny discovery or observe metadata, never forge data. And a signed but unauthorized operation costs each receiver one signature recovery before it is refused.
+
 ## Verified guarantees
 
 Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.6.
