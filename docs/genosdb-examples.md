@@ -202,6 +202,11 @@ A from-scratch decentralized social network and the most complete GenosDB showca
 
 _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 
+### [dNews](https://estebanrfp.github.io/dNews/) · [source](https://github.com/estebanrfp/dNews)
+Distributed GenosDB clone of Hacker News (Y Combinator): the same front page, threads, votes and flags, with no server — every node signed and owned by its author, synced peer-to-peer over WebRTC. Moderated by a **constitution every peer runs**: roles and role rules enforced by the engine, karma, trust and the death of an item derived by each browser from the same signed nodes, and a public chain of vouches so a vote counts only from a trusted member. The constitution is a file in the repository, rendered verbatim on the site; changing it is a pull request. Four files, no build.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
 ### [Pixel-Painting](https://github.com/estebanrfp/Pixel-Painting)
 Distributed Pixel Painting Application with GenosDB and Vanilla Javascript
 
