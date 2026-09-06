@@ -441,7 +441,8 @@
 
         const runQuery = async () => {
             const started = performance.now()
-            const { results } = await db.map({ query: deepQuery })
+            // field: "level" — the engine sorts $edge results too, so the traversal reads in depth order.
+            const { results } = await db.map({ query: deepQuery, field: "level" })
             const elapsed = (performance.now() - started).toFixed(2)
 
             el.runAt.textContent = new Date().toLocaleTimeString()
@@ -449,9 +450,7 @@
             el.time.textContent = elapsed
             el.scanned.textContent = (DEPTH + 1) * 2
 
-            // Sorted by depth so the traversal itself is legible in the output.
             el.list.replaceChildren(...results
-                .sort((a, b) => a.value.level - b.value.level)
                 .map(({ value }) => {
                     const li = document.createElement("li")
                     const level = document.createElement("b")

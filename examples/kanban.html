@@ -123,8 +123,21 @@
       });
     }
 
+    // Deterministic placement inside a column: createdAt ascending, the id
+    // breaks a tie — the order a sorted db.map applies — so every peer's board
+    // reads alike even when a card arrives out of order (another peer's clock).
+    const keyOf = (el) => [Number(el.dataset.createdAt) || 0, el.dataset.id];
+    function placeSorted(taskElement, columnElement) {
+      const [at, id] = keyOf(taskElement);
+      const next = [...columnElement.children].find((el) => {
+        const [otherAt, otherId] = keyOf(el);
+        return el !== taskElement && (otherAt > at || (otherAt === at && otherId > id));
+      });
+      columnElement.insertBefore(taskElement, next ?? null);
+    }
+
     // Function to render a task in a specific column
-    function renderTask(column, id, text) {
+    function renderTask(column, id, text, createdAt) {
       const columnElement = document.querySelector(`[data-column="${column}"] .tasks`);
       const existingTask = document.querySelector(`[data-id="${id}"]`);
 
@@ -133,10 +146,9 @@
         const taskTextSpan = existingTask.querySelector("span");
         taskTextSpan.textContent = text;
 
-        // Move the task to the correct container if necessary
-        if (!columnElement.contains(existingTask)) {
-          columnElement.appendChild(existingTask);
-        }
+        if (createdAt !== undefined) existingTask.dataset.createdAt = createdAt;
+        // Into its column, at its place — a move lands where its createdAt says.
+        placeSorted(existingTask, columnElement);
       } else {
         // If the task does not exist, create a new element
         const taskDiv = document.createElement("div");
@@ -148,7 +160,8 @@
           <button class="delete-button" onclick="deleteTask('${id}')">×</button>
         `;
         taskDiv.addEventListener("dragstart", (e) => handleDragStart(e, id));
-        columnElement.appendChild(taskDiv);
+        taskDiv.dataset.createdAt = createdAt ?? "";
+        placeSorted(taskDiv, columnElement);
 
         // Mark the task as rendered
         renderedNodes[id] = true;
@@ -174,11 +187,9 @@
           delete renderedNodes[id];
         }
         if (value && value.column && value.text) {
-          renderTask(value.column, id, value.text);
-          // The sort field survives column moves via the DOM (moveTask
-          // rebuilds the value from what is rendered).
-          const el = document.querySelector(`[data-id="${id}"]`);
-          if (el) el.dataset.createdAt = value.createdAt ?? '';
+          // createdAt travels to the DOM: it places the card, and moveTask
+          // rebuilds the value from what is rendered.
+          renderTask(value.column, id, value.text, value.createdAt);
         }
       });
     }
@@ -189,7 +200,7 @@
       if (!text) return;
       const task = { column, text, createdAt: Date.now() };
       const id = await db.put(task);
-      renderTask(column, id, text);
+      renderTask(column, id, text, task.createdAt);
     };
 
     // Move a task between columns
@@ -212,11 +223,7 @@
       // Update the task in the DOM without deleting or recreating it
       const newColumnElement = document.querySelector(`[data-column="${newColumn}"] .tasks`);
       taskTextSpan.textContent = text;
-
-      // Move the task to the correct container if necessary
-      if (!newColumnElement.contains(taskElement)) {
-        newColumnElement.appendChild(taskElement);
-      }
+      placeSorted(taskElement, newColumnElement);
     };
 
     // Delete a task
