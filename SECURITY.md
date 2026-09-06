@@ -23,7 +23,7 @@ What the model leaves open inside those bounds, by design: a signature is valid 
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.7.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.33.8.
 
 | guarantee | status |
 |---|---|

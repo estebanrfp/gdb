@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.8] - 2026-09-06
+
+### Fixed
+
+- **The edge set inside a full-state node is judged with the clock too.** 0.33.7 refused a `link` or `unlink` stamped more than two hours ahead, but the same set, signed and carried inside a node of a `fullStateSync`, was still applied: a receipt ten years ahead froze the node's edges against every later link and split the replicas. Measured on the suite's harness with an authorized linker and a crafted full state. Now that set is refused like the operation, on the browser, the Fallback Server and the native peer. Pinned by `catch-up/` and `superpeer/` ("a clock ten years ahead"), red on 0.33.7.
+
 ## [0.33.7] - 2026-09-06
 
 ### Fixed
