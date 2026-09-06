@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" role="img" aria-label="A commit that names itself. Its id is the author's address, a colon, and a SHA-256 of the repository, the parents, the message, the content and the time. Two consequences: on any peer, an operation on an id that begins with an address must be signed by that address, so nobody else can create, rewrite or delete the commit; and changing one byte of the content produces another id, so the author cannot rewrite it either without leaving the old one where it was." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="759" height="299" rx="14" fill="#14171c" stroke="#262b33"/>
+  <text x="30" y="40" font-size="14" font-weight="600" fill="#e8eaed">A commit that names itself</text>
+  <text x="30" y="58" font-size="12.5" fill="#9aa3ad">The id is built by the author and enforced by every peer</text>
+
+  <!-- the id -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace">
+    <rect x="30" y="84" width="700" height="56" rx="8" fill="#1c2026" stroke="#333a44"/>
+    <text x="52" y="118" font-size="16" fill="#7fd1ff">0x3546D4BA…DDdb3F4931</text>
+    <text x="263" y="118" font-size="16" fill="#9aa3ad">:</text>
+    <text x="280" y="118" font-size="16" fill="#f5c76a">41738ec9b1d0c2f4e6a8…</text>
+    <!-- braces -->
+    <path d="M 52 150 L 52 156 L 255 156 L 255 150" fill="none" stroke="#7fd1ff" stroke-width="1.2"/>
+    <path d="M 280 150 L 280 156 L 700 156 L 700 150" fill="none" stroke="#f5c76a" stroke-width="1.2"/>
+  </g>
+  <text x="153" y="174" font-size="11.5" fill="#7fd1ff" text-anchor="middle">the author's address</text>
+  <text x="490" y="174" font-size="11.5" fill="#f5c76a" text-anchor="middle">sha-256( repo · parents · message · content · time )</text>
+
+  <!-- consequences -->
+  <rect x="30" y="196" width="340" height="80" rx="8" fill="#1c2026" stroke="#333a44"/>
+  <text x="46" y="220" font-size="12.5" font-weight="600" fill="#e8eaed">Nobody else can touch it</text>
+  <text x="46" y="240" font-size="11.5" fill="#9aa3ad">An id that begins with an address names its owner:</text>
+  <text x="46" y="256" font-size="11.5" fill="#9aa3ad">on a peer that never saw the node, an op on it is</text>
+  <text x="46" y="272" font-size="11.5" fill="#9aa3ad">accepted only when signed by that address.</text>
+
+  <rect x="390" y="196" width="340" height="80" rx="8" fill="#1c2026" stroke="#333a44"/>
+  <text x="406" y="220" font-size="12.5" font-weight="600" fill="#e8eaed">The author cannot rewrite it either</text>
+  <text x="406" y="240" font-size="11.5" fill="#9aa3ad">Change one byte of the content, the parents or the</text>
+  <text x="406" y="256" font-size="11.5" fill="#9aa3ad">message and the hash changes: that is a new commit,</text>
+  <text x="406" y="272" font-size="11.5" fill="#9aa3ad">and the old one stays where every peer keeps it.</text>
+</svg>

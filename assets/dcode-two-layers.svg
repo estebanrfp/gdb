@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 450" width="760" height="450" role="img" aria-label="Two layers, one graph. Left, the buffer is shared: every line of the code is a plain node with a text and a fractional order key, edited by everyone on the branch, with two named carets on two lines. Right, the history is owned: a repository node, a branch node with a head, a chain of commit nodes each owned by its author, and a pull request node from one branch into another — only the owner writes each of them. One db.map subscription feeds both layers." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+    <marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34c77b"/>
+    </marker>
+  </defs>
+
+  <!-- card -->
+  <rect x="0.5" y="0.5" width="759" height="449" rx="14" fill="#14171c" stroke="#262b33"/>
+
+  <!-- ══ Left: the buffer is shared ══ -->
+  <rect x="20" y="20" width="350" height="360" rx="10" fill="#1c2026"/>
+  <text x="40" y="48" font-size="14" font-weight="600" fill="#e8eaed">The buffer is shared</text>
+  <text x="40" y="66" font-size="12.5" fill="#9aa3ad">One plain node per line — anyone on the branch writes it</text>
+
+  <!-- line nodes -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11.5">
+    <rect x="40" y="90" width="310" height="40" rx="6" fill="#22262d" stroke="#333a44"/>
+    <text x="52" y="106" fill="#5c6570">13</text>
+    <text x="76" y="106" fill="#e8eaed">&lt;h1&gt;Counter&lt;/h1&gt;</text>
+    <text x="76" y="122" fill="#5c6570">{ type: "line", order: 13, text }</text>
+
+    <rect x="40" y="140" width="310" height="40" rx="6" fill="#22262d" stroke="#4c8dff"/>
+    <text x="52" y="156" fill="#5c6570">14</text>
+    <text x="76" y="156" fill="#e8eaed">&lt;p&gt;One commit at a time.&lt;/p&gt;</text>
+    <text x="76" y="172" fill="#5c6570">{ type: "line", order: 14, text }</text>
+    <!-- alice's caret -->
+    <rect x="157" y="146" width="1.5" height="13" fill="#7fd1ff"/>
+    <rect x="151" y="136" width="30" height="11" rx="2" fill="#7fd1ff"/>
+    <text x="166" y="144.5" font-size="8" font-weight="700" fill="#0d0f12" text-anchor="middle">alice</text>
+
+    <rect x="40" y="190" width="310" height="40" rx="6" fill="#22262d" stroke="#333a44"/>
+    <text x="52" y="206" fill="#5c6570">15</text>
+    <text x="76" y="206" fill="#e8eaed">&lt;button&gt;Count: 0&lt;/button&gt;</text>
+    <text x="76" y="222" fill="#5c6570">{ type: "line", order: 14.5, text }</text>
+    <!-- bob's caret -->
+    <rect x="211" y="196" width="1.5" height="13" fill="#f0a0c8"/>
+    <rect x="207" y="186" width="24" height="11" rx="2" fill="#f0a0c8"/>
+    <text x="219" y="194.5" font-size="8" font-weight="700" fill="#0d0f12" text-anchor="middle">bob</text>
+  </g>
+
+  <text x="40" y="262" font-size="11.5" fill="#9aa3ad">Two people on two lines never collide.</text>
+  <text x="40" y="280" font-size="11.5" fill="#9aa3ad">Enter splits a node; Backspace merges two.</text>
+  <text x="40" y="298" font-size="11.5" fill="#9aa3ad">A paste mints all its keys in one batch.</text>
+  <text x="40" y="316" font-size="11.5" fill="#9aa3ad">Keystrokes and carets ride an ephemeral channel;</text>
+  <text x="40" y="334" font-size="11.5" fill="#9aa3ad">the debounced put is the truth.</text>
+  <text x="40" y="352" font-size="11.5" fill="#9aa3ad">Line 15's key, 14.5, sits between 14 and 15.</text>
+  <text x="40" y="371" font-size="11" fill="#5c6570">The block editor's technique, on code — no CRDT library.</text>
+
+  <!-- ══ Right: the history is owned ══ -->
+  <rect x="390" y="20" width="350" height="360" rx="10" fill="#1c2026"/>
+  <text x="410" y="48" font-size="14" font-weight="600" fill="#e8eaed">The history is owned</text>
+  <text x="410" y="66" font-size="12.5" fill="#9aa3ad">ACL nodes — only the owner writes each one</text>
+
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11">
+    <!-- repository -->
+    <rect x="410" y="86" width="140" height="36" rx="6" fill="#22262d" stroke="#333a44"/>
+    <text x="420" y="101" fill="#e8eaed">repository</text>
+    <text x="420" y="115" fill="#5c6570">owner: alice</text>
+
+    <!-- branches -->
+    <rect x="410" y="140" width="140" height="36" rx="6" fill="#22262d" stroke="#34c77b"/>
+    <text x="420" y="155" fill="#e8eaed">branch main</text>
+    <text x="420" y="169" fill="#5c6570">owner: alice · head →</text>
+
+    <rect x="410" y="194" width="140" height="36" rx="6" fill="#22262d" stroke="#333a44"/>
+    <text x="420" y="209" fill="#e8eaed">branch bob/main</text>
+    <text x="420" y="223" fill="#5c6570">owner: bob · head →</text>
+
+    <!-- commits -->
+    <circle cx="600" cy="158" r="7" fill="#34c77b"/>
+    <text x="616" y="154" fill="#e8eaed">c3 · alice</text>
+    <text x="616" y="167" fill="#5c6570">0x3546…:9f2a…</text>
+
+    <circle cx="600" cy="212" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="616" y="208" fill="#e8eaed">c2 · bob</text>
+    <text x="616" y="221" fill="#5c6570">0x8089…:41b7…</text>
+
+    <circle cx="600" cy="266" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="616" y="262" fill="#e8eaed">c1 · alice</text>
+    <text x="616" y="275" fill="#5c6570">Initial commit</text>
+
+    <!-- parent lines -->
+    <line x1="600" y1="165" x2="600" y2="205" stroke="#333a44" stroke-width="1.5"/>
+    <line x1="600" y1="219" x2="600" y2="259" stroke="#333a44" stroke-width="1.5"/>
+
+    <!-- head arrows -->
+    <line x1="550" y1="158" x2="590" y2="158" stroke="#34c77b" stroke-width="1.5" marker-end="url(#arrow-ok)"/>
+    <line x1="550" y1="212" x2="590" y2="212" stroke="#9aa3ad" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- pull request -->
+    <rect x="410" y="290" width="140" height="36" rx="6" fill="#22262d" stroke="#333a44" stroke-dasharray="4 3"/>
+    <text x="420" y="305" fill="#e8eaed">pull request</text>
+    <text x="420" y="319" fill="#5c6570">bob/main → main</text>
+    <text x="410" y="346" font-size="11" fill="#9aa3ad">merged? nobody writes it — every peer reads it:</text>
+    <text x="410" y="361" font-size="11" fill="#9aa3ad">is c2 an ancestor of main's head? here, yes.</text>
+  </g>
+
+
+  <!-- ══ Bottom: one subscription ══ -->
+  <rect x="20" y="392" width="720" height="46" rx="8" fill="#22262d" stroke="#333a44"/>
+  <text x="380" y="411" font-size="11" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">db.map({ query: { type: { $in: ["repo", "branch", "commit", "pr", "line"] } } }, onChange)</text>
+  <text x="380" y="429" font-size="11" fill="#9aa3ad" text-anchor="middle">one subscription feeds both layers</text>
+</svg>

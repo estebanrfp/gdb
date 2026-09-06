@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" width="760" height="420" role="img" aria-label="How a pull request is merged, in three cases, all decided by the target branch's owner and read by every peer from the graph. Case one, fast-forward: the target's head is an ancestor of the proposed commit, so the owner moves the head to it. Case two, a clean merge: the newest common ancestor is the base, a line-based three-way merge combines both sides, and the owner writes a merge commit with two parents. Case three, a conflict: the same lines changed both ways, so the marked text lands in the target's shared buffer, and the commit made from the resolution is the merge. In every case the target's buffer follows the new head, and the pull request reads as merged because its commit is now an ancestor of the head." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+    <marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34c77b"/>
+    </marker>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="759" height="419" rx="14" fill="#14171c" stroke="#262b33"/>
+  <text x="30" y="40" font-size="14" font-weight="600" fill="#e8eaed">Merging a pull request — the target's owner decides, every peer reads the result</text>
+  <text x="30" y="58" font-size="12.5" fill="#9aa3ad">Merged is not a flag anyone writes: the proposed commit is an ancestor of the target's head, or it is not</text>
+
+  <!-- ══ Case 1: fast-forward ══ -->
+  <rect x="20" y="80" width="230" height="290" rx="10" fill="#1c2026"/>
+  <text x="36" y="104" font-size="12.5" font-weight="600" fill="#e8eaed">1 · Fast-forward</text>
+  <text x="36" y="122" font-size="11" fill="#9aa3ad">the head is an ancestor of the proposal</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11">
+    <circle cx="60" cy="240" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="76" y="244" fill="#9aa3ad">c1 · main</text>
+    <circle cx="60" cy="190" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="76" y="194" fill="#9aa3ad">c2 · bob/main</text>
+    <line x1="60" y1="233" x2="60" y2="197" stroke="#333a44" stroke-width="1.5"/>
+    <path d="M 178 240 C 218 240, 218 190, 178 190" fill="none" stroke="#34c77b" stroke-width="1.5" marker-end="url(#arrow-ok)"/>
+    <text x="222" y="218" fill="#34c77b">head</text>
+  </g>
+  <text x="36" y="290" font-size="11" fill="#9aa3ad">One write on the branch node:</text>
+  <text x="36" y="306" font-size="11" fill="#e8eaed" font-family="ui-monospace, 'SF Mono', Menlo, monospace">acls.set({ head: c2 }, main)</text>
+  <text x="36" y="336" font-size="11" fill="#9aa3ad">The buffer follows the new head.</text>
+  <text x="36" y="352" font-size="11" fill="#9aa3ad">No merge commit needed.</text>
+
+  <!-- ══ Case 2: clean merge ══ -->
+  <rect x="265" y="80" width="230" height="290" rx="10" fill="#1c2026"/>
+  <text x="281" y="104" font-size="12.5" font-weight="600" fill="#e8eaed">2 · Different lines</text>
+  <text x="281" y="122" font-size="11" fill="#9aa3ad">diff3 by lines, from the common base</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11">
+    <circle cx="330" cy="250" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="346" y="254" fill="#9aa3ad">base</text>
+    <circle cx="300" cy="200" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="256" y="184" fill="#9aa3ad">ours</text>
+    <circle cx="360" cy="200" r="7" fill="#22262d" stroke="#9aa3ad" stroke-width="1.5"/>
+    <text x="372" y="184" fill="#9aa3ad">theirs</text>
+    <line x1="325" y1="245" x2="305" y2="207" stroke="#333a44" stroke-width="1.5"/>
+    <line x1="335" y1="245" x2="355" y2="207" stroke="#333a44" stroke-width="1.5"/>
+    <circle cx="330" cy="150" r="7" fill="#34c77b"/>
+    <text x="346" y="154" fill="#34c77b">merge · two parents</text>
+    <line x1="305" y1="195" x2="325" y2="157" stroke="#34c77b" stroke-width="1.5"/>
+    <line x1="355" y1="195" x2="335" y2="157" stroke="#34c77b" stroke-width="1.5"/>
+  </g>
+  <text x="281" y="284" font-size="11" fill="#9aa3ad">A region changed on one side takes</text>
+  <text x="281" y="300" font-size="11" fill="#9aa3ad">that side; changed alike on both,</text>
+  <text x="281" y="316" font-size="11" fill="#9aa3ad">once. The owner commits the result</text>
+  <text x="281" y="332" font-size="11" fill="#9aa3ad">with both heads as parents, moves</text>
+  <text x="281" y="348" font-size="11" fill="#9aa3ad">the head; the shared buffer follows.</text>
+
+  <!-- ══ Case 3: conflict ══ -->
+  <rect x="510" y="80" width="230" height="290" rx="10" fill="#1c2026"/>
+  <text x="526" y="104" font-size="12.5" font-weight="600" fill="#e8eaed">3 · The same line, both ways</text>
+  <text x="526" y="122" font-size="11" fill="#9aa3ad">a conflict, as in git</text>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11">
+    <rect x="526" y="140" width="198" height="112" rx="6" fill="#22262d" stroke="#f5a623"/>
+    <text x="536" y="158" fill="#f5a623">&lt;&lt;&lt;&lt;&lt;&lt;&lt; ours</text>
+    <text x="536" y="176" fill="#e8eaed">  &lt;h1&gt;Click counter&lt;/h1&gt;</text>
+    <text x="536" y="194" fill="#f5a623">=======</text>
+    <text x="536" y="212" fill="#e8eaed">  &lt;h1&gt;Pressed counter&lt;/h1&gt;</text>
+    <text x="536" y="230" fill="#f5a623">&gt;&gt;&gt;&gt;&gt;&gt;&gt; theirs</text>
+  </g>
+  <text x="526" y="272" font-size="11" fill="#9aa3ad">The markers land in main's shared</text>
+  <text x="526" y="288" font-size="11" fill="#9aa3ad">buffer, on every screen. The owner</text>
+  <text x="526" y="304" font-size="11" fill="#9aa3ad">resolves the lines and commits: that</text>
+  <text x="526" y="320" font-size="11" fill="#9aa3ad">commit has two parents and is the</text>
+  <text x="526" y="336" font-size="11" fill="#9aa3ad">merge. Markers left in the file are</text>
+  <text x="526" y="352" font-size="11" fill="#9aa3ad">refused, in words.</text>
+
+  <text x="380" y="400" font-size="11.5" fill="#5c6570" text-anchor="middle">In all three the pull request now reads as merged everywhere: its commit is an ancestor of the head.</text>
+</svg>
