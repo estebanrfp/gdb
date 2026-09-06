@@ -15,9 +15,13 @@
       --text-tertiary: #5c6570;
       --accent: #4c8dff;
       --warn: #f5a623;
+      --danger: #ef5350;
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
       --space-2: 8px;
+      --space-3: 12px;
       --space-5: 24px;
       --space-6: 32px;
     }
@@ -26,10 +30,54 @@
 
     body {
       margin: 0;
-      padding: 48px var(--space-5) 30vh;
       background: var(--bg-primary);
       color: var(--text-primary);
       font: 14px/1.5 var(--font);
+    }
+
+    /* Two views of one graph, side by side: the document you edit and the
+       keys it is sorted by. Each panel scrolls itself; the page never does. */
+    .bench {
+      display: grid;
+      grid-template-columns: var(--doc-width, 60%) 11px minmax(0, 1fr);
+      height: 100vh;
+      height: 100dvh;
+    }
+    .panel { min-width: 0; min-height: 0; overflow: auto; padding: var(--space-5); }
+    .doc-panel { padding-top: 48px; padding-bottom: 30vh; }
+    .axis-panel { display: flex; flex-direction: column; overflow: hidden; }
+    .axis-panel h2 {
+      margin: 0 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* The line between the panels is the resize control: an 11px hit area
+       around a 1px rule, two short bars centred on it to say it moves. */
+    .splitter { position: relative; cursor: col-resize; touch-action: none; }
+    .splitter::before { content: ""; position: absolute; inset: 0 auto 0 5px; width: 1px; background: var(--border-subtle); }
+    .splitter::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 5px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      border-left: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      background: var(--bg-primary);
+    }
+    .splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+    .splitter:focus-visible { outline: none; }
+
+    @media (max-width: 820px) {
+      .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 60%) minmax(0, 40%); }
+      .splitter { display: none; }
+      .doc-panel { border-bottom: 1px solid var(--border-subtle); }
     }
 
     .page-head, #doc, .ghost {
@@ -42,6 +90,15 @@
     h1 { margin: 0 0 var(--space-2); font-size: 17px; }
 
     .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .hint + .hint { margin-top: var(--space-2); }
+    code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+    kbd {
+      padding: 1px 5px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      font: 11px/1.4 var(--mono);
+      color: var(--text-primary);
+    }
 
     /* The document IS the page: paragraphs are content fields, nothing frames
        them — no border, no background, no buttons. The caret says where you
@@ -134,6 +191,23 @@
 
     .hidden { display: none; }
 
+    /* The keys, as sorted: a number line. A dot per paragraph at its `order`,
+       to scale — so the room between two dots IS the room between two
+       paragraphs. New dots flash; equal keys paint red. */
+    .axis { flex: 1; min-height: 0; width: 100%; }
+    .a-line { stroke: var(--border-strong); stroke-width: 2; }
+    .a-gap { fill: var(--accent); fill-opacity: .18; }
+    .a-dot { fill: var(--accent); }
+    .a-dot.here { stroke: var(--text-primary); stroke-width: 2; }
+    .a-dot.fresh { fill: var(--warn); }
+    .a-dot.tie { fill: var(--danger); }
+    .a-label { font: 11px var(--mono); fill: var(--text-tertiary); user-select: none; }
+    .a-label.here { fill: var(--text-primary); }
+    .a-label.tie { fill: var(--danger); }
+    .budget { margin: var(--space-3) 0 0; min-height: 1.5em; font: 12px/1.5 var(--mono); color: var(--text-secondary); }
+    .budget.empty { color: var(--danger); }
+    .block.hovered textarea { outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; border-radius: 3px; }
+
     /* Ambient connection state: bottom right, far from the content, like
        every other GenosDB app. */
     .presence {
@@ -148,25 +222,44 @@
 </head>
 
 <body>
-  <header class="page-head">
-    <h1>Block Editor</h1>
-    <p class="hint">A continuous document over plain GenosDB — one node per
-      paragraph, no CRDT library. Enter splits a paragraph, Backspace at its
-      start merges it back, and edits on different paragraphs never collide.
-      Open a second window: the named caret is the other peer, and their
-      typing arrives character by character over an ephemeral channel while
-      the graph keeps the truth. Press Ctrl/Cmd+A twice to select the whole
-      document.</p>
-    <p class="hint">Measured beside the public Yjs and Automerge demos, edits
-      land here with less latency and less work per keystroke: one P2P hop
-      and one frame-coalesced message painted straight into a native
-      textarea — instead of a server round-trip plus CRDT encode, integrate
-      and editor-binding on every key. The graph persists and repairs behind
-      the live view, and no server is involved at all.</p>
-  </header>
+  <div id="bench" class="bench">
+    <section class="panel doc-panel">
+      <header class="page-head">
+        <h1>Block Editor</h1>
+        <p class="hint">A continuous document over plain GenosDB — one node per
+          paragraph, no CRDT library. Enter splits a paragraph, Backspace at its
+          start merges it back, and edits on different paragraphs never collide.
+          Open a second window: the named caret is the other peer, and their
+          typing arrives character by character over an ephemeral channel while
+          the graph keeps the truth. Press Ctrl/Cmd+A twice to select the whole
+          document.</p>
+        <p class="hint">Measured beside the public Yjs and Automerge demos, edits
+          land here with less latency and less work per keystroke: one P2P hop
+          and one frame-coalesced message painted straight into a native
+          textarea — instead of a server round-trip plus CRDT encode, integrate
+          and editor-binding on every key. The graph persists and repairs behind
+          the live view, and no server is involved at all.</p>
+        <p class="hint">On the right, the keys themselves: each paragraph's
+          <code>order</code> on a number line, to scale. <kbd>Enter</kbd> drops a
+          dot into the gap under your caret, and the panel says how much room
+          that gap has left; a paste fans its lines across one gap at once; and
+          <kbd>Alt+↑↓</kbd> moves a paragraph by giving it a new key — the dot
+          slides, the id stays.</p>
+      </header>
 
-  <main id="doc"></main>
-  <p id="empty" class="ghost">Click here to start writing…</p>
+      <main id="doc"></main>
+      <p id="empty" class="ghost">Click here to start writing…</p>
+    </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the panels"
+      tabindex="0"></div>
+
+    <section class="panel axis-panel" aria-label="The order keys">
+      <h2>The keys, as sorted</h2>
+      <svg id="axis" class="axis" aria-hidden="true"></svg>
+      <p id="budget" class="budget"></p>
+    </section>
+  </div>
   <span class="presence" id="presence">0 peers</span>
 
   <script type="module">
@@ -229,9 +322,17 @@
     //    character-level merging INSIDE one paragraph — this example
     //    replaces that rare case with block-level LWW plus visible carets,
     //    and spends the budget where it shows: latency.
+    //
+    // 7. The right panel is the same graph read a second way: every key on a
+    //    number line, to scale, drawn from the DOM the subscription already
+    //    keeps in order — no second subscription, no second model.
 
     const doc = document.getElementById('doc');
     const ghost = document.getElementById('empty');
+    const axis = document.getElementById('axis');
+    const budget = document.getElementById('budget');
+    const bench = document.getElementById('bench');
+    const splitter = document.getElementById('splitter');
 
     const orderOf = (li) => parseFloat(li.dataset.order);
 
@@ -343,6 +444,20 @@
       await db.remove(li.id);
     }
 
+    // Alt+↑/↓: a paragraph moves by taking a key between its new neighbours —
+    // one put on the same node. Its id, and its dot, stay; only the key changes.
+    async function moveBlock(li, ta, dir) {
+      const over = dir < 0 ? li.previousElementSibling : li.nextElementSibling;
+      if (!over?.classList.contains('block')) return;
+      const [prev, next] = dir < 0 ? [over.previousElementSibling, over] : [over, over.nextElementSibling];
+      const order = keyBetween(prev?.classList.contains('block') ? orderOf(prev) : undefined,
+        next?.classList.contains('block') ? orderOf(next) : undefined);
+      focusNextId = li.id;
+      focusNextPos = ta.selectionStart;
+      cancelSave(li.id);
+      await db.put({ text: ta.value, order }, li.id);
+    }
+
     function createBlock(id, { text, order }) {
       const li = document.createElement('div');
       li.className = 'block';
@@ -382,6 +497,9 @@
           if (!prev?.classList.contains('block')) return;
           e.preventDefault();
           await mergeBlock(prev, li, ta);
+        } else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          e.preventDefault();
+          await moveBlock(li, ta, e.key === 'ArrowUp' ? -1 : 1);
         } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
           // One-line paragraphs jump straight to their neighbour. In a
           // wrapped one the native caret walks the visual lines first —
@@ -440,6 +558,7 @@
 
       li.append(ta);
       placeSorted(li);
+      flash(id);
       grow(ta);
       ghost.classList.add('hidden');
       if (id === focusNextId) {
@@ -454,7 +573,13 @@
     function updateBlock(id, { text, order }) {
       const li = document.getElementById(id);
       if (!li) return;
-      if (orderOf(li) !== order) { li.dataset.order = order; placeSorted(li); }
+      if (orderOf(li) !== order) {
+        li.dataset.order = order;
+        placeSorted(li);
+        flash(id);
+        // The move you asked for: the paragraph slid, and the caret comes along.
+        if (id === focusNextId) { focusNextId = null; caretTo(li, focusNextPos); focusNextPos = 0; }
+      }
       const ta = li.querySelector('textarea');
       // Never fight the local cursor: the paragraph being typed in RIGHT NOW
       // keeps what you see, and syncs to the graph's truth on blur (handler
@@ -473,6 +598,7 @@
       li.remove();
       if (!doc.children.length) ghost.classList.remove('hidden');
       renderMarks();
+      scheduleDraw();
     }
 
     // ── Awareness + live typing: ONE ephemeral channel, two kinds ────────
@@ -535,6 +661,7 @@
     // caret sends 'caret'.
     let lastSent = null, announceQueued = false, liveDirty = false;
     function announce() {
+      scheduleDraw(); // the gap under the caret follows the caret
       if (announceQueued) return;
       announceQueued = true;
       requestAnimationFrame(() => {
@@ -621,6 +748,121 @@
     });
     document.addEventListener('pointerdown', () => setAllSelected(false));
 
+    // ── The keys, as sorted ──────────────────────────────────────────────
+    // A number line drawn from the DOM the subscription keeps in order: the
+    // vertical position of a dot is its key, to scale, so the room between
+    // two dots is the room between two paragraphs. The gap under the caret
+    // is where Enter mints — the panel says its size and how many halvings
+    // a float64 has left in it before the next key rounds onto a neighbour.
+    let hoverId = null, drawQueued = false;
+    const fresh = new Set(); // dots born in the last moment, painted warm
+    function flash(id) {
+      fresh.add(id);
+      setTimeout(() => { fresh.delete(id); scheduleDraw(); }, 900);
+      scheduleDraw();
+    }
+    function scheduleDraw() {
+      if (drawQueued) return;
+      drawQueued = true;
+      requestAnimationFrame(() => { drawQueued = false; drawAxis(); });
+    }
+    const ulp = (x) => 2 ** (Math.floor(Math.log2(Math.abs(x) || 1)) - 52);
+    const halvingsLeft = (gap, at) => Math.max(0, Math.floor(Math.log2(gap / ulp(at))));
+    const svgEl = (tag, attrs) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    };
+
+    function drawAxis() {
+      const blocks = [...doc.children].map((li) => ({ id: li.id, order: orderOf(li), li }));
+      axis.replaceChildren();
+      budget.textContent = '';
+      budget.classList.remove('empty');
+      if (!blocks.length) return;
+      const H = axis.clientHeight || 400, pad = 18, x = 40;
+      const lo = blocks[0].order, span = blocks.at(-1).order - lo || 1;
+      const y = (order) => pad + (order - lo) / span * (H - 2 * pad);
+      axis.append(svgEl('line', { class: 'a-line', x1: x, y1: pad, x2: x, y2: H - pad }));
+
+      const active = document.activeElement?.closest?.('.block');
+      const at = blocks.findIndex((b) => b.li === active);
+      if (at >= 0) {
+        const a = blocks[at], b = blocks[at + 1];
+        const gap = b ? b.order - a.order : 1; // appending opens a fresh gap of 1
+        const y1 = y(a.order), y2 = b ? y(b.order) : Math.min(H - pad, y1 + 24);
+        axis.append(svgEl('rect', { class: 'a-gap', x: x - 7, y: Math.min(y1, y2), width: 14, height: Math.max(2, Math.abs(y2 - y1)) }));
+        const left = halvingsLeft(gap, a.order + gap);
+        budget.textContent = `${b ? 'gap' : 'fresh gap'} ${gap.toPrecision(4)} · ${left} halvings left`;
+        budget.classList.toggle('empty', !!b && left === 0);
+      }
+
+      let lastLabelY = -Infinity;
+      blocks.forEach((b, i) => {
+        const cy = y(b.order);
+        const tie = (i > 0 && b.order === blocks[i - 1].order) || (i < blocks.length - 1 && b.order === blocks[i + 1].order);
+        const here = i === at || i === at + 1 || b.id === hoverId;
+        const cls = (base) => `${base}${here ? ' here' : ''}${tie ? ' tie' : ''}`;
+        axis.append(svgEl('circle', { class: cls('a-dot') + (fresh.has(b.id) ? ' fresh' : ''), cx: x, cy, r: here ? 5 : 4, 'data-id': b.id }));
+        if (here || cy - lastLabelY >= 14) { // labels only where they fit; the caret's always
+          lastLabelY = cy;
+          const label = svgEl('text', { class: cls('a-label'), x: x + 12, y: cy + 4 });
+          label.textContent = `${b.id.slice(0, 4)} · ${tie ? 'tie' : b.order.toPrecision(6)}`;
+          axis.append(label);
+        }
+      });
+    }
+
+    // Hover links the two views: a paragraph lights its dot; a dot lights its
+    // dot and frames its paragraph — the frame only from the axis, so the
+    // pointer resting on the text you edit paints nothing on it.
+    const hover = (id, frame = false) => {
+      if (id === hoverId) return;
+      document.getElementById(hoverId)?.classList.remove('hovered');
+      hoverId = id;
+      if (frame) document.getElementById(id)?.classList.add('hovered');
+      scheduleDraw();
+    };
+    axis.addEventListener('pointerover', (e) => e.target.dataset?.id && hover(e.target.dataset.id, true));
+    axis.addEventListener('pointerleave', () => hover(null));
+    doc.addEventListener('pointerover', (e) => { const li = e.target.closest?.('.block'); if (li) hover(li.id); });
+    doc.addEventListener('pointerleave', () => hover(null));
+    window.addEventListener('resize', scheduleDraw);
+
+    // ── The divider between the panels is the resize control ─────────────
+    const MIN_DOC = 320, MIN_AXIS = 200;
+    const setDocWidth = (px, persist = true) => {
+      // No ceiling while the bench has no width yet (the first paint): clamping
+      // against 0 would pin the document to its minimum and store that.
+      const available = bench.clientWidth;
+      const ceiling = available ? Math.max(available - MIN_AXIS, MIN_DOC) : Infinity;
+      const width = Math.round(Math.min(Math.max(px, MIN_DOC), ceiling));
+      bench.style.setProperty('--doc-width', `${width}px`);
+      if (persist) localStorage.blockEditorSplit = width;
+      scheduleDraw();
+    };
+    if (localStorage.blockEditorSplit) setDocWidth(Number(localStorage.blockEditorSplit), false);
+
+    // Pointer events, not mouse events: one path for mouse, pen and touch, and
+    // setPointerCapture keeps the drag alive when the cursor outruns the strip.
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault(); // no text selection while dragging
+      splitter.setPointerCapture(event.pointerId);
+      const startX = event.clientX;
+      const startWidth = bench.firstElementChild.getBoundingClientRect().width;
+      const onMove = (move) => setDocWidth(startWidth + move.clientX - startX);
+      splitter.addEventListener('pointermove', onMove);
+      splitter.addEventListener('pointerup', () => splitter.removeEventListener('pointermove', onMove), { once: true });
+    });
+    // Reachable without a pointer: the divider answers the arrow keys, which
+    // is what role="separator" promises.
+    splitter.addEventListener('keydown', (event) => {
+      const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key];
+      if (!step) return;
+      event.preventDefault();
+      setDocWidth(bench.firstElementChild.getBoundingClientRect().width + step);
+    });
+
     ghost.onclick = () => insertAfter(null);
 
     await db.map({ field: 'order', order: 'asc' }, ({ id, value, action }) => {
@@ -631,6 +873,7 @@
         if (li) dropBlock(li);
       }
     });
+    scheduleDraw();
   </script>
 </body>
 

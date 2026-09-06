@@ -62,7 +62,7 @@ The trade is explicit. His design pays that machinery to address a million rows 
 
 ## See it running
 
-- [block-editor.html](../examples/block-editor.html) — one node per paragraph; Enter and Backspace mint and merge, a multi-line paste mints its keys in one batch.
+- [block-editor.html](../examples/block-editor.html) — one node per paragraph; Enter and Backspace mint and merge, a multi-line paste mints its keys in one batch, Alt+↑/↓ moves a paragraph with one `put`. The panel beside the document draws the keys on a number line, to scale, with the gap under the caret and the halvings it has left.
 - [outliner.html](../examples/outliner.html) — siblings ordered by a fractional `rank`; Alt+↑/↓ reorders with one `put`, Tab and Shift+Tab move a branch with `link`/`unlink`.
 
 Both are pinned by the conformance suites: a two-hundred-line paste lands as one node per line, in order and keyed strictly between its neighbours, on both peers; a sorted read orders exact ties identically on two peers whose nodes arrived in different orders.
