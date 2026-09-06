@@ -205,6 +205,11 @@ A from-scratch decentralized social network and the most complete GenosDB showca
 
 _By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
 
+### [dCode](https://estebanrfp.github.io/dCode/) · [source](https://github.com/estebanrfp/dCode)
+A shared code editor and a code host in one page, for projects that are one HTML file — HTML, CSS and JavaScript together — with no server. The editor is the [block editor](https://estebanrfp.github.io/gdb/examples/block-editor.html)'s technique applied to code: **one node per line**, edited live by everyone on the branch with named carets, line numbers derived, and the page running beside the code as you type. Underneath, the history is owned: a commit is a node its author owns under an id that carries the author's address, a branch head moves only for its owner and the addresses granted `write`, a pull request is a proposal whose merged state every peer reads from the graph, merges are line-based three-way merges that the shared buffer follows, and every commit runs from the timeline. Writing is free from the first second, under a constitution every peer runs.
+
+_By: [Esteban Fuster Pozzi (estebanrfp)](https://github.com/estebanrfp)_
+
 ### [dNews](https://estebanrfp.github.io/dNews/) · [source](https://github.com/estebanrfp/dNews)
 Distributed GenosDB clone of Hacker News (Y Combinator): the same front page, threads, votes and flags, with no server — every node signed and owned by its author, synced peer-to-peer over WebRTC. Moderated by a **constitution every peer runs**: roles and role rules enforced by the engine, karma, trust and the death of an item derived by each browser from the same signed nodes, and a public chain of vouches so a vote counts only from a trusted member. The constitution is a file in the repository, rendered verbatim on the site; changing it is a pull request. Four files, no build.
 
