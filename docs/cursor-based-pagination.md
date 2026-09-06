@@ -67,7 +67,7 @@ const lastCursor = localStorage.getItem("currentCursor")
 
 - **Bidirectional:** Forward/backward pagination
 - **Efficient:** No full dataset scanning
-- **Consistent:** Maintains integrity with changing data
+- **Consistent:** Maintains integrity with changing data, and identical on every peer — a tie on the sort field breaks on the node id
 - **Configurable:** Flexible parameter combinations
 
 ### 7. **Typical Workflow**

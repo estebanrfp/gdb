@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 430" width="760" height="430" role="img" aria-label="One gap between two paragraphs, split two ways: inserting one key at a time halves what is left until a float64 key rounds onto a neighbour; a paste divides the gap once into one slot per new line, so two hundred lines spend about eight bits of mantissa instead of all fifty-three." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef5350"/>
+    </marker>
+  </defs>
+
+  <!-- card -->
+  <rect x="0.5" y="0.5" width="759" height="429" rx="14" fill="#14171c" stroke="#262b33"/>
+
+  <!-- ══ Panel A: one key per insert ══ -->
+  <text x="32" y="40" font-size="14" font-weight="600" fill="#e8eaed">A · One key per insert</text>
+  <text x="32" y="60" font-size="12.5" fill="#9aa3ad">Every new key lands in what is left of the same gap — about half of it. A float64 runs out of mantissa after ~50 of these.</text>
+
+  <!-- number line A: order 1 at x=80, order 2 at x=620 -->
+  <line x1="80" y1="140" x2="620" y2="140" stroke="#333a44" stroke-width="2"/>
+  <line x1="80" y1="124" x2="80" y2="156" stroke="#e8eaed" stroke-width="2"/>
+  <line x1="620" y1="124" x2="620" y2="156" stroke="#e8eaed" stroke-width="2"/>
+  <text x="80" y="176" font-size="12" fill="#e8eaed" text-anchor="middle">order 1</text>
+  <text x="620" y="176" font-size="12" fill="#e8eaed" text-anchor="middle">order 2</text>
+  <text x="80" y="191" font-size="11" fill="#5c6570" text-anchor="middle">paragraph above</text>
+  <text x="620" y="191" font-size="11" fill="#5c6570" text-anchor="middle">paragraph below</text>
+
+  <!-- what is left after each insert -->
+  <line x1="350" y1="108" x2="620" y2="108" stroke="#5c6570" stroke-width="1"/>
+  <line x1="350" y1="104" x2="350" y2="112" stroke="#5c6570"/>
+  <line x1="620" y1="104" x2="620" y2="112" stroke="#5c6570"/>
+  <text x="485" y="100" font-size="11" fill="#9aa3ad" text-anchor="middle">gap left: ½</text>
+  <line x1="485" y1="122" x2="620" y2="122" stroke="#5c6570" stroke-width="1"/>
+  <line x1="485" y1="118" x2="485" y2="126" stroke="#5c6570"/>
+  <text x="552" y="118" font-size="11" fill="#9aa3ad" text-anchor="middle">¼</text>
+  <text x="590" y="118" font-size="11" fill="#9aa3ad" text-anchor="middle">⅛ …</text>
+
+  <!-- keys at 1 − ½ᵏ of the gap -->
+  <circle cx="350" cy="140" r="5.5" fill="#4c8dff"/>
+  <circle cx="485" cy="140" r="5.5" fill="#4c8dff"/>
+  <circle cx="552.5" cy="140" r="5.5" fill="#4c8dff"/>
+  <circle cx="586" cy="140" r="5" fill="#4c8dff"/>
+  <circle cx="603" cy="140" r="4.5" fill="#4c8dff"/>
+  <circle cx="611.5" cy="140" r="4" fill="#4c8dff"/>
+  <circle cx="615.8" cy="140" r="3.5" fill="#4c8dff"/>
+  <!-- the collision -->
+  <circle cx="620" cy="140" r="7" fill="none" stroke="#ef5350" stroke-width="2"/>
+  <text x="350" y="164" font-size="11" fill="#9aa3ad" text-anchor="middle">1st</text>
+  <text x="485" y="164" font-size="11" fill="#9aa3ad" text-anchor="middle">2nd</text>
+  <text x="552.5" y="164" font-size="11" fill="#9aa3ad" text-anchor="middle">3rd</text>
+
+  <!-- collision callout, in the free column to the right -->
+  <line x1="650" y1="128" x2="629" y2="137" stroke="#ef5350" stroke-width="1.2" marker-end="url(#arrow-red)"/>
+  <text x="654" y="108" font-size="11.5" fill="#ef5350">≈ 50th insert:</text>
+  <text x="654" y="122" font-size="11.5" fill="#ef5350">the key rounds</text>
+  <text x="654" y="136" font-size="11.5" fill="#ef5350">onto a neighbour</text>
+  <text x="654" y="150" font-size="11.5" fill="#ef5350">— a tie</text>
+
+  <!-- divider -->
+  <line x1="32" y1="216" x2="728" y2="216" stroke="#262b33"/>
+
+  <!-- ══ Panel B: the gap split once ══ -->
+  <text x="32" y="250" font-size="14" font-weight="600" fill="#e8eaed">B · A paste of n lines: the gap divided once, one slot per line</text>
+  <text x="32" y="270" font-size="12.5" fill="#9aa3ad">One key per slot, at a random point inside it: 200 lines spend eight bits of mantissa, not all 53.</text>
+
+  <!-- number line B: same scale, 80 → 620, eight slots of 67.5 -->
+  <line x1="80" y1="350" x2="620" y2="350" stroke="#333a44" stroke-width="2"/>
+  <line x1="80" y1="334" x2="80" y2="366" stroke="#e8eaed" stroke-width="2"/>
+  <line x1="620" y1="334" x2="620" y2="366" stroke="#e8eaed" stroke-width="2"/>
+  <text x="80" y="386" font-size="12" fill="#e8eaed" text-anchor="middle">order 1</text>
+  <text x="620" y="386" font-size="12" fill="#e8eaed" text-anchor="middle">order 2</text>
+
+  <!-- jitter zones: the middle half of each slot -->
+  <rect x="96.9" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="164.4" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="231.9" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="299.4" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="366.9" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="434.4" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="501.9" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <rect x="569.4" y="322" width="33.75" height="16" rx="3" fill="#4c8dff" fill-opacity="0.16"/>
+  <!-- slot boundaries -->
+  <line x1="147.5" y1="342" x2="147.5" y2="358" stroke="#333a44"/>
+  <line x1="215" y1="342" x2="215" y2="358" stroke="#333a44"/>
+  <line x1="282.5" y1="342" x2="282.5" y2="358" stroke="#333a44"/>
+  <line x1="350" y1="342" x2="350" y2="358" stroke="#333a44"/>
+  <line x1="417.5" y1="342" x2="417.5" y2="358" stroke="#333a44"/>
+  <line x1="485" y1="342" x2="485" y2="358" stroke="#333a44"/>
+  <line x1="552.5" y1="342" x2="552.5" y2="358" stroke="#333a44"/>
+  <!-- one key per slot, at a random point of its zone -->
+  <circle cx="101" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="190" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="244" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="328" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="371" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="460" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="513" cy="350" r="5.5" fill="#4c8dff"/>
+  <circle cx="596" cy="350" r="5.5" fill="#4c8dff"/>
+  <!-- slot labels -->
+  <text x="113.75" y="374" font-size="11" fill="#9aa3ad" text-anchor="middle">line 1</text>
+  <text x="181.25" y="374" font-size="11" fill="#9aa3ad" text-anchor="middle">line 2</text>
+  <text x="248.75" y="374" font-size="11" fill="#9aa3ad" text-anchor="middle">line 3</text>
+  <text x="350" y="374" font-size="11" fill="#5c6570" text-anchor="middle">…</text>
+  <text x="586.25" y="374" font-size="11" fill="#9aa3ad" text-anchor="middle">line n</text>
+  <!-- jitter zone callout -->
+  <line x1="113.75" y1="304" x2="113.75" y2="318" stroke="#9aa3ad" stroke-width="1" marker-end="url(#arrow)"/>
+  <text x="120" y="302" font-size="11" fill="#9aa3ad">jitter zone: the middle half of the slot</text>
+  <!-- the count, in the free column -->
+  <text x="654" y="340" font-size="11.5" fill="#9aa3ad">n new lines →</text>
+  <text x="654" y="355" font-size="11.5" fill="#9aa3ad">n slots,</text>
+  <text x="654" y="370" font-size="11.5" fill="#9aa3ad">one division</text>
+
+  <!-- footer -->
+  <text x="32" y="414" font-size="11.5" fill="#5c6570">Same scale in both panels. Typing top to bottom never meets A: every new paragraph opens a fresh gap of 1.</text>
+</svg>

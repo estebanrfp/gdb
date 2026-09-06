@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.9] - 2026-09-06
+
+### Fixed
+
+- **A sorted `map` orders exact ties identically on every peer.** `field`/`order` sorted by the field alone and left equal values in insertion order — the order each peer's nodes happened to arrive in. Two converged replicas holding the same nodes read them in a different order whenever two values tied: two writes in the same millisecond of `createdAt`, an equal `rank`, a field missing on both. Measured with the query engine alone: the same four nodes inserted in two orders sorted as `d c a b` on one peer and `d b a c` on the other, so `results`, the `initial` events and a `$limit`/`$after` page could disagree between replicas the digest called identical. A tie now breaks on the node id, in the direction of the sort, so `desc` is the exact reverse of `asc` and every replica reads the same order. `db.sm.map` shares the engine and the fix. Pinned by `acl-sync/` ("a sorted read orders exact ties identically"); mirrored in the Fallback Server (GenosSRV 0.11.9).
+
+### Changed
+
+- **A sorted read with ties costs less.** The sort key is read once per node instead of twice per comparison, and string fields collate through one `Intl.Collator` instead of a `localeCompare` per comparison — the same default collation, the same order. Measured through `map`, sorting by a numeric field whose values tie in groups of ten: ten thousand nodes, 7.0 ms to 4.0 ms; a hundred thousand, 123 ms to 76 ms; a hundred thousand strings, 103 ms to 80 ms. Distinct values sort in the time they always did. A field whose values all tie is now genuinely ordered rather than left as it came, and pays for it: a hundred thousand identical values take about twice as long.
+
 ## [0.33.8] - 2026-09-06
 
 ### Fixed

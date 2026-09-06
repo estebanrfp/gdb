@@ -255,7 +255,7 @@ The order of these arguments does not matter.
   - `options` `{Object}` _(optional)_ – Configuration for the query. If an object is passed, its properties will be merged with the default query options.
     - `query` `{Object}` – MongoDB-style filter. Defaults to `{}` (all nodes). Supports advanced operators, including the recursive `$edge` operator for graph traversal.
     - `field` `{string}` _(optional)_ – Sort field.
-    - `order` `{string}` _(optional)_ – `'asc'` | `'desc'`. Defaults to `'asc'`.
+    - `order` `{string}` _(optional)_ – `'asc'` | `'desc'`. Defaults to `'asc'`. A tie on `field` breaks on the node id, in the same direction, so every peer reads the same order.
     - `$limit` `{number}` _(optional)_ – Limit the number of results.
     - `$after` `{string}` _(optional)_ – Paginate after a specific node ID.
     - `$before` `{string}` _(optional)_ – Paginate before a specific node ID.

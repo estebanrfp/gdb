@@ -144,7 +144,7 @@ Options are passed as an object and can include the following fields:
 | `realtime`   | `boolean`         | Enables or disables real-time mode.                        |
 | `query`      | `object`          | Defines conditions to filter nodes.                        |
 | `field`      | `string`          | Field by which to order the results.                       |
-| `order`      | `'asc' \| 'desc'` | Sorting direction.                                         |
+| `order`      | `'asc' \| 'desc'` | Sorting direction. A tie on `field` breaks on the node id, so every peer reads the same order — see [Ordered Lists](ordered-lists.md). |
 | `$limit`     | `number`          | Maximum number of results to return.                       |
 | `$after`     | `string`          | ID of the node after which to start.                       |
 | `$before`    | `string`          | ID of the node before which to end.                        |

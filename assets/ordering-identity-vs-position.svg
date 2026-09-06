@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 450" width="760" height="450" role="img" aria-label="Where the key lives. In a fractional-index CRDT the key is the row's identity, so a move is a delete plus an insert and two concurrent moves leave two rows unless a move CRDT reconciles them. In GenosDB the node id is the identity and order is a field, so a move is one put and two concurrent moves resolve by last-write-wins to one paragraph in one place." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+    <marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34c77b"/>
+    </marker>
+  </defs>
+
+  <!-- card -->
+  <rect x="0.5" y="0.5" width="759" height="449" rx="14" fill="#14171c" stroke="#262b33"/>
+
+  <!-- ══ Left: fractional index as identity ══ -->
+  <rect x="20" y="20" width="350" height="410" rx="10" fill="#1c2026"/>
+  <text x="40" y="48" font-size="14" font-weight="600" fill="#e8eaed">Fractional-index CRDT</text>
+  <text x="40" y="66" font-size="12.5" fill="#9aa3ad">The key is the row's identity</text>
+
+  <!-- origin row -->
+  <rect x="110" y="92" width="170" height="44" rx="6" fill="#22262d" stroke="#333a44"/>
+  <text x="195" y="110" font-size="12" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">key 7f · "Milk"</text>
+  <text x="195" y="127" font-size="11" fill="#5c6570" text-anchor="middle">the key names the row</text>
+
+  <!-- what the origin becomes -->
+  <rect x="140" y="150" width="110" height="26" rx="6" fill="none" stroke="#5c6570" stroke-dasharray="4 3"/>
+  <text x="195" y="167" font-size="10.5" fill="#5c6570" text-anchor="middle">7f → tombstone</text>
+
+  <!-- two concurrent moves, arrows clear of the labels -->
+  <line x1="140" y1="136" x2="108" y2="232" stroke="#9aa3ad" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <line x1="250" y1="136" x2="282" y2="232" stroke="#9aa3ad" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="100" y="190" font-size="11.5" fill="#9aa3ad" text-anchor="end">peer A moves it</text>
+  <text x="100" y="205" font-size="11" fill="#9aa3ad" text-anchor="end">delete 7f</text>
+  <text x="100" y="219" font-size="11" fill="#9aa3ad" text-anchor="end">+ insert 9b</text>
+  <text x="290" y="190" font-size="11.5" fill="#9aa3ad">peer B moves it</text>
+  <text x="290" y="205" font-size="11" fill="#9aa3ad">delete 7f</text>
+  <text x="290" y="219" font-size="11" fill="#9aa3ad">+ insert 3c</text>
+
+  <!-- two live rows -->
+  <rect x="34" y="236" width="150" height="44" rx="6" fill="#22262d" stroke="#333a44"/>
+  <text x="109" y="254" font-size="12" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">key 9b · "Milk"</text>
+  <text x="109" y="271" font-size="11" fill="#5c6570" text-anchor="middle">a new row</text>
+  <rect x="206" y="236" width="150" height="44" rx="6" fill="#22262d" stroke="#ef5350"/>
+  <text x="281" y="254" font-size="12" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">key 3c · "Milk"</text>
+  <text x="281" y="271" font-size="11" fill="#ef5350" text-anchor="middle">another new row</text>
+
+  <!-- outcome -->
+  <text x="40" y="314" font-size="12.5" font-weight="600" fill="#ef5350">Two rows, unless a move CRDT reconciles them</text>
+  <text x="40" y="334" font-size="11.5" fill="#9aa3ad">Tombstones, a `moved` pointer per entry, and a</text>
+  <text x="40" y="350" font-size="11.5" fill="#9aa3ad">second key space — the machinery Bartosz's</text>
+  <text x="40" y="366" font-size="11.5" fill="#9aa3ad">design needs, and needs to keep small.</text>
+  <text x="40" y="400" font-size="11.5" fill="#5c6570">Right call for a million spreadsheet rows,</text>
+  <text x="40" y="416" font-size="11.5" fill="#5c6570">where the key must also be the address.</text>
+
+  <!-- ══ Right: GenosDB ══ -->
+  <rect x="390" y="20" width="350" height="410" rx="10" fill="#1c2026"/>
+  <text x="410" y="48" font-size="14" font-weight="600" fill="#e8eaed">GenosDB</text>
+  <text x="410" y="66" font-size="12.5" fill="#9aa3ad">The node id is the identity · order is a field</text>
+
+  <!-- the one node -->
+  <rect x="470" y="92" width="190" height="60" rx="6" fill="#22262d" stroke="#34c77b" stroke-width="1.5"/>
+  <text x="565" y="112" font-size="12" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">id 7f3a · "Milk"</text>
+  <text x="565" y="130" font-size="12" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">order: 1.5</text>
+  <text x="565" y="145" font-size="10.5" fill="#5c6570" text-anchor="middle">the id names the paragraph</text>
+
+  <!-- two concurrent puts into the SAME node -->
+  <text x="410" y="200" font-size="11.5" fill="#9aa3ad">peer A</text>
+  <text x="694" y="200" font-size="11.5" fill="#9aa3ad">peer B</text>
+  <rect x="404" y="206" width="132" height="30" rx="6" fill="#22262d" stroke="#333a44"/>
+  <text x="470" y="225" font-size="11.5" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">put({order: 3.25})</text>
+  <rect x="594" y="206" width="132" height="30" rx="6" fill="#22262d" stroke="#333a44"/>
+  <text x="660" y="225" font-size="11.5" fill="#e8eaed" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">put({order: 0.75})</text>
+  <line x1="490" y1="206" x2="530" y2="156" stroke="#34c77b" stroke-width="1.4" marker-end="url(#arrow-ok)"/>
+  <line x1="640" y1="206" x2="600" y2="156" stroke="#34c77b" stroke-width="1.4" marker-end="url(#arrow-ok)"/>
+  <text x="565" y="184" font-size="11" fill="#34c77b" text-anchor="middle">same id</text>
+
+  <!-- the resolution -->
+  <rect x="505" y="252" width="120" height="24" rx="12" fill="#34c77b" fill-opacity="0.16" stroke="#34c77b"/>
+  <text x="565" y="268" font-size="11.5" fill="#34c77b" text-anchor="middle" font-weight="600">LWW by HLC</text>
+
+  <!-- outcome -->
+  <text x="410" y="314" font-size="12.5" font-weight="600" fill="#34c77b">One paragraph, one place</text>
+  <text x="410" y="334" font-size="11.5" fill="#9aa3ad">The later write wins, deterministically, on every</text>
+  <text x="410" y="350" font-size="11.5" fill="#9aa3ad">peer. No tombstone, no pointer, no second key</text>
+  <text x="410" y="366" font-size="11.5" fill="#9aa3ad">space — moving is what `put` already does.</text>
+  <text x="410" y="400" font-size="11.5" fill="#5c6570">Right call for a document: hundreds of blocks,</text>
+  <text x="410" y="416" font-size="11.5" fill="#5c6570">where position must change and identity must not.</text>
+</svg>

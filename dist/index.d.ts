@@ -64,7 +64,7 @@ declare module "genosdb" {
     query?: Query
     /** Sort field. */
     field?: string
-    /** Sort order. Defaults to `'asc'`. */
+    /** Sort order. Defaults to `'asc'`. A tie on `field` breaks on the node id, in the same direction. */
     order?: "asc" | "desc"
     /** Limit the number of results. */
     $limit?: number

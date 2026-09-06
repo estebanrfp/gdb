@@ -20,6 +20,7 @@ Welcome to the official technical documentation for GenosDB.
   - 📤 [PUT Guide](put-guide.md) (Insert/update nodes; auto ID, persistence, and events)
   - 📥 [GET Guide](get-guide.md) (Retrieve nodes by ID; optional real-time subscription)
   - 🗺️ [MAP Guide](map-guide.md) (Query language, real-time subscriptions, and $edge traversal)
+  - 🔢 [Ordered Lists](ordered-lists.md) (Fractional order keys: inserting, moving and pasting in a shared list, and the engine's deterministic tie order)
   - 🗑️ [REMOVE Guide](remove-guide.md) (Delete nodes; edges to them vanish from every read; persistence and notifications)
   - 🔗 [LINK Guide](link-guide.md) (Create directed relationships between nodes)
 

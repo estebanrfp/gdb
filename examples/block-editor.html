@@ -191,9 +191,10 @@
     //    gets ~1.5. Two peers inserting into the same gap concurrently mint
     //    different keys (random point in the gap), so BOTH survive and every
     //    peer sorts them identically (order, then id as the deterministic
-    //    tie-break). No counters to coordinate, no rebalance to sync. (Real
-    //    apps eventually rebalance or use string keys — floats survive ~50
-    //    splits of the same gap.)
+    //    tie-break — the rule a sorted db.map applies too). No counters to
+    //    coordinate, no rebalance to sync. A float64 survives ~50 successive
+    //    splits of the SAME gap, so a multi-line paste splits its gap once,
+    //    into one slot per line, instead of halving it line after line.
     //
     // 3. Structure is graph ops: splitting a paragraph rewrites its node and
     //    inserts a new one; merging rewrites the previous node and removes
@@ -242,13 +243,16 @@
       doc.insertBefore(li, next ?? null);
     }
 
-    // A fresh key strictly between two paragraphs, at a random point in the
-    // gap so concurrent inserts into the same gap almost never tie.
-    function keyBetween(prev, next) {
-      const lo = prev ?? 0;
-      const hi = next ?? lo + 1;
-      return lo + (hi - lo) * (0.25 + Math.random() * 0.5);
-    }
+    // Fresh keys strictly between two paragraphs: the gap is split once into
+    // n equal slots and each key lands at a random point of its slot, so
+    // concurrent inserts into the same gap almost never tie — and a paste of
+    // a thousand lines costs the precision of one insert, not one halving
+    // per line.
+    const keysBetween = (prev, next, n = 1) => {
+      const lo = prev ?? 0, step = ((next ?? lo + n) - lo) / n;
+      return Array.from({ length: n }, (_, i) => lo + step * (i + 0.25 + Math.random() * 0.5));
+    };
+    const keyBetween = (prev, next) => keysBetween(prev, next)[0];
 
     const grow = (ta) => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
 
@@ -307,6 +311,7 @@
       const original = ta.value;
       const before = original.slice(0, ta.selectionStart);
       const after = original.slice(ta.selectionEnd);
+      const unsaved = savers.has(li.id); // keystrokes the graph has not seen yet
       cancelSave(li.id);
       ta.value = before;
       grow(ta);
@@ -314,8 +319,9 @@
       const order = keyBetween(orderOf(li),
         next?.classList.contains('block') ? orderOf(next) : undefined);
       // Splitting at the very end changes nothing in this node — write only
-      // what actually changed.
-      if (before !== original) await db.put({ text: before, order: orderOf(li) }, li.id);
+      // what actually changed, or what the debounce still owed the graph:
+      // the blur that follows rejoins the graph's truth, and it must hold this text.
+      if (unsaved || before !== original) await db.put({ text: before, order: orderOf(li) }, li.id);
       focusNextId = await db.put({ text: after, order });
       caretTo(document.getElementById(focusNextId), 0);
     }
@@ -405,16 +411,15 @@
         ta.value = ta.value.slice(0, ta.selectionStart) + lines[0];
         grow(ta);
         await db.put({ text: ta.value, order: orderOf(li) }, id);
-        let prev = orderOf(li);
         const nextEl = li.nextElementSibling;
-        const nextOrder = nextEl?.classList.contains('block') ? orderOf(nextEl) : undefined;
+        const keys = keysBetween(orderOf(li),
+          nextEl?.classList.contains('block') ? orderOf(nextEl) : undefined, lines.length - 1);
         for (let i = 1; i < lines.length; i++) {
           const isLast = i === lines.length - 1;
-          const order = keyBetween(prev, nextOrder);
+          const order = keys[i - 1];
           const text = isLast ? lines[i] + after : lines[i];
           if (isLast) { focusNextPos = lines[i].length; focusNextId = await db.put({ text, order }); }
           else await db.put({ text, order });
-          prev = order;
         }
         if (lines.length === 1) { focusNextId = null; caretTo(li, ta.value.length); }
         else caretTo(document.getElementById(focusNextId), focusNextPos);
