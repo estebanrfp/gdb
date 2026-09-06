@@ -201,6 +201,7 @@ themeBtn.onclick = () =>
 ```
 
 4. **The golden rule:** if enabling the toggle requires touching any component CSS, the token system is broken — fix the tokens, never patch components. A well-built toggle costs ~25 lines total and doubles as living proof that the design tokens work.
+5. **Code surfaces carry their own tokens.** An editor's syntax colours are palette, not component CSS: declare them as tokens beside the others (`--t-tag`, `--t-attr`, `--t-str`, `--t-kw`, `--t-com`, …) with a value per theme, and let the highlighter paint classes that read them. [dCode](https://github.com/estebanrfp/dCode) is the reference — a consumer app with a code editor whose light set changes nothing but tokens, the editor included. Ship the pre-paint script too: three lines in `<head>` that set `data-pref` and `data-theme` from `localStorage` before the first frame, so a reader who chose dark never sees a light flash.
 
 ---
 
@@ -377,7 +378,7 @@ Every button follows from those. An app that mirrors them in its own flags has b
 | --- | --- | --- |
 | Signed out | `Generate new identity` · `Login with mnemonic` · `Login with passkey` *(only if a registration exists)* · demo shortcut | `Protect with passkey` · the warning · the copy icon |
 | Onboarding (`hasVolatileIdentity && !isActive`) | `Login with mnemonic` *(must remain — no dead ends)* · `Protect with passkey` · the warning · the copy icon | `Generate new identity` *(one identity at a time)* · demo shortcut *(never invite abandoning an unsaved phrase)* |
-| Session active | — the modal closes itself; a logout returns to phase 1 and reopens it | |
+| Session active | — the modal closes itself. The session pill (§4.2) opens the **identity view**, where `Protect with passkey` stays available while `hasVolatileIdentity && !isWebAuthnProtected`; a logout returns to phase 1 and reopens the door | |
 
 ```javascript
 const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
@@ -525,8 +526,13 @@ An authenticated session renders **anchored to the top-right** of the content ar
 The address is `--mono` + `--text-secondary`; the role reads as a quiet bracketed tag. **Restraint over decoration**: no saturated filled pills, no competing colors — the session area is chrome, not content.
 
 - Signed out → the spot stays **empty**: the auto-opened modal is the door (§4.1), and contextual CTAs re-open it. No standing Sign-in button.
+- Signed in → the pill is a **link to the identity view**, not a label. The view shows the address with a copy button, the role, what unlocked the session (`isWebAuthnProtected` → passkey, otherwise mnemonic), whether this browser holds a passkey (`hasWebAuthnHardwareRegistration`), and the actions the door no longer offers once it has closed: **`Protect this identity with a passkey`**, shown while `PASSKEYS_AVAILABLE && !isWebAuthnProtected && hasVolatileIdentity`, and `Sign out`. A sign-in with nowhere else to go lands there.
 - The top bar is `position: sticky` over the content scroll, with a subtle bottom border.
 - `db.sm.setSecurityStateChangeCallback(...)` is the **single source of truth**: it toggles the pill/button, closes the modal, and resets the mnemonic textarea on logout. No UI state duplicates it.
+
+#### Why the identity view is not optional
+
+The door offers `Protect with passkey` only during onboarding and closes as soon as a session is active. A reader who signed in with a phrase — or with a demo identity — therefore never sees the passkey offered again, and their session ends on every reload with no way to fix it short of generating a new identity. The engine has no such limit: `loginOrRecoverUserWithMnemonic` keeps the key in memory (`hasVolatileIdentity` stays `true`), and `protectCurrentIdentityWithWebAuthn()` wraps it at any later moment, re-activating the session with the passkey signer. The identity view is where that call lives after the door has closed. [`examples/webauthn.html`](../examples/webauthn.html) is the canonical shape — its signed-in view shows the protect action whenever `PASSKEYS_AVAILABLE && !isWebAuthnProtected` — and dCode's `#/session` is the same view inside an app, gated on the same state, redrawn by the same callback.
 
 ### 4.3 Role badges
 
