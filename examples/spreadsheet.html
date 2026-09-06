@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB Spreadsheet</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — a sheet is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-head: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --warn: #f5a623;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-5: 24px;
+      --cell-width: 132px;
+      --head-width: 48px;
+      --cell-height: 30px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font: 14px/1.5 var(--font);
+    }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 48px var(--space-5) 30vh; }
+
+    h1 { margin: 0 0 var(--space-2); font-size: 22px; font-weight: 600; }
+
+    .hint { margin: 0 0 var(--space-2); max-width: 72ch; color: var(--text-secondary); }
+
+    code { font: 12px var(--mono); color: var(--text-primary); }
+
+    kbd {
+      padding: 1px 5px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      font: 11px/1.4 var(--mono);
+      color: var(--text-primary);
+    }
+
+    /* The actions apply to the row and the column of the cell you stand on. */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      margin: var(--space-5) 0 var(--space-3);
+    }
+
+    .toolbar button {
+      padding: 5px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      background: none;
+      color: var(--text-primary);
+      font: 13px var(--font);
+      cursor: pointer;
+    }
+
+    .toolbar button:hover:enabled { border-color: var(--accent); }
+    .toolbar button:disabled { opacity: .4; cursor: default; }
+
+    .toolbar label {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* The grid. Headers are POSITIONS — the letter and the number a cell is at
+       right now; the ids underneath them are the identities that never move. */
+    .sheet-wrap { width: fit-content; max-width: 100%; overflow: auto; border: 1px solid var(--border-subtle); border-radius: 8px; }
+
+    .sheet { border-collapse: separate; border-spacing: 0; }
+
+    .sheet th,
+    .sheet td {
+      padding: 0;
+      border-right: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .sheet th {
+      height: 28px;
+      min-width: var(--head-width);
+      padding: 0 6px;
+      background: var(--bg-head);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      user-select: none;
+    }
+
+    .sheet th.selected { color: var(--text-primary); background: color-mix(in srgb, var(--accent) 18%, var(--bg-head)); }
+
+    /* A header painted in the accent is a row or column that exists as a node;
+       the others exist only as names every peer agrees on. */
+    .sheet th.node { color: var(--accent); }
+
+    .sheet th small { display: block; font: 10px/1.3 var(--mono); color: var(--text-tertiary); }
+
+    .sheet td { position: relative; min-width: var(--cell-width); height: var(--cell-height); }
+
+    .sheet td input {
+      width: 100%;
+      height: var(--cell-height);
+      padding: 0 8px;
+      border: none;
+      outline: none;
+      background: none;
+      color: var(--text-primary);
+      font: 14px var(--font);
+    }
+
+    /* Another peer's cell: their colour, their name — the frame is theirs. */
+    .sheet td.peer { outline: 2px solid var(--peer, var(--warn)); outline-offset: -2px; }
+
+    .sheet td.peer::after {
+      content: attr(data-peer);
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 2;
+      padding: 1px 4px;
+      border-radius: 0 0 0 3px;
+      background: var(--peer, var(--warn));
+      color: var(--bg-primary);
+      font: 600 9px/1.2 var(--mono);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .sheet td:focus-within { z-index: 1; outline: 2px solid var(--accent); outline-offset: -2px; }
+
+    /* A remote value landed here — the proof that only THIS cell travelled. */
+    .sheet td.remote { animation: remote-flash 0.9s ease-out; }
+
+    @keyframes remote-flash {
+      from { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+      to { background: transparent; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sheet td.remote { animation: none; }
+    }
+
+    .status { margin: var(--space-3) 0 0; min-height: 1.5em; font: 12px/1.5 var(--mono); color: var(--text-secondary); }
+
+    /* Ambient connection state: bottom right, far from the content, like
+       every other GenosDB app. */
+    .presence {
+      position: fixed;
+      right: var(--space-5);
+      bottom: var(--space-5);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header class="page-head">
+      <h1>Spreadsheet</h1>
+      <p class="hint">A shared sheet over plain GenosDB. Rows and columns are
+        identities whose position is a fractional key, and a cell is a node named
+        after its row and its column: move a row and its cells go with it, insert
+        a column and no data shifts, and two people editing different cells never
+        collide. Open a second window: the coloured frame is the other peer's
+        cell.</p>
+      <p class="hint">The grid you see is not written anywhere. A row nobody
+        inserted has no node at all — it is <code>r3</code> at key <code>3</code>
+        on every peer — so two people who type into <code>A3</code> of an empty
+        sheet without seeing each other write the <em>same</em> cell and end with
+        one value, not six rows and two cells. A row you insert is a real node
+        with a random id and a key between its neighbours: two peers inserting at
+        the same place both survive, in one order everywhere; several such
+        inserts by two peers who cannot see each other may interleave, which a
+        sheet of records tolerates and a paragraph would not. Headers in blue are
+        the rows and columns that exist as nodes.</p>
+      <p class="hint"><kbd>Enter</kbd> commits and moves down, <kbd>Tab</kbd>
+        moves right, <kbd>Esc</kbd> reverts. <kbd>Alt+↑↓</kbd> moves the row and
+        <kbd>Alt+←→</kbd> the column with one <code>put</code>; sorting re-keys
+        every row and keeps its id. Show the keys to watch positions and
+        identities come apart.</p>
+    </header>
+
+    <div class="toolbar" id="toolbar" role="toolbar" aria-label="Row and column actions">
+      <button id="add-row" type="button" disabled>+ Row below</button>
+      <button id="add-col" type="button" disabled>+ Column right</button>
+      <button id="del-row" type="button" disabled>− Row</button>
+      <button id="del-col" type="button" disabled>− Column</button>
+      <button id="sort" type="button" disabled>Sort by column</button>
+      <label><input type="checkbox" id="keys"> Show keys</label>
+    </div>
+
+    <div class="sheet-wrap">
+      <table class="sheet" id="sheet" aria-label="Shared sheet">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p id="status" class="status"></p>
+  </div>
+  <span class="presence" id="presence">0 peers</span>
+
+  <script type="module">
+    // A collaborative spreadsheet with the plain GenosDB API. Demonstrates:
+    // db.put / db.remove / db.map over three kinds of node (row, col, cell),
+    // fractional order keys in two dimensions, and db.room.channel for
+    // "who stands on which cell" over an ephemeral GenosRTC channel.
+    import { gdb } from "../dist/index.js";
+
+    const db = await gdb('spreadsheet', { rtc: true });
+
+    // ── The technique ────────────────────────────────────────────────────
+    // 1. Identity is the id, position is a value. A row is `{ type, order }`,
+    //    a column too, and a cell is a node whose id is `<row>.<col>` — the
+    //    pair of identities, never the pair of positions. Moving a row is one
+    //    put on the row node; its cells did not change, so they need no write.
+    //    Inserting a column shifts every letter to its right and not one cell.
+    //
+    // 2. The base grid is virtual. Rows r1…r8 and columns c1…c4 exist on
+    //    every peer without a node: their id is their name and their key is
+    //    their number. Typing into a cell writes the cell only. That is the
+    //    empty-sheet problem solved by construction: two peers who each type
+    //    into A3 while apart write the same node, `r3.c1`, and last-write-wins
+    //    keeps one value — not two materialised rows each. A node under a
+    //    virtual id appears only when the row's ORDER changes (a move, a sort)
+    //    or the row goes; a stale peer that types into r3 later touches
+    //    nothing but the cell, so nobody's move is ever reset by it.
+    //
+    // 3. Inserted rows and columns are the fractional-key pattern: a random
+    //    id and a key at a random point between two neighbours. Two peers
+    //    inserting at the same place mint different keys, both survive, and
+    //    every peer sorts them identically — order, then id, the rule a sorted
+    //    db.map applies. Several inserts by two peers who cannot see each
+    //    other may interleave; a sheet of records tolerates that.
+    //
+    // 4. Cells are last-write-wins on the hybrid logical clock, one node
+    //    each; an emptied cell is removed. Sorting by a column is a batch of
+    //    puts that re-keys the rows — ids, and therefore cells, untouched.
+    //
+    // 5. Presence is ephemeral: which cell each peer stands on rides a
+    //    GenosRTC channel and dies with the session.
+
+    const BASE_ROWS = 8, BASE_COLS = 4;
+    const sheet = document.getElementById('sheet');
+    const thead = sheet.tHead, tbody = sheet.tBodies[0];
+    const status = document.getElementById('status');
+    const keysToggle = document.getElementById('keys');
+    const toolbar = document.getElementById('toolbar');
+    const buttons = Object.fromEntries(['add-row', 'add-col', 'del-row', 'del-col', 'sort'].map((id) => [id, document.getElementById(id)]));
+
+    const rows = new Map(), cols = new Map(), cells = new Map(); // node values by id
+    const VIRTUAL_ROWS = Array.from({ length: BASE_ROWS }, (_, i) => `r${i + 1}`);
+    const VIRTUAL_COLS = Array.from({ length: BASE_COLS }, (_, i) => `c${i + 1}`);
+    const virtualKey = (id) => Number(id.slice(1)); // r3 → 3
+    const cellId = (row, col) => `${row}.${col}`;
+    const collate = new Intl.Collator(undefined, { numeric: true }).compare;
+
+    // One axis as rendered: the virtual names plus every node, each with the
+    // key its node holds or the number its name carries, the removed ones
+    // out, sorted by key and then id — deterministic on every peer.
+    const axisOf = (nodes, virtuals) => [...new Set([...virtuals, ...nodes.keys()])]
+      .map((id) => ({ id, order: nodes.get(id)?.order ?? virtualKey(id), gone: !!nodes.get(id)?.gone, node: nodes.has(id) }))
+      .filter((e) => !e.gone)
+      .sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1));
+    const rowAxis = () => axisOf(rows, VIRTUAL_ROWS);
+    const colAxis = () => axisOf(cols, VIRTUAL_COLS);
+
+    // Fresh keys strictly between two neighbours: the gap is split once into
+    // n equal slots and each key lands at a random point of its slot.
+    const keysBetween = (prev, next, n = 1) => {
+      const lo = prev ?? 0, step = ((next ?? lo + n) - lo) / n;
+      return Array.from({ length: n }, (_, i) => lo + step * (i + 0.25 + Math.random() * 0.5));
+    };
+    const keyBetween = (prev, next) => keysBetween(prev, next)[0];
+
+    // Column letters from positions: A…Z, AA…
+    const colName = (i) => { let s = ''; for (i += 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+    const shortId = (id) => (id.length > 6 ? id.slice(0, 4) : id);
+    const keyLabel = (order) => (Number.isInteger(order) ? String(order) : order.toPrecision(6));
+
+    // ── Rendering: the whole grid, rebuilt from the maps in one frame ────
+    // Cheap at this scale, and it keeps one truth: the maps the subscription
+    // fills. The cell being edited crosses the rebuild with its draft, its
+    // caret and its focus — so a remote change never steals what you type.
+    const changed = new Set(); // cells a remote write landed on since the last frame
+    let focusNext = null;      // cell id to focus once it exists
+    let renderQueued = false;
+    const scheduleRender = () => {
+      if (renderQueued) return;
+      renderQueued = true;
+      requestAnimationFrame(() => { renderQueued = false; render(); });
+    };
+
+    const activeCell = () => document.activeElement?.closest?.('td') ?? null;
+    const valueOf = (id) => cells.get(id)?.text ?? '';
+
+    const header = (label, e) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      th.dataset.id = e.id;
+      th.classList.toggle('node', e.node);
+      if (keysToggle.checked) {
+        const key = document.createElement('small');
+        key.textContent = `${shortId(e.id)} · ${keyLabel(e.order)}`;
+        th.append(key);
+      }
+      return th;
+    };
+
+    function render() {
+      const R = rowAxis(), C = colAxis();
+      const active = activeCell();
+      const draft = active && {
+        id: active.dataset.id, value: active.firstChild.value, dirty: active.firstChild.value !== valueOf(active.dataset.id),
+        start: active.firstChild.selectionStart, end: active.firstChild.selectionEnd,
+      };
+      // Leaving a cell you were typing in for a new row or column: what you
+      // typed goes to the graph first, as a blur would have sent it.
+      if (draft?.dirty && focusNext && focusNext !== draft.id) commit(active);
+
+      const head = document.createElement('tr');
+      head.append(document.createElement('th'), ...C.map((c, j) => header(colName(j), c)));
+      thead.replaceChildren(head);
+      tbody.replaceChildren(...R.map((r, i) => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = r.id;
+        tr.append(header(String(i + 1), r), ...C.map((c) => {
+          const id = cellId(r.id, c.id);
+          const td = document.createElement('td');
+          Object.assign(td.dataset, { id, row: r.id, col: c.id });
+          const input = document.createElement('input');
+          input.value = valueOf(id);
+          td.append(input);
+          if (changed.has(id)) td.classList.add('remote');
+          return td;
+        }));
+        return tr;
+      }));
+      changed.clear();
+
+      // The cell to stand on: the one just asked for, once its node has
+      // arrived — put() may resolve before or after the subscription emits —
+      // or else the one being edited, draft, caret and all.
+      const target = focusNext ?? draft?.id;
+      const td = target && tbody.querySelector(`td[data-id="${target}"]`);
+      if (td) {
+        const input = td.firstChild;
+        if (draft?.id === target && draft.dirty) input.value = draft.value;
+        input.focus();
+        if (draft?.id === target) input.setSelectionRange(draft.start, draft.end);
+        else input.select();
+        if (focusNext === target) focusNext = null;
+      }
+      highlight();
+      renderPeers();
+      const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+      status.textContent = `${count(R.length, 'row')} × ${count(C.length, 'column')} · ${count(cells.size, 'cell')} · ${count(rows.size + cols.size, 'row/column node')}`;
+    }
+
+    // The row and the column you stand on, lit in their headers; the actions
+    // enabled while there is a cell to act on.
+    function highlight() {
+      const td = activeCell();
+      sheet.querySelectorAll('th.selected').forEach((th) => th.classList.remove('selected'));
+      if (td) {
+        td.parentElement.firstElementChild.classList.add('selected');
+        thead.querySelector(`th[data-id="${td.dataset.col}"]`)?.classList.add('selected');
+      }
+      for (const b of Object.values(buttons)) b.disabled = !lastCell;
+    }
+
+    // ── Cells ────────────────────────────────────────────────────────────
+    // A cell commits when you leave it — Enter, Tab, an arrow, a click
+    // elsewhere — the spreadsheet convention. `pending` remembers what was
+    // just sent so the blur that follows an Enter does not send it twice.
+    const pending = new Map();
+    async function commit(td) {
+      const id = td.dataset.id, text = td.firstChild.value;
+      if (text === (pending.get(id) ?? valueOf(id))) return;
+      pending.set(id, text);
+      if (text) await db.put({ type: 'cell', row: td.dataset.row, col: td.dataset.col, text }, id);
+      else await db.remove(id);
+    }
+
+    // Focus the cell dr rows and dc columns away; false at the edge.
+    const move = (td, dr, dc) => {
+      const target = tbody.rows[td.parentElement.sectionRowIndex + dr]?.cells[td.cellIndex + dc];
+      if (!target || td.cellIndex + dc < 1) return false;
+      target.firstChild.focus();
+      target.firstChild.select();
+      return true;
+    };
+
+    let lastCell = null; // { id, row, col } of the last cell that had focus — the toolbar's target
+
+    tbody.addEventListener('focusin', (e) => {
+      const td = e.target.closest('td');
+      if (!td) return;
+      lastCell = { ...td.dataset };
+      announce(td.dataset.id);
+      highlight();
+    });
+
+    tbody.addEventListener('focusout', (e) => {
+      const td = e.target.closest('td');
+      if (!td?.isConnected) return; // a rebuild carried this cell over; nothing left it
+      commit(td);
+      if (!e.relatedTarget?.closest?.('td')) { announce(null); highlight(); }
+    });
+
+    tbody.addEventListener('keydown', async (e) => {
+      const td = e.target.closest('td');
+      if (!td) return;
+      const input = td.firstChild;
+      const arrow = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+      if (e.altKey && arrow) {
+        // Alt+arrow: the row or the column takes a key between its new
+        // neighbours — one put on the same node. The cell you stand on keeps
+        // its id, so the focus follows it wherever it lands.
+        e.preventDefault();
+        const [dr, dc] = arrow;
+        await (dr ? moveBy(rows, VIRTUAL_ROWS, td.dataset.row, dr) : moveBy(cols, VIRTUAL_COLS, td.dataset.col, dc));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!move(td, e.shiftKey ? -1 : 1, 0)) commit(td);
+      } else if (arrow && (arrow[0] || (arrow[1] < 0 ? input.selectionStart === 0 && input.selectionEnd === 0 : input.selectionEnd === input.value.length))) {
+        e.preventDefault();
+        move(td, ...arrow);
+      } else if (e.key === 'Escape') {
+        input.value = valueOf(td.dataset.id);
+        input.select();
+      }
+    });
+
+    // ── Rows and columns ─────────────────────────────────────────────────
+    const kindOf = (nodes) => (nodes === rows ? 'row' : 'col');
+
+    // + Row below / + Column right: a fresh node keyed between the neighbour
+    // you stand on and the next one. Appending opens a fresh gap of 1.
+    async function insertAfter(nodes, virtuals, id) {
+      const list = axisOf(nodes, virtuals), i = list.findIndex((e) => e.id === id);
+      return db.put({ type: kindOf(nodes), order: keyBetween(list[i]?.order, list[i + 1]?.order) });
+    }
+
+    async function moveBy(nodes, virtuals, id, dir) {
+      const list = axisOf(nodes, virtuals), i = list.findIndex((e) => e.id === id), j = i + dir;
+      if (j < 0 || j >= list.length) return;
+      const [prev, next] = dir < 0 ? [list[j - 1], list[j]] : [list[j], list[j + 1]];
+      await db.put({ type: kindOf(nodes), order: keyBetween(prev?.order, next?.order) }, id);
+    }
+
+    // − Row / − Column, with the cells it held. An inserted one is a node and
+    // is removed; a virtual one has no node to remove, so it is written once
+    // as gone — the only way every peer can agree that r3 is no longer there.
+    async function drop(nodes, virtuals, id) {
+      const list = axisOf(nodes, virtuals);
+      if (list.length <= 1) return;
+      const held = [...cells.entries()].filter(([, c]) => (nodes === rows ? c.row : c.col) === id);
+      await Promise.all([
+        virtuals.includes(id) ? db.put({ type: kindOf(nodes), order: nodes.get(id)?.order ?? virtualKey(id), gone: true }, id) : db.remove(id),
+        ...held.map(([cid]) => db.remove(cid)),
+      ]);
+    }
+
+    // Sort by the column you stand on: the rows take fresh keys in the sorted
+    // order, empties last — a batch of puts, one per row, ids untouched, so
+    // every cell stays with its row and your focus stays on your cell. The
+    // same column again reverses.
+    let lastSort = null;
+    async function sortBy(colId) {
+      const dir = lastSort?.col === colId ? -lastSort.dir : 1;
+      lastSort = { col: colId, dir };
+      const text = (r) => valueOf(cellId(r.id, colId));
+      const sorted = [...rowAxis()].sort((a, b) => (!text(a)) - (!text(b)) || collate(text(a), text(b)) * dir || a.order - b.order);
+      const keys = keysBetween(undefined, undefined, sorted.length);
+      await Promise.all(sorted.map((r, i) => db.put({ type: 'row', order: keys[i] }, r.id)));
+    }
+
+    // The buttons act on the cell you stand on and hand the focus back: a
+    // pointer press on the toolbar never takes it away from the sheet.
+    toolbar.addEventListener('pointerdown', (e) => e.target.closest('button') && e.preventDefault());
+    buttons['add-row'].onclick = async () => { focusNext = cellId(await insertAfter(rows, VIRTUAL_ROWS, lastCell.row), lastCell.col); scheduleRender(); };
+    buttons['add-col'].onclick = async () => { focusNext = cellId(lastCell.row, await insertAfter(cols, VIRTUAL_COLS, lastCell.col)); scheduleRender(); };
+    buttons['del-row'].onclick = () => drop(rows, VIRTUAL_ROWS, lastCell.row);
+    buttons['del-col'].onclick = () => drop(cols, VIRTUAL_COLS, lastCell.col);
+    buttons.sort.onclick = () => sortBy(lastCell.col);
+    keysToggle.addEventListener('change', scheduleRender);
+
+    // ── Presence: which cell each peer stands on, over an ephemeral channel ─
+    // Channel traffic never touches the database — nothing here is persisted.
+    const presenceChannel = db.room.channel('presence');
+    const peerAt = new Map(); // peerId -> cell id, or null
+    const presenceEl = document.getElementById('presence');
+
+    // Same peer, same colour in every window: derive the hue from the peer id.
+    const hueOf = (id) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+    const colorOf = (id) => `hsl(${hueOf(id)} 75% 70%)`;
+
+    let lastSent = null;
+    function announce(cell) {
+      if (cell === lastSent) return;
+      lastSent = cell;
+      presenceChannel.send({ cell });
+    }
+
+    function renderPeers() {
+      tbody.querySelectorAll('td.peer').forEach((td) => { td.classList.remove('peer'); delete td.dataset.peer; td.style.removeProperty('--peer'); });
+      for (const [peerId, cell] of peerAt) {
+        const td = cell && tbody.querySelector(`td[data-id="${cell}"]`);
+        if (!td) continue;
+        td.classList.add('peer');
+        td.dataset.peer = peerId.slice(0, 4);
+        td.style.setProperty('--peer', colorOf(peerId));
+      }
+    }
+
+    presenceChannel.on('message', (msg, fromPeerId) => { peerAt.set(fromPeerId, msg.cell); renderPeers(); });
+
+    const updatePresence = () => {
+      const n = Object.keys(db.room.getPeers()).length;
+      presenceEl.textContent = `${n} peer${n === 1 ? '' : 's'}`;
+    };
+    db.room.on('peer:join', (peerId) => {
+      updatePresence();
+      if (lastSent) presenceChannel.send({ cell: lastSent }, peerId); // late joiners learn where this cell is
+    });
+    db.room.on('peer:leave', (peerId) => {
+      peerAt.delete(peerId);
+      renderPeers();
+      updatePresence();
+    });
+    updatePresence();
+
+    // ── The subscription: every node, sorted into its map ────────────────
+    const byType = { row: rows, col: cols, cell: cells };
+    await db.map({}, ({ id, value, action }) => {
+      if (action === 'removed') { rows.delete(id); cols.delete(id); cells.delete(id); }
+      else {
+        byType[value.type]?.set(id, value);
+        if (value.type === 'cell' && action !== 'initial' && activeCell()?.dataset.id !== id) changed.add(id);
+      }
+      pending.delete(id);
+      scheduleRender();
+    });
+    scheduleRender();
+  </script>
+</body>
+
+</html>

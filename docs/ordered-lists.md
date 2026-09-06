@@ -60,9 +60,16 @@ The same technique appears in collaborative spreadsheets, where [Bartosz Sypytko
 
 The trade is explicit. His design pays that machinery to address a million rows by key; this pattern trades that scale for zero machinery at document scale. Should a million-row table be the target, his post is the map.
 
+## Rows nobody inserted
+
+A spreadsheet looks infinite: row 3 is there before anyone writes in it. If each peer materialised the rows it touches with fresh identities, two people typing into `A3` of an empty sheet while apart would each create rows 1 to 3, and the merge would show six rows and two cells — the empty-sheet problem of the same post, which it solves with virtual keys that carry no session id. Here it costs nothing. A row or column nobody inserted has **no node at all**: its id and its key are the same on every peer — `r3` at key `3` — and a cell is a node named after its row and its column, `r3.c1`, so both peers write the same cell and last-write-wins keeps one value. A node under a virtual id appears only when the row's position changes: a move or a sort writes it with a new key, and a peer that types into the row later touches nothing but the cell, so nobody's move is ever reset by a stale write. Inserted rows are the pattern above — a random id, a key between two neighbours — and both kinds sort together by key and then id.
+
+One limit is worth stating. Two peers inserting at the same place both survive, in one order everywhere; but if each inserts *several* rows while they cannot see each other, the two runs may **interleave** — `1:A 1:B 2:A 2:B`. Fractional keys cannot prevent that without coordination. A sheet of records tolerates it; a document would not, which is why the block editor's peers see each other's carets live and insert around what is already there.
+
 ## See it running
 
 - [block-editor.html](../examples/block-editor.html) — one node per paragraph; Enter and Backspace mint and merge, a multi-line paste mints its keys in one batch, Alt+↑/↓ moves a paragraph with one `put`. The panel beside the document draws the keys on a number line, to scale, with the gap under the caret and the halvings it has left.
+- [spreadsheet.html](../examples/spreadsheet.html) — the pattern in two dimensions: rows and columns with identities, a base grid that is never written, cells named after their row and column. Alt+↑/↓/←/→ moves a row or a column with one `put`, sorting re-keys the rows and keeps their ids, and "Show keys" puts positions and identities side by side.
 - [outliner.html](../examples/outliner.html) — siblings ordered by a fractional `rank`; Alt+↑/↓ reorders with one `put`, Tab and Shift+Tab move a branch with `link`/`unlink`.
 
-Both are pinned by the conformance suites: a two-hundred-line paste lands as one node per line, in order and keyed strictly between its neighbours, on both peers; a sorted read orders exact ties identically on two peers whose nodes arrived in different orders.
+All three are pinned by the conformance suites: a two-hundred-line paste lands as one node per line, in order and keyed strictly between its neighbours, on both peers; two peers who type into `A3` of an empty sheet while apart end with one cell and no row written; rows inserted at one place by two peers apart all survive in one order, each author's run in its own order; a sorted read orders exact ties identically on two peers whose nodes arrived in different orders.
