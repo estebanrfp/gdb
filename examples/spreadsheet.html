@@ -37,7 +37,52 @@
       font: 14px/1.5 var(--font);
     }
 
-    .page { max-width: 1100px; margin: 0 auto; padding: 48px var(--space-5) 30vh; }
+    /* Two views of one graph, side by side: the sheet you edit and the keys
+       it is sorted by. Each panel scrolls itself; the page never does. */
+    .bench {
+      display: grid;
+      grid-template-columns: var(--doc-width, 60%) 11px minmax(0, 1fr);
+      height: 100vh;
+      height: 100dvh;
+    }
+    .panel { min-width: 0; min-height: 0; overflow: auto; padding: var(--space-5); }
+    .doc-panel { padding-top: 48px; padding-bottom: 20vh; }
+    .axis-panel { display: flex; flex-direction: column; overflow: hidden; }
+    .axis-panel h2 {
+      margin: 0 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* The line between the panels is the resize control: an 11px hit area
+       around a 1px rule, two short bars centred on it to say it moves. */
+    .splitter { position: relative; cursor: col-resize; touch-action: none; }
+    .splitter::before { content: ""; position: absolute; inset: 0 auto 0 5px; width: 1px; background: var(--border-subtle); }
+    .splitter::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 5px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      border-left: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      background: var(--bg-primary);
+    }
+    .splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+    .splitter:focus-visible { outline: none; }
+
+    @media (max-width: 820px) {
+      .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 60%) minmax(0, 40%); }
+      .splitter { display: none; }
+      .doc-panel { border-bottom: 1px solid var(--border-subtle); }
+    }
+
+    .page { max-width: 1100px; }
 
     h1 { margin: 0 0 var(--space-2); font-size: 22px; font-weight: 600; }
 
@@ -79,7 +124,7 @@
       display: flex;
       gap: 6px;
       align-items: center;
-      margin-left: auto;
+      margin-left: var(--space-2);
       font-size: 13px;
       color: var(--text-secondary);
     }
@@ -164,6 +209,26 @@
 
     .status { margin: var(--space-3) 0 0; min-height: 1.5em; font: 12px/1.5 var(--mono); color: var(--text-secondary); }
 
+    /* The keys, as sorted: the rows on a vertical number line, the columns on
+       a horizontal one, both to scale. A hollow dot is a row or column that
+       exists only as a name; a filled one has a node. New dots flash; equal
+       keys paint red. */
+    .cols-axis { flex: none; width: 100%; height: 64px; }
+    .axis { flex: 1; min-height: 0; width: 100%; }
+    .a-line { stroke: var(--border-strong); stroke-width: 2; }
+    .a-gap { fill: var(--accent); fill-opacity: .18; }
+    .a-dot { fill: var(--accent); }
+    .a-dot.virtual { fill: var(--bg-primary); stroke: var(--accent); stroke-width: 1.5; }
+    .a-dot.here { stroke: var(--text-primary); stroke-width: 2; }
+    .a-dot.fresh { fill: var(--warn); }
+    .a-dot.tie { fill: var(--danger); }
+    .a-label { font: 11px var(--mono); fill: var(--text-tertiary); user-select: none; }
+    .a-label.here { fill: var(--text-primary); }
+    .a-label.tie { fill: var(--danger); }
+    .budget { margin: var(--space-3) 0 0; min-height: 3em; font: 12px/1.5 var(--mono); color: var(--text-secondary); white-space: pre-line; }
+    .sheet tr.hovered td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .sheet th.hovered { color: var(--text-primary); }
+
     /* Ambient connection state: bottom right, far from the content, like
        every other GenosDB app. */
     .presence {
@@ -178,6 +243,8 @@
 </head>
 
 <body>
+  <div id="bench" class="bench">
+  <section class="panel doc-panel">
   <div class="page">
     <header class="page-head">
       <h1>Spreadsheet</h1>
@@ -200,8 +267,11 @@
       <p class="hint"><kbd>Enter</kbd> commits and moves down, <kbd>Tab</kbd>
         moves right, <kbd>Esc</kbd> reverts. <kbd>Alt+↑↓</kbd> moves the row and
         <kbd>Alt+←→</kbd> the column with one <code>put</code>; sorting re-keys
-        every row and keeps its id. Show the keys to watch positions and
-        identities come apart.</p>
+        every row and keeps its id. On the right, the keys themselves: every
+        row on a number line down the side and every column across the top, to
+        scale — a hollow dot is a name with no node behind it, a filled one has
+        a node. The gap beside the cell you stand on is where the next insert
+        mints, and the panel says how much room a float64 has left in it.</p>
     </header>
 
     <div class="toolbar" id="toolbar" role="toolbar" aria-label="Row and column actions">
@@ -220,6 +290,18 @@
       </table>
     </div>
     <p id="status" class="status"></p>
+  </div>
+  </section>
+
+  <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the panels"
+    tabindex="0"></div>
+
+  <section class="panel axis-panel" aria-label="The order keys">
+    <h2>The keys, as sorted</h2>
+    <svg id="cols-axis" class="cols-axis" aria-hidden="true"></svg>
+    <svg id="axis" class="axis" aria-hidden="true"></svg>
+    <p id="budget" class="budget"></p>
+  </section>
   </div>
   <span class="presence" id="presence">0 peers</span>
 
@@ -376,6 +458,7 @@
       }
       highlight();
       renderPeers();
+      scheduleDraw();
       const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
       status.textContent = `${count(R.length, 'row')} × ${count(C.length, 'column')} · ${count(cells.size, 'cell')} · ${count(rows.size + cols.size, 'row/column node')}`;
     }
@@ -422,13 +505,14 @@
       lastCell = { ...td.dataset };
       announce(td.dataset.id);
       highlight();
+      scheduleDraw(); // the gap beside the cell follows the cell
     });
 
     tbody.addEventListener('focusout', (e) => {
       const td = e.target.closest('td');
       if (!td?.isConnected) return; // a rebuild carried this cell over; nothing left it
       commit(td);
-      if (!e.relatedTarget?.closest?.('td')) { announce(null); highlight(); }
+      if (!e.relatedTarget?.closest?.('td')) { announce(null); highlight(); scheduleDraw(); }
     });
 
     tbody.addEventListener('keydown', async (e) => {
@@ -554,6 +638,134 @@
     });
     updatePresence();
 
+    // ── The keys, as sorted ──────────────────────────────────────────────
+    // Two number lines drawn from the same axes the grid is built from: the
+    // rows down the side, the columns across the top, each key to scale. A
+    // hollow dot is a name every peer agrees on with no node behind it; a
+    // filled one has a node. The gap beside the cell you stand on is where
+    // "+ Row below" and "+ Column right" mint, and the panel says how many
+    // halvings a float64 has left in it before a key rounds onto a neighbour.
+    const rowsAxisEl = document.getElementById('axis'), colsAxisEl = document.getElementById('cols-axis');
+    const budget = document.getElementById('budget');
+    const bench = document.getElementById('bench'), splitter = document.getElementById('splitter');
+    let hoverId = null, drawQueued = false;
+    const fresh = new Set(); // dots born or moved in the last moment, painted warm
+    function flash(id) {
+      fresh.add(id);
+      setTimeout(() => { fresh.delete(id); scheduleDraw(); }, 900);
+      scheduleDraw();
+    }
+    function scheduleDraw() {
+      if (drawQueued) return;
+      drawQueued = true;
+      requestAnimationFrame(() => { drawQueued = false; drawAxes(); });
+    }
+    const ulp = (x) => 2 ** (Math.floor(Math.log2(Math.abs(x) || 1)) - 52);
+    const halvingsLeft = (gap, at) => Math.max(0, Math.floor(Math.log2(gap / ulp(at))));
+    const svgEl = (tag, attrs) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    };
+
+    // One number line, down or across. Returns the report on the gap beside `atId`.
+    function drawLine(svg, list, atId, vertical) {
+      svg.replaceChildren();
+      if (!list.length) return '';
+      const L = vertical ? (svg.clientHeight || 400) : (svg.clientWidth || 300), pad = 18, across = vertical ? 40 : 22;
+      const lo = list[0].order, span = list.at(-1).order - lo || 1;
+      const along = (order) => pad + (order - lo) / span * (L - 2 * pad);
+      const pt = (a, c) => (vertical ? { x: c, y: a } : { x: a, y: c });
+      const p1 = pt(pad, across), p2 = pt(L - pad, across);
+      svg.append(svgEl('line', { class: 'a-line', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y }));
+
+      const at = list.findIndex((e) => e.id === atId);
+      let report = '';
+      if (at >= 0) {
+        const a = list[at], b = list[at + 1];
+        const gap = b ? b.order - a.order : 1; // appending opens a fresh gap of 1
+        const a1 = along(a.order), a2 = b ? along(b.order) : Math.min(L - pad, a1 + 24);
+        const from = Math.min(a1, a2), size = Math.max(2, Math.abs(a2 - a1));
+        svg.append(svgEl('rect', { class: 'a-gap', ...(vertical ? { x: across - 7, y: from, width: 14, height: size } : { x: from, y: across - 7, width: size, height: 14 }) }));
+        report = `${vertical ? 'row' : 'column'} ${b ? 'gap' : 'fresh gap'} ${gap.toPrecision(4)} · ${halvingsLeft(gap, a.order + gap)} halvings left`;
+      }
+
+      let lastLabel = -Infinity;
+      list.forEach((e, i) => {
+        const c = along(e.order);
+        const tie = (i > 0 && e.order === list[i - 1].order) || (i < list.length - 1 && e.order === list[i + 1].order);
+        const here = i === at || i === at + 1 || e.id === hoverId;
+        const cls = (base) => `${base}${here ? ' here' : ''}${tie ? ' tie' : ''}`;
+        const d = pt(c, across);
+        svg.append(svgEl('circle', { class: cls('a-dot') + (e.node ? '' : ' virtual') + (fresh.has(e.id) ? ' fresh' : ''), cx: d.x, cy: d.y, r: here ? 5 : 4, 'data-id': e.id }));
+        if (here || c - lastLabel >= (vertical ? 14 : 84)) { // labels only where they fit; the selection's always
+          lastLabel = c;
+          const label = svgEl('text', { class: cls('a-label'), ...(vertical ? { x: across + 12, y: c + 4 } : { x: c, y: across + 22, 'text-anchor': 'middle' }) });
+          label.textContent = `${shortId(e.id)} · ${tie ? 'tie' : keyLabel(e.order)}`;
+          svg.append(label);
+        }
+      });
+      return report;
+    }
+
+    function drawAxes() {
+      const cell = activeCell()?.dataset ?? lastCell;
+      const rowReport = drawLine(rowsAxisEl, rowAxis(), cell?.row, true);
+      const colReport = drawLine(colsAxisEl, colAxis(), cell?.col, false);
+      budget.textContent = [rowReport, colReport].filter(Boolean).join('\n');
+    }
+
+    // Hover links the two views: a header lights its dot; a dot lights its
+    // dot and its row or column — the frame only from the axis side.
+    const hover = (id, frame = false) => {
+      if (id === hoverId) return;
+      sheet.querySelectorAll('.hovered').forEach((el) => el.classList.remove('hovered'));
+      hoverId = id;
+      if (frame && id) (tbody.querySelector(`tr[data-id="${id}"]`) ?? thead.querySelector(`th[data-id="${id}"]`))?.classList.add('hovered');
+      scheduleDraw();
+    };
+    for (const svg of [rowsAxisEl, colsAxisEl]) {
+      svg.addEventListener('pointerover', (e) => e.target.dataset?.id && hover(e.target.dataset.id, true));
+      svg.addEventListener('pointerleave', () => hover(null));
+    }
+    sheet.addEventListener('pointerover', (e) => { const h = e.target.closest('th[data-id]'); if (h) hover(h.dataset.id); });
+    sheet.addEventListener('pointerleave', () => hover(null));
+    window.addEventListener('resize', scheduleDraw);
+
+    // ── The divider between the panels is the resize control ─────────────
+    const MIN_DOC = 420, MIN_AXIS = 220;
+    const setDocWidth = (px, persist = true) => {
+      // No ceiling while the bench has no width yet (the first paint): clamping
+      // against 0 would pin the sheet to its minimum and store that.
+      const available = bench.clientWidth;
+      const ceiling = available ? Math.max(available - MIN_AXIS, MIN_DOC) : Infinity;
+      const width = Math.round(Math.min(Math.max(px, MIN_DOC), ceiling));
+      bench.style.setProperty('--doc-width', `${width}px`);
+      if (persist) localStorage.spreadsheetSplit = width;
+      scheduleDraw();
+    };
+    if (localStorage.spreadsheetSplit) setDocWidth(Number(localStorage.spreadsheetSplit), false);
+
+    // Pointer events, not mouse events: one path for mouse, pen and touch, and
+    // setPointerCapture keeps the drag alive when the cursor outruns the strip.
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault(); // no text selection while dragging
+      splitter.setPointerCapture(event.pointerId);
+      const startX = event.clientX;
+      const startWidth = bench.firstElementChild.getBoundingClientRect().width;
+      const onMove = (move) => setDocWidth(startWidth + move.clientX - startX);
+      splitter.addEventListener('pointermove', onMove);
+      splitter.addEventListener('pointerup', () => splitter.removeEventListener('pointermove', onMove), { once: true });
+    });
+    // Reachable without a pointer: the divider answers the arrow keys, which
+    // is what role="separator" promises.
+    splitter.addEventListener('keydown', (event) => {
+      const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key];
+      if (!step) return;
+      event.preventDefault();
+      setDocWidth(bench.firstElementChild.getBoundingClientRect().width + step);
+    });
+
     // ── The subscription: every node, sorted into its map ────────────────
     const byType = { row: rows, col: cols, cell: cells };
     await db.map({}, ({ id, value, action }) => {
@@ -561,6 +773,7 @@
       else {
         byType[value.type]?.set(id, value);
         if (value.type === 'cell' && action !== 'initial' && activeCell()?.dataset.id !== id) changed.add(id);
+        if (value.type !== 'cell' && action !== 'initial') flash(id); // a row or column born or moved
       }
       pending.delete(id);
       scheduleRender();
