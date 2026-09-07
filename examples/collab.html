@@ -1413,6 +1413,35 @@
       for (const k of Object.keys(cursorMap)) delete cursorMap[k];
     };
     const focusEditor = () => { editor.focus(); };
+
+    // The last HTML this window sent or received: the base of the one-region
+    // merge the engine makes on the node. What lands while someone is typing
+    // here RIGHT NOW lands merged — the keystrokes not yet sent stay, and the
+    // caret shifts by the text that landed before it — so the next send and
+    // the next save carry both, and the engine's rescue is never undone.
+    let known = '';
+    const region = (base, text) => {
+        let from = 0; while (from < base.length && from < text.length && base[from] === text[from]) from++
+        let tail = 0; while (tail < base.length - from && tail < text.length - from && base[base.length - 1 - tail] === text[text.length - 1 - tail]) tail++
+        return { from, to: base.length - tail, ins: text.slice(from, text.length - tail) }
+    }
+    const mergeText = (base, mine, theirs) => {
+        const m = region(base, mine), t = region(base, theirs)
+        if (!t.ins && t.from === t.to) return mine // nothing new landed: the echo of this window's own send
+        if (!m.ins && m.from === m.to) return theirs
+        if (m.from === m.to && t.from === t.to && m.from === t.from) return base.slice(0, m.from) + t.ins + m.ins + base.slice(m.from) // both inserted at one point: what landed, then what is being typed
+        const [a, b] = [m, t].sort((x, y) => x.from - y.from || x.to - y.to)
+        if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs // the same span changed twice: the graph's
+        return base.slice(0, a.from) + a.ins + base.slice(a.to, b.from) + b.ins + base.slice(b.to)
+    }
+    const textLen = (html) => html.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, 'x').length; // characters, as the caret counts them
+    const landHTML = (incoming) => {
+      const mine = getEditorHTML(), typing = document.hasFocus() && document.activeElement === editor, at = caretOffset();
+      const r = region(known, incoming);
+      setEditorHTML(typing && mine !== known ? mergeText(known, mine, incoming) : incoming);
+      if (at !== null && textLen(known.slice(0, r.from)) <= at) putCaretAt(at + textLen(r.ins) - textLen(known.slice(r.from, r.to)));
+      known = incoming;
+    };
     // line numbers removed
 
     // Live word count
@@ -1990,7 +2019,7 @@
     docChannel.on('message', (data, fromPeerId) => {
       if (data.ts > lastTimestamp) {
         lastTimestamp = data.ts;
-        setEditorHTML(data.content);
+        landHTML(data.content);
         updatePreview();
         updateWordCount();
       }
@@ -2088,7 +2117,7 @@
       const ts = node.timestamp?.physical ?? 0;
       if (ts <= lastTimestamp) return;
       lastTimestamp = ts;
-      setEditorHTML(incoming);
+      landHTML(incoming);
       updateWordCount();
       updatePreview();
     });
@@ -2112,6 +2141,7 @@
         const ts = Math.max(Date.now(), lastTimestamp + 1);
         if (ts > lastTimestamp) lastTimestamp = ts;
         docChannel.send({ content: pendingContent, ts });
+        known = pendingContent; // what the others fold into their next state: the base their reply is judged against
         lastLiveSent = ts;
         liveScheduled = null;
       };
@@ -2131,6 +2161,7 @@
           await db.sm.executeWithPermission("write"); // throws for non-editors
           const ts = Date.now();
           if (ts > lastTimestamp) lastTimestamp = ts;
+          known = pendingContent; // what this save writes: the base its echo is judged against
           await db.put({ content: pendingContent }, docId);
           flashSaved();
         } catch {
