@@ -595,6 +595,23 @@
 
 
 
+        /* Signed in, the field gives way to the facts: a list read left to right,
+           the address in mono with its copy icon beside it — the same line icon
+           as the phrase's, inline instead of pinned to a field's corner. */
+        .identity-facts {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: var(--space-2) var(--space-4);
+            margin: 0 0 var(--space-4);
+            text-align: left;
+            font-size: 13px;
+        }
+        .identity-facts dt { color: var(--text-secondary); white-space: nowrap; }
+        .identity-facts dd { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--text-primary); overflow-wrap: anywhere; min-width: 0; }
+        .identity-facts code { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+        .field-action.inline { position: static; padding: 3px; }
+        .field-action.inline svg { width: 14px; height: 14px; }
+
         /* The share dialog carries real content, so it reads left-aligned. */
         #share-modal { width: min(520px, calc(100vw - var(--space-6))); text-align: left; }
 
@@ -697,9 +714,31 @@
 
     <dialog id="identity-modal">
         <h2 class="modal-title">Collaborative Docs</h2>
-        <p class="modal-hint">Node-level ACLs on a serverless P2P graph.</p>
+        <p class="modal-hint" id="modal-hint">Node-level ACLs on a serverless P2P graph.</p>
 
-        <div class="mnemonic-field">
+        <!-- Signed in, the same door is the identity view — the session pill opens
+             it. What is here is what the door no longer offers once it has closed:
+             above all "Protect with passkey" for a session opened with a phrase. -->
+        <dl id="identity-facts" class="identity-facts hidden">
+            <dt>address</dt>
+            <dd><code id="identity-addr"></code>
+                <button id="identity-copy" class="field-action inline" title="Copy your full address" aria-label="Copy your full address">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                </button>
+            </dd>
+            <dt>role</dt>
+            <dd id="identity-role"></dd>
+            <dt>unlocked by</dt>
+            <dd id="identity-unlock"></dd>
+            <dt>passkey on this browser</dt>
+            <dd id="identity-passkey"></dd>
+        </dl>
+
+        <div class="mnemonic-field" id="mnemonic-field">
             <textarea id="mnemonic-input"
                 placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
             <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
@@ -717,6 +756,7 @@
             <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
             <button id="passkey-login-btn" class="hidden">Login with passkey</button>
             <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
+            <button id="identity-logout-btn" class="ghost hidden">Logout</button>
         </div>
 
         <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
@@ -906,6 +946,15 @@
             passkeyLogin: $("passkey-login-btn"),
             login: $("login-btn"),
             demoLogin: $("demo-login-btn"),
+            hint: $("modal-hint"),
+            field: $("mnemonic-field"),
+            facts: $("identity-facts"),
+            identityAddr: $("identity-addr"),
+            identityCopy: $("identity-copy"),
+            identityRole: $("identity-role"),
+            identityUnlock: $("identity-unlock"),
+            identityPasskey: $("identity-passkey"),
+            identityLogout: $("identity-logout-btn"),
             sessionAddr: $("session-addr"),
             logout: $("logout-btn"),
             presence: $("presence"),
@@ -997,6 +1046,7 @@
         }
 
         const show = (node, visible) => node.classList.toggle("hidden", !visible)
+        const HINT = el.hint.textContent // the door's line; the identity view says something else
 
         /**
          * Ask before anything irreversible — the one thing a toast cannot do,
@@ -1078,17 +1128,31 @@
          * which may return a Promise. Tracking any of this in our own variables
          * would be a second source of truth that drifts from the first.
          */
-        const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
-            // `hasVolatileIdentity` stays true after signing in with a fresh phrase —
-            // the identity is in memory until a passkey secures it. Onboarding, though,
-            // ends the moment you are in, and the phrase must not outlive it on screen.
+        const renderIdentityModal = ({ isActive, activeAddress, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+            // `hasVolatileIdentity` stays true after signing in with a fresh phrase — the
+            // identity lives in memory until a passkey secures it. Onboarding, though, ends
+            // the moment you are in, and the phrase must not outlive it on screen.
             const onboarding = hasVolatileIdentity && !isActive
 
-            show(el.generate, !onboarding)
-            show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
-            show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
-            show(el.demoLogin, !onboarding) // hidden while a fresh phrase is unsaved
+            // Signed in, the same door is the identity view (the session pill opens it):
+            // the field gives way to the facts, and the actions are the ones a session
+            // still needs — a passkey for a phrase that still holds the key, and logout.
+            show(el.field, !isActive)
+            show(el.facts, isActive)
+            show(el.generate, !onboarding && !isActive)
+            show(el.login, !isActive)
+            show(el.passkeyProtect, PASSKEYS_AVAILABLE && !isWebAuthnProtected && (onboarding || (isActive && hasVolatileIdentity)))
+            show(el.passkeyLogin, !onboarding && !isActive && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+            show(el.demoLogin, !onboarding && !isActive) // hidden while a fresh phrase is unsaved
+            show(el.identityLogout, isActive)
             show(el.phraseWarning, onboarding) // only a fresh phrase can still be lost
+            el.hint.textContent = isActive ? "Your identity: a key pair on this device. Every write is signed with it." : HINT
+            if (isActive) {
+                el.identityAddr.textContent = activeAddress
+                el.identityRole.textContent = isSuperadmin(activeAddress) ? "superadmin" : "guest"
+                el.identityUnlock.textContent = isWebAuthnProtected ? "passkey" : "mnemonic — the session ends with the tab; a passkey keeps it"
+                el.identityPasskey.textContent = hasWebAuthnHardwareRegistration ? "yes" : "no"
+            }
             el.mnemonic.readOnly = onboarding
 
             // The phrase is the SM's to hand over — we never keep a copy of it.
@@ -1158,9 +1222,11 @@
         }
 
         const protectWithPasskey = async () => {
+            const fromIdentityView = !!currentUser // the door closing on success is not an answer in itself here
             try {
                 const address = await db.sm.protectCurrentIdentityWithWebAuthn()
                 if (!address) return toast("Passkey registration cancelled", "error")
+                if (fromIdentityView) toast("Passkey registered — this session now survives a reload", "success")
             } catch {
                 toast("Could not register the passkey", "error")
             }
@@ -1610,8 +1676,9 @@
         el.demoLogin.addEventListener("click", loginAsDemoSuperadmin)
         el.passkeyProtect.addEventListener("click", protectWithPasskey)
         el.passkeyLogin.addEventListener("click", loginWithPasskey)
-        el.sessionAddr.addEventListener("click", async () => {
-            if (!currentUser) return
+        // The pill opens the identity view: the door in its signed-in phase.
+        el.sessionAddr.addEventListener("click", () => { if (currentUser && !el.modal.open) el.modal.showModal() })
+        el.identityCopy.addEventListener("click", async () => {
             try {
                 await navigator.clipboard.writeText(currentUser)
                 toast("Address copied — hand it to a peer to get access", "success")
@@ -1620,6 +1687,9 @@
                 toast(currentUser, "info")
             }
         })
+        el.identityLogout.addEventListener("click", () => db.sm.clearSecurity())
+        // Signed in there is nothing to protect: the view closes on the backdrop, as on Esc.
+        el.modal.addEventListener("click", (e) => { if (e.target === el.modal && currentUser) el.modal.close() })
         el.logout.addEventListener("click", () => db.sm.clearSecurity())
         el.newDoc.addEventListener("click", createDocument)
         el.title.addEventListener("input", scheduleSave)

@@ -234,9 +234,20 @@ Four blocks, in this order. Anything that needs a paragraph goes to the foot, un
 ```html
 <dialog id="identity-modal">
   <h2 class="modal-title">App name</h2>
-  <p class="modal-hint">One line on what this app is.</p>
+  <p class="modal-hint" id="modal-hint">One line on what this app is.</p>
 
-  <div class="mnemonic-field">
+  <!-- Signed in, the same door is the identity view (the session pill opens it). -->
+  <dl id="identity-facts" class="identity-facts hidden">
+    <dt>address</dt>
+    <dd><code id="identity-addr"></code>
+      <button id="identity-copy" class="field-action inline" title="Copy your full address" aria-label="Copy your full address">…</button>
+    </dd>
+    <dt>role</dt><dd id="identity-role"></dd>
+    <dt>unlocked by</dt><dd id="identity-unlock"></dd>
+    <dt>passkey on this browser</dt><dd id="identity-passkey"></dd>
+  </dl>
+
+  <div class="mnemonic-field" id="mnemonic-field">
     <textarea id="mnemonic-input"
       placeholder="Enter your 12-word mnemonic phrase to log in or recover…"></textarea>
     <button id="mnemonic-clip" class="field-action hidden" title="Copy phrase" aria-label="Copy phrase">
@@ -254,6 +265,7 @@ Four blocks, in this order. Anything that needs a paragraph goes to the foot, un
     <button id="passkey-protect-btn" class="primary hidden">Protect with passkey</button>
     <button id="passkey-login-btn" class="hidden">Login with passkey</button>
     <button id="demo-login-btn" class="ghost">🛡️ Superadmin (demo)</button>
+    <button id="identity-logout-btn" class="ghost hidden">Logout</button>
   </div>
 
   <p id="phrase-warning" class="modal-warn hidden">Save this phrase. There is no reset.</p>
@@ -262,6 +274,8 @@ Four blocks, in this order. Anything that needs a paragraph goes to the foot, un
        what this demo relaxes, and where the real pattern lives. -->
 </dialog>
 ```
+
+**Signed in, the same dialog is the identity view.** The session pill (§4.2) opens it: the field gives way to the facts — the address with a copy icon, the role, what unlocked the session, whether this browser holds a passkey — and to the actions the door no longer offers once it has closed: `Protect with passkey` while `hasVolatileIdentity && !isWebAuthnProtected`, and `Logout`. No second dialog and no second state machine: `renderIdentityModal` draws both phases from the same state object, and the security callback still closes the door the moment a session starts.
 
 **One `<textarea>` does both jobs** — you paste an existing phrase into it, and a freshly generated one appears in it. Two fields would ask the visitor to understand the difference before they have one.
 
@@ -378,20 +392,34 @@ Every button follows from those. An app that mirrors them in its own flags has b
 | --- | --- | --- |
 | Signed out | `Generate new identity` · `Login with mnemonic` · `Login with passkey` *(only if a registration exists)* · demo shortcut | `Protect with passkey` · the warning · the copy icon |
 | Onboarding (`hasVolatileIdentity && !isActive`) | `Login with mnemonic` *(must remain — no dead ends)* · `Protect with passkey` · the warning · the copy icon | `Generate new identity` *(one identity at a time)* · demo shortcut *(never invite abandoning an unsaved phrase)* |
-| Session active | — the modal closes itself. The session pill (§4.2) opens the **identity view**, where `Protect with passkey` stays available while `hasVolatileIdentity && !isWebAuthnProtected`; a logout returns to phase 1 and reopens the door | |
+| Session active | — the modal closes itself. The session pill (§4.2) re-opens it as the **identity view**: the facts, `Protect with passkey` while `hasVolatileIdentity && !isWebAuthnProtected`, `Logout`; Esc and the backdrop close it in both modes; a logout returns to phase 1 and reopens the door | the field, `Generate`, `Login with mnemonic`, `Login with passkey`, the demo shortcut |
 
 ```javascript
-const renderIdentityModal = ({ isActive, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
+const renderIdentityModal = ({ isActive, activeAddress, hasVolatileIdentity, hasWebAuthnHardwareRegistration, isWebAuthnProtected }) => {
     // `hasVolatileIdentity` stays true after signing in with a fresh phrase — the
     // identity lives in memory until a passkey secures it. Onboarding, though, ends
     // the moment you are in, and the phrase must not outlive it on screen.
     const onboarding = hasVolatileIdentity && !isActive
 
-    show(el.generate, !onboarding)
-    show(el.passkeyProtect, onboarding && PASSKEYS_AVAILABLE && !isWebAuthnProtected)
-    show(el.passkeyLogin, !onboarding && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
-    show(el.demoLogin, !onboarding)      // hidden while a fresh phrase is unsaved
-    show(el.phraseWarning, onboarding)   // only a fresh phrase can still be lost
+    // Signed in, the same door is the identity view (the session pill opens it):
+    // the field gives way to the facts, and the actions are the ones a session
+    // still needs — a passkey for a phrase that still holds the key, and logout.
+    show(el.field, !isActive)
+    show(el.facts, isActive)
+    show(el.generate, !onboarding && !isActive)
+    show(el.login, !isActive)
+    show(el.passkeyProtect, PASSKEYS_AVAILABLE && !isWebAuthnProtected && (onboarding || (isActive && hasVolatileIdentity)))
+    show(el.passkeyLogin, !onboarding && !isActive && PASSKEYS_AVAILABLE && hasWebAuthnHardwareRegistration)
+    show(el.demoLogin, !onboarding && !isActive) // hidden while a fresh phrase is unsaved
+    show(el.identityLogout, isActive)
+    show(el.phraseWarning, onboarding)           // only a fresh phrase can still be lost
+    el.hint.textContent = isActive ? "Your identity: a key pair on this device. Every write is signed with it." : HINT
+    if (isActive) {
+        el.identityAddr.textContent = activeAddress
+        el.identityRole.textContent = isSuperadmin(activeAddress) ? "superadmin" : "guest"
+        el.identityUnlock.textContent = isWebAuthnProtected ? "passkey" : "mnemonic — the session ends with the tab; a passkey keeps it"
+        el.identityPasskey.textContent = hasWebAuthnHardwareRegistration ? "yes" : "no"
+    }
     el.mnemonic.readOnly = onboarding
 
     // The phrase is the SM's to hand over — the app never keeps a copy.
@@ -526,13 +554,13 @@ An authenticated session renders **anchored to the top-right** of the content ar
 The address is `--mono` + `--text-secondary`; the role reads as a quiet bracketed tag. **Restraint over decoration**: no saturated filled pills, no competing colors — the session area is chrome, not content.
 
 - Signed out → the spot stays **empty**: the auto-opened modal is the door (§4.1), and contextual CTAs re-open it. No standing Sign-in button.
-- Signed in → the pill is a **link to the identity view**, not a label. The view shows the address with a copy button, the role, what unlocked the session (`isWebAuthnProtected` → passkey, otherwise mnemonic), whether this browser holds a passkey (`hasWebAuthnHardwareRegistration`), and the actions the door no longer offers once it has closed: **`Protect this identity with a passkey`**, shown while `PASSKEYS_AVAILABLE && !isWebAuthnProtected && hasVolatileIdentity`, and `Sign out`. A sign-in with nowhere else to go lands there.
+- Signed in → the pill **opens the identity view**: the door of §4.1 in its signed-in phase, no second dialog. It shows the address with a copy icon (abbreviated on screen, complete on the clipboard — the pill itself no longer copies), the role, what unlocked the session (`isWebAuthnProtected` → passkey, otherwise mnemonic), whether this browser holds a passkey (`hasWebAuthnHardwareRegistration`), and the actions the door no longer offers once it has closed: **`Protect with passkey`**, shown while `PASSKEYS_AVAILABLE && !isWebAuthnProtected && hasVolatileIdentity`, and `Logout`. In an app with pages, the pill links to that view as a page, and a sign-in with nowhere else to go lands there.
 - The top bar is `position: sticky` over the content scroll, with a subtle bottom border.
 - `db.sm.setSecurityStateChangeCallback(...)` is the **single source of truth**: it toggles the pill/button, closes the modal, and resets the mnemonic textarea on logout. No UI state duplicates it.
 
 #### Why the identity view is not optional
 
-The door offers `Protect with passkey` only during onboarding and closes as soon as a session is active. A reader who signed in with a phrase — or with a demo identity — therefore never sees the passkey offered again, and their session ends on every reload with no way to fix it short of generating a new identity. The engine has no such limit: `loginOrRecoverUserWithMnemonic` keeps the key in memory (`hasVolatileIdentity` stays `true`), and `protectCurrentIdentityWithWebAuthn()` wraps it at any later moment, re-activating the session with the passkey signer. The identity view is where that call lives after the door has closed. [`examples/webauthn.html`](../examples/webauthn.html) is the canonical shape — its signed-in view shows the protect action whenever `PASSKEYS_AVAILABLE && !isWebAuthnProtected` — and dCode's `#/session` is the same view inside an app, gated on the same state, redrawn by the same callback. dNews puts it where Hacker News keeps the profile — your own user page, which the session pill already opens — with the same gate and the same landing after a sign-in.
+The door offers `Protect with passkey` only during onboarding and closes as soon as a session is active. A reader who signed in with a phrase — or with a demo identity — therefore never sees the passkey offered again, and their session ends on every reload with no way to fix it short of generating a new identity. The engine has no such limit: `loginOrRecoverUserWithMnemonic` keeps the key in memory (`hasVolatileIdentity` stays `true`), and `protectCurrentIdentityWithWebAuthn()` wraps it at any later moment, re-activating the session with the passkey signer. The identity view is where that call lives after the door has closed. `docs.html` implements it as the door's signed-in phase, drawn by the same `renderIdentityModal`; [`examples/webauthn.html`](../examples/webauthn.html) shows the same offer on its signed-in view; dCode's `#/session` is the view as a page, gated on the same state and redrawn by the same callback, and dNews puts it where Hacker News keeps the profile — your own user page, which the session pill already opens — with the same gate and the same landing after a sign-in.
 
 ### 4.3 Role badges
 
