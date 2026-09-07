@@ -277,8 +277,12 @@
     //
     // 1. Block-level LWW: editing a paragraph rewrites only ITS node, so two
     //    people editing different paragraphs never overwrite each other —
-    //    there is simply no shared node to fight over. Only two carets
-    //    inside the SAME paragraph still race (last write wins).
+    //    there is simply no shared node to fight over. Two carets inside
+    //    the SAME paragraph land merged when they touch different places:
+    //    the engine keeps both (the writer whose put lost re-applies its
+    //    edit over the winner — genosdb 0.34.0), and updateBlock paints it
+    //    under the caret. Only the same span at the same instant is the
+    //    later writer's.
     //
     // 2. Fractional order keys: a paragraph inserted between order 1 and 2
     //    gets ~1.5. Two peers inserting into the same gap concurrently mint
@@ -319,9 +323,10 @@
     //    Here a keystroke is one hop over a direct WebRTC data channel,
     //    coalesced to at most one message per frame, and the receiver
     //    assigns a string to a native textarea. The CRDT machinery buys
-    //    character-level merging INSIDE one paragraph — this example
-    //    replaces that rare case with block-level LWW plus visible carets,
-    //    and spends the budget where it shows: latency.
+    //    character-level interleaving INSIDE one span — this example
+    //    replaces that rare case with block-level LWW, the engine's merge
+    //    of two edits in different places, and visible carets, and spends
+    //    the budget where it shows: latency.
     //
     // 7. The right panel is the same graph read a second way: every key on a
     //    number line, to scale, drawn from the DOM the subscription already
@@ -380,6 +385,22 @@
       grow(ta);
     };
 
+
+    // The text the graph last confirmed for each paragraph, and the same
+    // one-region merge the engine makes: when a value lands on the paragraph
+    // being typed in, the keystrokes not yet written stay and the rest lands.
+    const known = new Map();
+    const region = (base, text) => {
+      let from = 0; while (from < base.length && from < text.length && base[from] === text[from]) from++;
+      let tail = 0; while (tail < base.length - from && tail < text.length - from && base[base.length - 1 - tail] === text[text.length - 1 - tail]) tail++;
+      return { from, to: base.length - tail, ins: text.slice(from, text.length - tail) };
+    };
+    const mergeText = (base, mine, theirs) => {
+      const [a, b] = [region(base, mine), region(base, theirs)].sort((x, y) => x.from - y.from || x.to - y.to);
+      if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs;
+      return base.slice(0, a.from) + a.ins + base.slice(a.to, b.from) + b.ins + base.slice(b.to);
+    };
+
     // One debounced save per paragraph, so typing costs one put per pause.
     const savers = new Map();
     function scheduleSave(id, li) {
@@ -387,6 +408,7 @@
       savers.set(id, setTimeout(() => {
         savers.delete(id);
         const ta = li.querySelector('textarea');
+        known.set(id, ta.value);
         db.put({ text: ta.value, order: orderOf(li) }, id);
       }, 250));
     }
@@ -466,7 +488,7 @@
 
       const ta = document.createElement('textarea');
       ta.rows = 1;
-      ta.value = text;
+      ta.value = text; known.set(id, text);
       ta.placeholder = '…';
 
       ta.addEventListener('input', () => {
@@ -549,6 +571,7 @@
       ta.addEventListener('blur', async () => {
         if (savers.has(id)) {
           cancelSave(id);
+          known.set(id, ta.value);
           await db.put({ text: ta.value, order: orderOf(li) }, id);
           return;
         }
@@ -581,17 +604,26 @@
         if (id === focusNextId) { focusNextId = null; caretTo(li, focusNextPos); focusNextPos = 0; }
       }
       const ta = li.querySelector('textarea');
-      // Never fight the local cursor: the paragraph being typed in RIGHT NOW
-      // keeps what you see, and syncs to the graph's truth on blur (handler
-      // above). The live channel may have painted this text already — then
-      // this is a no-op; when it differs, the graph is the truth and lands.
-      if (!isMine(ta) && ta.value !== text) {
-        paint(ta, text);
-        li.classList.remove('remote');
-        void li.offsetWidth; // restart the flash animation
-        li.classList.add('remote');
+      // The live channel may have painted this text already — then this is a
+      // no-op; when it differs, the graph is the truth and lands. On the
+      // paragraph being typed in RIGHT NOW it lands merged: the keystrokes not
+      // yet written stay, the caret shifts by what landed before it — so the
+      // next save carries both, and the engine's rescue is never undone.
+      if (ta.value !== text) {
+        if (isMine(ta)) {
+          const caret = ta.selectionStart, base = known.get(id) ?? ta.value, r = region(base, text);
+          ta.value = mergeText(base, ta.value, text); grow(ta);
+          const at = caret + (r.from <= caret ? r.ins.length - (r.to - r.from) : 0);
+          ta.setSelectionRange(at, at);
+        } else {
+          paint(ta, text);
+          li.classList.remove('remote');
+          void li.offsetWidth; // restart the flash animation
+          li.classList.add('remote');
+        }
         renderMarks(); // remote text shifted under the remote carets too
       }
+      known.set(id, text);
     }
 
     function dropBlock(li) {

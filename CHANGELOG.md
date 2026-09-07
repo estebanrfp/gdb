@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-09-07
+
+### Added
+
+- **Concurrent writes to one node keep both contributions — the loser's rescue.** Two peers writing the same node at the same instant, each over the same value, no longer lose one of the two edits. Every op now carries `base`, the stamp of the value it wrote over, and a node remembers what it replaced, one step, in memory. When an op arrives whose base is what the local value replaced, both wrote over the same value: the store keeps the winner as always, and the peer whose value lost merges the base, its value and the winner — fields from whoever changed them, the one region each side changed in a string, the winner's for the same span or any value that changes as a whole — and writes the merge with `put`, signed by it, based on the winner. No CRDT and no metadata persisted: `base` rides outside the signature, the previous value is never written to disk, an extra signed write happens only on a collision. Divergence deeper than one step, a third writer at the same instant and a peer that reloaded still resolve by the clock. Documented in `docs/genosdb-concurrent-writes.md`; pinned by `lib/tests/concurrency/rescue.spec.js`. 28 lines: `merge3.js`, six in `gdb.js`, two in the signer.
+
 ## [0.33.9] - 2026-09-06
 
 ### Fixed

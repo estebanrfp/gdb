@@ -26,7 +26,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 -   **GenosRTC**: A P2P streaming module built on WebRTC, enabling real-time data, audio, and video transfers through named data channels. It uses Nostr relays for peer discovery.
 -   **Security Module (SM)**: Implements RBAC with hierarchical roles (`guest`, `user`, `manager`, `admin`, `superadmin`) and WebAuthn for passwordless authentication, plus optional node-level ACLs and a rule-based Governance engine. Operations are cryptographically signed and verified, and per-node ACL / role checks are enforced against malicious peers — not just the honest client.
 -   **Oplog**: A persistent operation log, supporting delta synchronization with a configurable window. It ensures efficient P2P sync by sharing recent changes.
--   **Conflict Resolution**: Employs last-write-wins per node with Hybrid Logical Clocks (HLCs) and a deterministic tie-break on the value. No CRDT library, no sequence or text CRDT: ordering and collaborative editing are application patterns over plain nodes.
+-   **Conflict Resolution**: Employs last-write-wins per node with Hybrid Logical Clocks (HLCs) and a deterministic tie-break on the value. Two writes over the same value keep both contributions: the writer whose op lost the race re-applies its edit over the winner as an ordinary signed write. No CRDT library, no sequence or text CRDT: ordering and collaborative editing are application patterns over plain nodes.
 -   **Persistence**: Uses the Origin Private File System (OPFS) for local storage, with cross-tab synchronization via `BroadcastChannel`.
 
 ### 2.2 Data Pipeline
