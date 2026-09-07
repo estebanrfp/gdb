@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenosDB Keystrokes</title>
+  <style>
+    /* Minimal profile: only the tokens this page paints, with the design
+       guide's exact values. Dark, fixed — an editor is a product surface. */
+    :root {
+      --bg-primary: #0d0f12;
+      --bg-secondary: #14171c;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa3ad;
+      --text-tertiary: #5c6570;
+      --accent: #4c8dff;
+      --ok: #34c77b;
+      --warn: #f5a623;
+      --danger: #ef5350;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+      --border-subtle: #262b33;
+      --border-strong: #333a44;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-5: 24px;
+      --space-6: 32px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; background: var(--bg-primary); color: var(--text-primary); font: 14px/1.5 var(--font); }
+
+    /* Two views of one paragraph: the text everyone types into, and the two
+       layers that carry it — the channel and the graph. Each panel scrolls
+       itself; the page never does. */
+    .bench { display: grid; grid-template-columns: var(--doc-width, 55%) 11px minmax(0, 1fr); height: 100vh; height: 100dvh; }
+    .panel { min-width: 0; min-height: 0; overflow: auto; padding: var(--space-5); }
+    .doc-panel { padding-top: 48px; }
+    .layers-panel { display: flex; flex-direction: column; gap: var(--space-5); }
+    .layers-panel h2 { margin: 0 0 var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-subtle); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .layers-panel section { min-height: 0; }
+    .layers-panel .stream { flex: 1; min-height: 0; overflow: auto; }
+
+    /* The line between the panels is the resize control. */
+    .splitter { position: relative; cursor: col-resize; touch-action: none; }
+    .splitter::before { content: ""; position: absolute; inset: 0 auto 0 5px; width: 1px; background: var(--border-subtle); }
+    .splitter::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 28px; transform: translate(-50%, -50%); border-left: 1px solid var(--border-strong); border-right: 1px solid var(--border-strong); background: var(--bg-primary); }
+    .splitter:hover::after, .splitter:focus-visible::after { border-color: var(--accent); }
+    .splitter:focus-visible { outline: none; }
+
+    @media (max-width: 820px) {
+      .bench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 55%) minmax(0, 45%); }
+      .splitter { display: none; }
+      .doc-panel { border-bottom: 1px solid var(--border-subtle); }
+    }
+
+    .page-head, .span { max-width: 680px; margin-inline: auto; }
+    .page-head { margin-bottom: var(--space-6); }
+    h1 { margin: 0 0 var(--space-2); font-size: 17px; }
+    .hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+    .hint + .hint { margin-top: var(--space-2); }
+    code { font-family: var(--mono); font-size: 12px; color: var(--text-primary); }
+
+    /* The paragraph IS the page: a content field nothing frames. */
+    .span { position: relative; }
+    .span textarea { position: relative; z-index: 1; display: block; width: 100%; border: none; outline: none; background: none; resize: none; overflow: hidden; padding: 3px 0; color: var(--text-primary); font: 18px/1.6 var(--font); caret-color: var(--accent); }
+    .span textarea::placeholder { color: var(--text-tertiary); }
+
+    /* Remote carets: one transparent mirror per peer over the textarea, the
+       same metrics, so its caret lands where that character sits below. */
+    .mirror { position: absolute; inset: 0; z-index: 2; padding: 3px 0; font: 18px/1.6 var(--font); white-space: pre-wrap; overflow-wrap: break-word; color: transparent; pointer-events: none; }
+    .remote-caret { position: relative; border-left: 2px solid; margin-left: -1px; }
+    .caret-label { position: absolute; top: -13px; left: -2px; padding: 1px 4px; border-radius: 3px; font: 600 9px/1.2 var(--mono); color: var(--bg-primary); white-space: nowrap; user-select: none; }
+
+    /* The layers. A line per keystroke on the channel, a line per snapshot on
+       the graph, a line per peer with the hash of what it shows. */
+    .rows { margin: 0; padding: 0; list-style: none; font: 12px/1.6 var(--mono); color: var(--text-secondary); }
+    .rows li { display: flex; gap: var(--space-2); align-items: baseline; white-space: nowrap; }
+    .rows .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px); }
+    .rows .who { min-width: 4ch; color: var(--text-primary); }
+    .rows .ins { color: var(--ok); }
+    .rows .del { color: var(--danger); }
+    .rows .at { color: var(--text-tertiary); }
+    .rows .dropped { color: var(--text-tertiary); text-decoration: line-through; }
+    .rows .same { color: var(--ok); }
+    .rows .diff { color: var(--warn); }
+    .rows .me { color: var(--text-tertiary); }
+    .count { margin: var(--space-2) 0 0; font: 12px/1.5 var(--mono); color: var(--text-tertiary); }
+    .empty { color: var(--text-tertiary); font: 12px/1.6 var(--mono); }
+
+    .presence { position: fixed; right: var(--space-5); bottom: var(--space-5); font-family: var(--mono); font-size: 12px; color: var(--text-tertiary); }
+  </style>
+</head>
+
+<body>
+  <div id="bench" class="bench">
+    <section class="panel doc-panel">
+      <header class="page-head">
+        <h1>Keystrokes</h1>
+        <p class="hint">One paragraph, everyone typing into it at once — inside the
+          same word if you like. Open two or three windows and type in the same
+          place: every keystroke travels the ephemeral channel as a small
+          operation, each window renders the same set of operations in the same
+          order, and the letters interleave the same way on every screen.</p>
+        <p class="hint">Nothing here is a CRDT. The paragraph stays one node; a
+          keystroke is an insertion or a deletion at a position of the last
+          snapshot the graph confirmed, ordered by its stamp. A pause writes the
+          paragraph as a snapshot with <code>db.put</code>; the snapshot becomes
+          the new base for every window, and if two snapshots cross, the engine
+          keeps both. This is the mechanism an application adds where it needs
+          keystroke-level interleaving — and only there.</p>
+        <p class="hint">On the right, the two layers as they happen: the channel
+          keystroke by keystroke, the graph snapshot by snapshot, and a hash of
+          the text every window shows — the proof that they agree.</p>
+      </header>
+      <div class="span" id="span">
+        <textarea id="text" rows="3" placeholder="Everyone types here — at once." spellcheck="false" aria-label="The paragraph"></textarea>
+      </div>
+    </section>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the panels" tabindex="0"></div>
+
+    <section class="panel layers-panel" aria-label="The layers">
+      <section class="stream">
+        <h2>The channel, keystroke by keystroke</h2>
+        <ol id="ops" class="rows"></ol>
+        <p id="ops-empty" class="empty">No keystroke yet.</p>
+      </section>
+      <section>
+        <h2>The graph, snapshot by snapshot</h2>
+        <ol id="snaps" class="rows"></ol>
+        <p id="snaps-empty" class="empty">No snapshot yet.</p>
+        <p id="pending" class="count"></p>
+      </section>
+      <section>
+        <h2>What every window shows</h2>
+        <ol id="peers" class="rows"></ol>
+        <p id="verdict" class="count"></p>
+      </section>
+    </section>
+  </div>
+  <span class="presence" id="presence">0 peers</span>
+
+  <script type="module">
+    // Keystroke-level collaboration inside ONE node, with the plain GenosDB API.
+    // Demonstrates: db.put / db.map on a single paragraph node, and
+    // db.room.channel for keystroke operations, carets and a convergence hash.
+    import { gdb } from "../dist/index.js";
+
+    const db = await gdb('keystrokes', { debug: true, rtc: true });
+
+    // ── The technique ─────────────────────────────────────────────────────
+    // Two layers, one paragraph.
+    //
+    // 1. The graph holds the paragraph as one node `{ text, by }`: the BASE.
+    //    A pause after typing writes the paragraph as a snapshot with db.put;
+    //    every window receives it through db.map and makes it its new base.
+    //    Two snapshots that cross are the engine's business — it keeps both
+    //    contributions — so the paragraph on disk never loses a keystroke.
+    //
+    // 2. The channel carries EDITS: `{ id, who, at, del, ins, stamp, base }`,
+    //    an insertion and/or a deletion at a position of the base, stamped
+    //    when it was typed and naming the base it is relative to. Every
+    //    window renders base + all edits it holds, sorted by (position,
+    //    stamp), with one small rule for the same position: the earlier
+    //    stamp first. Same base, same set, same order — same text, on every
+    //    screen, with no transformation and no identifiers per character.
+    //
+    // 3. When a snapshot lands it becomes the base, and the pending edits are
+    //    re-derived from what this window shows: text shown here that the
+    //    snapshot lacks stays as one local insertion; text the snapshot has
+    //    that is not shown here is taken from it — unless it is exactly what
+    //    a pending deletion of this window cut, which then stays a deletion.
+    //    So nothing on screen is lost or doubled, and the next snapshot
+    //    carries it. An edit that names an older base is dropped: its letters
+    //    arrive with its author's snapshot a moment later.
+    //
+    // 4. Deleting a character that is still a pending insertion shrinks that
+    //    edit instead of deleting from the base; a higher revision wins.
+
+    const ID = 'span';
+    const ta = document.getElementById('text');
+    const span = document.getElementById('span');
+    const who = crypto.randomUUID().slice(0, 4); // this window's signature, on every edit and caret
+    const hueOf = (id) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+    const colorOf = (id) => `hsl(${hueOf(id)} 75% 70%)`;
+
+    let base = { text: '', stamp: null }; // the last snapshot the graph confirmed
+    const edits = new Map();              // id → edit, pending on top of the base
+    let seq = 0;
+    const stampNow = () => `${Date.now().toString().padStart(13, '0')}.${(seq++).toString().padStart(4, '0')}.${who}`;
+    const before = (a, b) => a.at - b.at || (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : 0);
+    const sameStamp = (a, b) => !!a && !!b && a.physical === b.physical && a.logical === b.logical;
+
+    // Render base + edits. `segments` remembers where every piece of the
+    // result came from, so a text position maps back to a base position (or
+    // into a pending insertion) and a caret survives a re-render.
+    let segments = [];
+    function render() {
+      const sorted = [...edits.values()].sort(before);
+      let out = '', cur = 0;
+      segments = [];
+      for (const e of sorted) {
+        if (e.at > cur) { segments.push({ t0: out.length, b0: cur, len: e.at - cur }); out += base.text.slice(cur, e.at); cur = e.at; }
+        if (e.ins) { segments.push({ t0: out.length, b0: e.at, len: e.ins.length, edit: e }); out += e.ins; }
+        if (e.del) cur = Math.max(cur, e.at + e.del);
+      }
+      segments.push({ t0: out.length, b0: cur, len: base.text.length - cur });
+      out += base.text.slice(cur);
+      return out;
+    }
+    // A caret at the end of a pending insertion belongs to that insertion — so
+    // it stays after those letters when the paragraph is re-rendered.
+    const toBase = (p) => {
+      const ins = segments.find((s) => s.edit && s.t0 < p && p <= s.t0 + s.len);
+      if (ins) return { edit: ins.edit, off: p - ins.t0 };
+      const s = segments.findLast((s) => !s.edit && s.t0 <= p) ?? segments[0];
+      return { b: s.b0 + Math.min(p - s.t0, s.len) };
+    };
+    const fromBase = (a, fallback = 0) => {
+      if (a.edit) { const s = segments.find((s) => s.edit === a.edit); return s ? s.t0 + Math.min(a.off, s.len) : fallback; }
+      const s = segments.find((s) => !s.edit && s.b0 <= a.b && a.b <= s.b0 + s.len) ?? segments.at(-1);
+      return s.t0 + Math.max(0, Math.min(a.b - s.b0, s.len));
+    };
+
+    // The change between what the field showed and what it shows now: one
+    // region, found by common prefix and suffix — a keystroke is one region.
+    const region = (was, now) => {
+      let from = 0; while (from < was.length && from < now.length && was[from] === now[from]) from++;
+      let tail = 0; while (tail < was.length - from && tail < now.length - from && was[was.length - 1 - tail] === now[now.length - 1 - tail]) tail++;
+      return { from, to: was.length - tail, ins: now.slice(from, now.length - tail) };
+    };
+    // Every change between two texts, by longest common subsequence: the
+    // chunks of `now` missing from `was` and of `was` missing from `now`, each
+    // at its position in `was`. A snapshot and a window can differ in several
+    // places at once — mine here, theirs there — and one region would swallow
+    // everything between them.
+    const diff = (was, now) => {
+      const n = was.length, m = now.length;
+      if (n * m > 4e6) { const r = region(was, now); return [{ at: r.from, del: r.to - r.from, ins: r.ins }]; }
+      const L = new Uint16Array((n + 1) * (m + 1)), w = m + 1;
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i * w + j] = was[i] === now[j] ? L[(i + 1) * w + j + 1] + 1 : Math.max(L[(i + 1) * w + j], L[i * w + j + 1]);
+      const out = []; let i = 0, j = 0, cur = null;
+      const open = () => cur ?? (cur = { at: i, del: 0, ins: '' });
+      while (i < n || j < m) {
+        if (i < n && j < m && was[i] === now[j]) { if (cur) { out.push(cur); cur = null; } i++; j++; }
+        else if (j < m && (i === n || L[i * w + j + 1] >= L[(i + 1) * w + j])) { open().ins += now[j]; j++; }
+        else { open().del++; i++; }
+      }
+      if (cur) out.push(cur);
+      return out;
+    };
+
+    let shown = ''; // what the field showed before the current input event
+    const paint = (text, caret) => { ta.value = text; shown = text; ta.setSelectionRange(caret, caret); grow(); };
+    const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+    const repaint = () => { // a re-render that keeps the caret on the same character
+      const caret = ta.selectionStart, anchor = toBase(caret);
+      paint(render(), fromBase(anchor, caret));
+      renderMarks(); drawLayers();
+    };
+
+    // ── Typing: every keystroke is an edit on the channel ───────────────
+    ta.addEventListener('input', () => {
+      // Content alone cannot place a keystroke: a space typed before a space
+      // looks the same either side of it. The caret knows — what was typed
+      // ends where it stands, and what was removed stood there too.
+      const guess = region(shown, ta.value), from = Math.max(0, ta.selectionStart - guess.ins.length);
+      const r = { from, to: from + (shown.length - ta.value.length) + guess.ins.length, ins: ta.value.slice(from, from + guess.ins.length) };
+      const touched = new Set();
+      // Deleted characters: from a pending insertion, shrink it; from the base, a deletion edit.
+      let p = r.from, delAt = null, delLen = 0;
+      for (const s of segments) {
+        const a = Math.max(p, s.t0), b = Math.min(r.to, s.t0 + s.len);
+        if (a >= b) continue;
+        if (s.edit) { s.edit.ins = s.edit.ins.slice(0, a - s.t0) + s.edit.ins.slice(b - s.t0); s.edit.rev = (s.edit.rev ?? 0) + 1; touched.add(s.edit); }
+        else { if (delAt === null) delAt = s.b0 + (a - s.t0); delLen += b - a; }
+      }
+      const a = toBase(r.from);
+      if (r.ins || delLen) {
+        const e = { id: crypto.randomUUID().slice(0, 8), who, at: a.edit ? a.edit.at : a.b, del: delLen, ins: r.ins, stamp: stampNow(), rev: 0 };
+        if (delAt !== null) { e.at = Math.min(e.at, delAt); e.cut = base.text.slice(delAt, delAt + delLen); } // what it removed, for the day a snapshot brings it back
+        edits.set(e.id, e); touched.add(e); myLast = e;
+      }
+      for (const e of touched) { if (!e.ins && !e.del) edits.delete(e.id); send({ kind: 'edit', edit: e, base: base.stamp }); log(e, e.who === who ? 'sent' : 'edited'); }
+      shown = render(); ta.value = shown; grow(); // re-render from the edit set: the caret stays after what was just typed
+      if (myLast) { const s = segments.find((s) => s.edit === myLast); const at = s ? s.t0 + s.len : ta.selectionStart; ta.setSelectionRange(at, at); }
+      liveDirty = true; announce(); scheduleSave(); drawLayers();
+    });
+    let myLast = null;
+
+    // A pause writes the paragraph: the snapshot every window will rebase on.
+    let saveTimer = null;
+    const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => db.put({ text: render(), by: who }, ID), 250); };
+
+    // ── The graph: snapshots become the base ──────────────────────────────
+    const snaps = [];
+    function rebase(text, stamp, by) {
+      const current = render();
+      const folded = edits.size;
+      const cuts = [...edits.values()].filter((e) => e.who === who && e.cut).map((e) => e.cut).join('');
+      base = { text, stamp };
+      edits.clear();
+      for (const d of diff(text, current)) { // the snapshot against what this window shows, place by place
+        const missing = text.slice(d.at, d.at + d.del);
+        const mine = !!missing && cuts.includes(missing); // gone here on purpose: a deletion the snapshot has not seen yet
+        if (!d.ins && !mine) continue;                    // the snapshot's own text: taken
+        const e = { id: crypto.randomUUID().slice(0, 8), who, at: d.at, del: mine ? d.del : 0, cut: mine ? missing : undefined, ins: d.ins, stamp: stampNow(), rev: 0, local: true };
+        edits.set(e.id, e);
+      }
+      snaps.unshift({ by, stamp, len: text.length, folded, kept: edits.size });
+      if (snaps.length > 12) snaps.pop();
+      // The text on screen is unchanged by construction — base plus what was
+      // re-derived — so the caret keeps its place in it.
+      paint(render(), Math.min(ta.selectionStart, current.length)); renderMarks(); drawLayers();
+    }
+
+    // ── The channel: edits, carets, hashes ────────────────────────────────
+    const channel = db.room.channel('keystrokes');
+    const peers = new Map(); // who → { pos, hash, at }
+    const send = (msg) => channel.send({ ...msg, who });
+    const hash = (s) => { let h = 5381; for (const c of s) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h.toString(16).padStart(8, '0'); };
+    let lastSent = null, announceQueued = false, liveDirty = false;
+    function announce() {
+      if (announceQueued) return;
+      announceQueued = true;
+      requestAnimationFrame(() => {
+        announceQueued = false;
+        const here = document.activeElement === ta;
+        const msg = { kind: 'caret', pos: here ? ta.selectionStart : null, hash: hash(ta.value) };
+        liveDirty = false;
+        if (lastSent && lastSent.pos === msg.pos && lastSent.hash === msg.hash) return;
+        lastSent = msg; send(msg);
+      });
+    }
+    document.addEventListener('selectionchange', announce);
+    ta.addEventListener('focusout', announce);
+
+    channel.on('message', (msg) => {
+      if (msg.kind === 'edit') {
+        const e = msg.edit;
+        if (!sameStamp(msg.base, base.stamp)) { log(e, 'dropped'); return; } // relative to a base this window has left: its snapshot brings it
+        const known = edits.get(e.id);
+        if (known && (known.rev ?? 0) > (e.rev ?? 0)) return;
+        if (!e.ins && !e.del) edits.delete(e.id); else edits.set(e.id, e);
+        log(e, known ? 'edited' : 'received');
+        if (document.activeElement === ta && document.hasFocus()) repaint(); else { paint(render(), Math.min(ta.selectionStart, render().length)); renderMarks(); drawLayers(); }
+        return;
+      }
+      if (msg.kind === 'hello') { for (const e of msg.edits) if (sameStamp(msg.base, base.stamp) && !edits.has(e.id)) edits.set(e.id, e); repaint(); }
+      peers.set(msg.who, { pos: msg.pos ?? peers.get(msg.who)?.pos ?? null, hash: msg.hash ?? peers.get(msg.who)?.hash, seen: Date.now() });
+      renderMarks(); drawLayers();
+    });
+    // Every render announces its hash, so the panel proves agreement as it happens.
+    const announceHash = () => { liveDirty = true; announce(); };
+
+    // Remote carets over the one field, by name.
+    function renderMarks() {
+      span.querySelectorAll('.mirror').forEach((m) => m.remove());
+      const text = ta.value;
+      for (const [name, p] of peers) {
+        if (p.pos === null || p.pos === undefined) continue;
+        const pos = Math.min(p.pos, text.length);
+        const mirror = document.createElement('div'); mirror.className = 'mirror';
+        const caret = document.createElement('span'); caret.className = 'remote-caret'; caret.style.borderColor = colorOf(name);
+        const label = document.createElement('span'); label.className = 'caret-label'; label.style.background = colorOf(name); label.textContent = name;
+        caret.append(label);
+        mirror.append(text.slice(0, pos), caret, text.slice(pos));
+        span.append(mirror);
+      }
+    }
+
+    // ── The layers panel ──────────────────────────────────────────────────
+    const ops = []; // the last keystrokes on the channel, as seen here
+    function log(e, how) {
+      ops.unshift({ who: e.who, ins: e.ins, del: e.del, at: e.at, how });
+      if (ops.length > 40) ops.pop();
+    }
+    const el = (id) => document.getElementById(id);
+    const row = (html) => { const li = document.createElement('li'); li.innerHTML = html; return li; };
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    function drawLayers() {
+      el('ops').replaceChildren(...ops.map((o) => row(`<span class="dot" style="background:${colorOf(o.who)}"></span><span class="who">${o.who}</span>` +
+        `${o.del ? `<span class="del">−${o.del}</span>` : ''}${o.ins ? `<span class="ins">+${esc(JSON.stringify(o.ins))}</span>` : ''}` +
+        `<span class="at">@${o.at}</span><span class="${o.how === 'dropped' ? 'dropped' : 'at'}">${o.how}</span>`)));
+      el('ops-empty').hidden = ops.length > 0;
+      el('snaps').replaceChildren(...snaps.map((s) => row(`<span class="dot" style="background:${colorOf(s.by ?? '')}"></span><span class="who">${s.by ?? '—'}</span>` +
+        `<span>${s.len} chars</span><span class="at">${s.stamp ? `${s.stamp.physical % 100000}.${s.stamp.logical}` : ''}</span><span class="at">folded ${s.folded}${s.kept ? `, kept ${s.kept}` : ''}</span>`)));
+      el('snaps-empty').hidden = snaps.length > 0;
+      el('pending').textContent = edits.size ? `${edits.size} edit${edits.size === 1 ? '' : 's'} pending on top of the last snapshot` : 'nothing pending: the field is the snapshot';
+      const mine = hash(ta.value);
+      const rows = [row(`<span class="dot" style="background:${colorOf(who)}"></span><span class="who">${who}</span><span>${mine}</span><span class="me">this window</span>`)];
+      let same = 0, total = 0;
+      for (const [name, p] of peers) {
+        if (!p.hash || Date.now() - p.seen > 30000) continue;
+        total++; const ok = p.hash === mine; if (ok) same++;
+        rows.push(row(`<span class="dot" style="background:${colorOf(name)}"></span><span class="who">${name}</span><span>${p.hash}</span><span class="${ok ? 'same' : 'diff'}">${ok ? 'same text' : 'differs — a snapshot is on its way'}</span>`));
+      }
+      el('peers').replaceChildren(...rows);
+      el('verdict').textContent = total ? (same === total ? `${total + 1} windows, one text` : `${total - same} of ${total} windows differ`) : 'open another window to compare';
+    }
+
+    // ── Presence ──────────────────────────────────────────────────────────
+    const presenceEl = document.getElementById('presence');
+    const updatePresence = () => { const n = Object.keys(db.room.getPeers()).length; presenceEl.textContent = `${n} peer${n === 1 ? '' : 's'}`; };
+    db.room.on('peer:join', (peerId) => {
+      updatePresence();
+      // A late joiner gets this window's pending edits and caret at once.
+      send({ kind: 'hello', edits: [...edits.values()].filter((e) => !e.local), base: base.stamp, pos: document.activeElement === ta ? ta.selectionStart : null, hash: hash(ta.value) });
+    });
+    db.room.on('peer:leave', () => { updatePresence(); });
+    updatePresence();
+    setInterval(() => { for (const [name, p] of peers) if (Date.now() - p.seen > 30000) peers.delete(name); renderMarks(); drawLayers(); }, 10000);
+
+    // ── The divider ───────────────────────────────────────────────────────
+    const bench = document.getElementById('bench'), splitter = document.getElementById('splitter');
+    const MIN_DOC = 320, MIN_SIDE = 260;
+    const setDocWidth = (px, persist = true) => {
+      const available = bench.clientWidth, ceiling = available ? Math.max(available - MIN_SIDE, MIN_DOC) : Infinity;
+      const width = Math.round(Math.min(Math.max(px, MIN_DOC), ceiling));
+      bench.style.setProperty('--doc-width', `${width}px`);
+      if (persist) localStorage.keystrokesSplit = width;
+    };
+    if (localStorage.keystrokesSplit) setDocWidth(Number(localStorage.keystrokesSplit), false);
+    splitter.addEventListener('pointerdown', (event) => {
+      event.preventDefault(); splitter.setPointerCapture(event.pointerId);
+      const startX = event.clientX, startWidth = bench.firstElementChild.getBoundingClientRect().width;
+      const onMove = (move) => setDocWidth(startWidth + move.clientX - startX);
+      splitter.addEventListener('pointermove', onMove);
+      splitter.addEventListener('pointerup', () => splitter.removeEventListener('pointermove', onMove), { once: true });
+    });
+    splitter.addEventListener('keydown', (event) => { const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key]; if (!step) return; event.preventDefault(); setDocWidth(bench.firstElementChild.getBoundingClientRect().width + step); });
+
+    // ── The subscription: the one node, as the graph holds it ─────────────
+    await db.map(({ id, value, timestamp, action }) => { // the graph holds one node here; the id check keeps it that way
+      if (id !== ID || action === 'removed' || typeof value?.text !== 'string') return;
+      if (sameStamp(timestamp, base.stamp)) return; // the same snapshot twice: nothing to rebase
+      rebase(value.text, timestamp, value.by);
+      announceHash();
+    });
+    paint(render(), 0); drawLayers(); // the empty base rendered once: the segments exist before the first keystroke
+  </script>
+</body>
+
+</html>
