@@ -192,7 +192,7 @@
     let seq = 0;
     const stampNow = () => `${Date.now().toString().padStart(13, '0')}.${(seq++).toString().padStart(4, '0')}.${who}`;
     const before = (a, b) => a.at - b.at || (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : 0);
-    const sameStamp = (a, b) => !!a && !!b && a.physical === b.physical && a.logical === b.logical;
+    const sameStamp = (a, b) => a?.physical === b?.physical && a?.logical === b?.logical; // no snapshot yet is a base too
 
     // Render base + edits. `segments` remembers where every piece of the
     // result came from, so a text position maps back to a base position (or
