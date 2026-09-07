@@ -6,13 +6,13 @@
 
 ## Abstract
 
-GenosDB is a lightweight, decentralized peer-to-peer (P2P) graph database designed for real-time web applications. Built with modern web technologies, it integrates a flexible graph data model, real-time P2P synchronization via GenosRTC, advanced query capabilities, and robust security through a zero-trust model — Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), rule-based Governance, and WebAuthn authentication. Its modular architecture leverages WebRTC, Nostr, MessagePack, and Last-Write-Wins (LWW) Conflict-Free Replicated Data Types (CRDTs) to ensure scalability, performance, and developer simplicity. This whitepaper explores GenosDB’s architecture, query system, extensible modules, security features, and use cases.
+GenosDB is a lightweight, decentralized peer-to-peer (P2P) graph database designed for real-time web applications. Built with modern web technologies, it integrates a flexible graph data model, real-time P2P synchronization via GenosRTC, advanced query capabilities, and robust security through a zero-trust model — Role-Based Access Control (RBAC), node-level Access Control Lists (ACLs), rule-based Governance, and WebAuthn authentication. Its modular architecture leverages WebRTC, Nostr, MessagePack, and per-node last-write-wins (LWW) resolution with hybrid logical clocks to ensure scalability, performance, and developer simplicity. This whitepaper explores GenosDB’s architecture, query system, extensible modules, security features, and use cases.
 
 To protect proprietary algorithms and maintain a focused development path, the source code is not publicly shared. Instead, GenosDB is distributed as a free-to-use minified bundle via NPM and CDN, accompanied by comprehensive public documentation and a transparent test suite. This approach builds trust through verifiable functionality and rigorous testing while safeguarding intellectual property, positioning GenosDB as a robust solution for developers seeking secure and scalable decentralized data management.
 
 ## 1. Introduction
 
-The modern web demands decentralized, serverless data management solutions that prioritize real-time performance, security, and scalability. Traditional databases, reliant on centralized infrastructure, are ill-suited for P2P applications requiring low-latency synchronization and trustless operation. GenosDB addresses these challenges with a browser-native graph database that leverages WebRTC for P2P communication, Nostr for peer discovery, and LWW-CRDTs for conflict resolution. Its intuitive API, advanced query capabilities, modular extensibility, and cryptographic security make it ideal for building secure, scalable applications with minimal complexity.
+The modern web demands decentralized, serverless data management solutions that prioritize real-time performance, security, and scalability. Traditional databases, reliant on centralized infrastructure, are ill-suited for P2P applications requiring low-latency synchronization and trustless operation. GenosDB addresses these challenges with a browser-native graph database that leverages WebRTC for P2P communication, Nostr for peer discovery, and per-node last-write-wins with hybrid logical clocks for conflict resolution. Its intuitive API, advanced query capabilities, modular extensibility, and cryptographic security make it ideal for building secure, scalable applications with minimal complexity.
 
 This whitepaper details GenosDB’s technical architecture, query system, and module ecosystem, drawing from its public APIs and extensive documentation ([github.com/estebanrfp/gdb](https://github.com/estebanrfp/gdb)). While the source code remains proprietary, GenosDB is offered as a free minified bundle, enabling unrestricted use. Public unit tests and comprehensive documentation ensure transparency and build confidence in its reliability, positioning it as a robust solution for enterprise-grade decentralized data management.
 
@@ -26,7 +26,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 -   **GenosRTC**: A P2P streaming module built on WebRTC, enabling real-time data, audio, and video transfers through named data channels. It uses Nostr relays for peer discovery.
 -   **Security Module (SM)**: Implements RBAC with hierarchical roles (`guest`, `user`, `manager`, `admin`, `superadmin`) and WebAuthn for passwordless authentication, plus optional node-level ACLs and a rule-based Governance engine. Operations are cryptographically signed and verified, and per-node ACL / role checks are enforced against malicious peers — not just the honest client.
 -   **Oplog**: A persistent operation log, supporting delta synchronization with a configurable window. It ensures efficient P2P sync by sharing recent changes.
--   **Conflict Resolution**: Employs LWW-CRDTs with Hybrid Logical Clocks (HLCs) to resolve conflicts, with a customizable `resolveConflict` hook for advanced scenarios.
+-   **Conflict Resolution**: Employs last-write-wins per node with Hybrid Logical Clocks (HLCs) and a deterministic tie-break on the value. No CRDT library, no sequence or text CRDT: ordering and collaborative editing are application patterns over plain nodes.
 -   **Persistence**: Uses the Origin Private File System (OPFS) for local storage, with cross-tab synchronization via `BroadcastChannel`.
 
 ### 2.2 Data Pipeline
@@ -35,7 +35,7 @@ GenosDB’s architecture is modular and optimized for browser environments, inte
 2.  **Compression**: Gzip (`pako`) compresses serialized data for efficient P2P transfer.
 3.  **Networking**: WebRTC handles P2P communication, with Nostr relays for peer discovery and optional TURN servers for NAT traversal. An optional **Fallback Server** can anchor a room with always-on availability and even host its signaling.
 4.  **Persistence**: OPFS stores graph data and indexes, with `BroadcastChannel` ensuring cross-tab consistency.
-5.  **Conflict Resolution**: LWW-CRDTs with HLCs (capped at a 2-hour drift limit) ensure consistent state across peers.
+5.  **Conflict Resolution**: Per-node last-write-wins with HLCs (capped at a 2-hour drift limit) and a deterministic tie-break ensure the same state on every peer.
 
 ### 2.3 Diagram
 
@@ -206,7 +206,7 @@ The "chicken-and-egg" problem of a new user joining is solved with a "zero-trust
 
 ## 8. Synchronization and Conflict Resolution
 
-GenosDB uses an oplog for delta synchronization, storing recent operations. Conflicts are resolved using LWW-CRDTs with Hybrid Logical Clocks. The synchronization engine intelligently switches between modes:
+GenosDB uses an oplog for delta synchronization, storing recent operations. Conflicts are resolved per node by last-write-wins with Hybrid Logical Clocks. The synchronization engine intelligently switches between modes:
 
 -   **Delta Sync**: Shares recent changes for active peers, minimizing bandwidth.
 -   **Full-State Fallback**: Transmits the entire graph state when peers are too far behind or for new peers, ensuring eventual consistency.

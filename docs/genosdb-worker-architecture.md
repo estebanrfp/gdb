@@ -45,7 +45,7 @@ By operating entirely within a Web Worker, all file system interactions occur on
 The features of the persistence worker are not just technical conveniences; they are enablers of GenosDB's core capabilities.
 
 -   **Performance at Scale:** The prioritization of Synchronous OPFS is key to rapidly persisting the compressed binary state of the graph. This allows GenosDB to handle large datasets and high-frequency updates with minimal performance impact.
--   **Unyielding Data Consistency:** In a distributed system using CRDTs for synchronization, the on-disk state is the ultimate source of truth. The serialized access control ensures that this state is never corrupted, providing a reliable foundation for both offline access and cross-tab synchronization via the `BroadcastChannel`.
+-   **Unyielding Data Consistency:** In a distributed system that converges by last-write-wins, the on-disk state is the ultimate source of truth. The serialized access control ensures that this state is never corrupted, providing a reliable foundation for both offline access and cross-tab synchronization via the `BroadcastChannel`.
 -   **Superior User Experience:** By offloading all storage tasks, the worker directly contributes to the fluid, real-time feel of GenosDB. Users experience no UI stutter or freezes while data is being saved in the background, which is essential for collaborative and data-intensive applications.
 -   **Developer-Friendly Abstraction:** The worker exposes a simple, promise-based API (`load`, `save`) to the main GenosDB instance. This clean abstraction hides the complexity of feature detection, locking, and multi-mode storage, allowing the core database logic to remain focused on data management rather than the intricacies of persistence.
 

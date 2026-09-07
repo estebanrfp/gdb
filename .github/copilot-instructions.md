@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 GenosDB is a decentralized P2P graph database with real-time sync via GenosRTC (WebRTC + Nostr signaling). Core components:
-- **gdb/**: Main DB engine with OPFS storage, MessagePack serialization, and CRDT-based conflict resolution.
+- **gdb/**: Main DB engine with OPFS storage, MessagePack serialization, and last-write-wins conflict resolution with hybrid logical clocks.
 - **GenosRTC/src/**: P2P communication layer handling rooms, peers, and data channels.
 - **gdb-server/**: Node.js server with WebRTC polyfills for server-side P2P.
 
@@ -36,7 +36,7 @@ Reference: gdb/README.md for features; GenosRTC/README.md for API.
 - **API & Guides**: docs/genosdb-api-reference.md (API details), docs/crud-operations-guide.md (CRUD overview), docs/map-guide.md (query language).
 - **Modules**: docs/sm-architecture.md (Security Manager).
 - **P2P & Sync**: docs/genosrtc-guide.md (GenosRTC usage), docs/genosdb-hybrid-delta-protocol.md (sync protocol), docs/genosdb-distributed-trust-model.md (trust model).
-- **Advanced**: docs/genosdb-hybrid-logical-clock.md (HLC for CRDTs), docs/zero-trust-security-model.md (security), docs/genosdb-fallback-server.md (superpeer server).
+- **Advanced**: docs/genosdb-hybrid-logical-clock.md (HLC for last-write-wins ordering), docs/zero-trust-security-model.md (security), docs/genosdb-fallback-server.md (superpeer server).
 
 ## Code Style and Programming Philosophy
 
