@@ -8,6 +8,7 @@ This guide helps you migrate from the class-based API (`new GDB()`) to the new a
 
 Changes between engine versions are documented in the [CHANGELOG](CHANGELOG.md). Two releases require action beyond updating:
 
+- **0.34.0** — every upsert op carries `base`, the stamp of the value it wrote over, outside the signature; a peer older than 0.34 verifies live ops over every field they carry and refuses a 0.34 peer's writes until its next join brings them by delta. Update a room's peers together, the Fallback Server included (its bundle ships in this package). No API change. Two writes over the same value now keep both contributions ([Concurrent Writes](docs/genosdb-concurrent-writes.md)); an application that holds a field while a person types in it should paint incoming values merged, or its next save undoes the merge (design guide §7, rule 5).
 - **0.27.0** — owned nodes written by earlier versions carry no provenance and stop travelling through catch-up: re-save an identity's owned nodes once after upgrading, and redeploy GenosSRV alongside your clients.
 - **0.28.0** — `db.sm.put` records use the key-envelope format exclusively: records encrypted by earlier releases no longer decrypt, so re-save durable encrypted data once after upgrading.
 - **0.33.2** — `db.remove` no longer rewrites other nodes' signed edge sets: a removed node's id stays in them until `db.unlink`. Since 0.33.3 `get`, `map` and `$edge` resolve `edges` against existing nodes, so no read shows it.
