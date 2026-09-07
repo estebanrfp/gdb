@@ -248,7 +248,7 @@ _By: [Sambit Sahoo (soulsam480)](https://github.com/soulsam480)_
 
 ## Integrations
 
-Plugins, bridges, and adapters that bring GenosDB into other platforms, engines, and frameworks. *(Different from GenosDB's own optional **modules** — SM, GEO, audit.)*
+Plugins, bridges, and adapters that bring GenosDB into other platforms, engines, and frameworks. *(Different from GenosDB's own optional **modules** — the Security Manager with its ACLs and governance, and GenosRTC.)*
 
 ### [godot-genosdb — Serverless P2P multiplayer for Godot](https://github.com/estebanrfp/godot-genosdb)
 A drop-in **Godot 4** plugin that adds real-time **P2P multiplayer** to Web exports via GenosDB — no backend. The API **mirrors GenosDB** (`join` / `send` / `put` / `map` / `remove`), so using it teaches the real GenosDB API. Ships with a cozy Stardew-style co-op farm demo (chop trees in a shared world, P2P chat). **[▶ Live demo](https://estebanrfp.github.io/godot-genosdb/)**.
