@@ -114,7 +114,7 @@ Browser + GenosDB
 
 ## A Note on P2P System Reliability
 
-GenosDB operates in a real-world P2P environment, which exposes the system to network uncertainties by design. Our engineering focus is on mitigating these uncertainties within our software through robust conflict resolution (per-node last-write-wins with hybrid logical clocks) and synchronization logic. While we cannot control external network conditions, our commitment is to the continuous research and development required to ensure the highest possible resilience of the GenosDB engine.
+GenosDB operates in a real-world P2P environment, which exposes the system to network uncertainties by design. Our engineering focus is on mitigating these uncertainties within our software through robust conflict resolution (CRDTs) and synchronization logic. While we cannot control external network conditions, our commitment is to the continuous research and development required to ensure the highest possible resilience of the GenosDB engine.
 
 For deployments that need guaranteed availability on top of that, the optional [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md) adds an always-on superpeer — and can even host the room's signaling — without centralizing anything.
 
