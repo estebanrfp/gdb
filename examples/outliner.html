@@ -367,6 +367,26 @@
     // window that lost the system focus keeps naming its last field.
     const isMine = (ta) => ta === document.activeElement && document.hasFocus()
 
+    // What the graph last held for a bullet: the base of the one-region merge
+    // the engine makes. When a value lands on the bullet being typed in, the
+    // keystrokes not yet written stay and the rest lands, so the next save
+    // carries both and the engine's rescue is never undone.
+    const known = new Map()
+    const region = (base, text) => {
+      let from = 0; while (from < base.length && from < text.length && base[from] === text[from]) from++
+      let tail = 0; while (tail < base.length - from && tail < text.length - from && base[base.length - 1 - tail] === text[text.length - 1 - tail]) tail++
+      return { from, to: base.length - tail, ins: text.slice(from, text.length - tail) }
+    }
+    const mergeText = (base, mine, theirs) => {
+      const m = region(base, mine), t = region(base, theirs)
+      if (!t.ins && t.from === t.to) return mine // nothing new landed: the echo of this window's own save
+      if (!m.ins && m.from === m.to) return theirs
+      if (m.from === m.to && t.from === t.to && m.from === t.from) return base.slice(0, m.from) + t.ins + m.ins + base.slice(m.from) // both inserted at one point: what landed, then what is being typed
+      const [a, b] = [m, t].sort((x, y) => x.from - y.from || x.to - y.to)
+      if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs // the same span changed twice: the graph's
+      return base.slice(0, a.from) + a.ins + base.slice(a.to, b.from) + b.ins + base.slice(b.to)
+    }
+
     // Remote text lands with the caret kept where it was, clamped to the new text.
     const paint = (ta, text) => {
       const { selectionStart: from, selectionEnd: to } = ta
@@ -428,14 +448,23 @@
       const ta = li.querySelector("textarea")
       const { text } = nodes.get(id).value
       if (!ta.dataset.grown) { grow(ta); ta.dataset.grown = "1" }
-      // Never fight the local caret: the bullet being typed in keeps what you
-      // see and syncs on blur. Anything else adopts the graph's text.
-      if (!isMine(ta) && ta.value !== text) {
-        paint(ta, text)
-        li.classList.remove("remote")
-        void li.offsetWidth // restart the flash
-        li.classList.add("remote")
+      // The bullet being typed in RIGHT NOW takes the value merged under the
+      // caret: your keystrokes stay, what landed before them shifts the caret.
+      // Anything else adopts the graph's text.
+      if (ta.value !== text) {
+        if (isMine(ta)) {
+          const caret = ta.selectionStart, base = known.get(id) ?? ta.value, r = region(base, text)
+          ta.value = mergeText(base, ta.value, text); grow(ta)
+          const at = caret + (r.from <= caret ? r.ins.length - (r.to - r.from) : 0)
+          ta.setSelectionRange(at, at)
+        } else {
+          paint(ta, text)
+          li.classList.remove("remote")
+          void li.offsetWidth // restart the flash
+          li.classList.add("remote")
+        }
       }
+      known.set(id, text)
       li.classList.toggle("has-children", kidsOf(id).length > 0)
       li.classList.toggle("collapsed", !visible && collapsed.has(id))
       li.classList.toggle("hit", !!matches?.has(id))
@@ -612,7 +641,7 @@
       if (!savers.has(id)) return
       cancelSave(id)
       const node = nodes.get(id), ta = lis.get(id)?.querySelector("textarea")
-      if (node && ta) db.put({ ...node.value, text: ta.value }, id)
+      if (node && ta) { known.set(id, ta.value); db.put({ ...node.value, text: ta.value }, id) }
     }
     // The bullet's current text: what is on screen if a save is pending.
     const textOf = (id) => {

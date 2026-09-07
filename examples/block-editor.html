@@ -396,8 +396,12 @@
       return { from, to: base.length - tail, ins: text.slice(from, text.length - tail) };
     };
     const mergeText = (base, mine, theirs) => {
-      const [a, b] = [region(base, mine), region(base, theirs)].sort((x, y) => x.from - y.from || x.to - y.to);
-      if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs;
+      const m = region(base, mine), t = region(base, theirs);
+      if (!t.ins && t.from === t.to) return mine;   // nothing new landed: the echo of this window's own save
+      if (!m.ins && m.from === m.to) return theirs;
+      if (m.from === m.to && t.from === t.to && m.from === t.from) return base.slice(0, m.from) + t.ins + m.ins + base.slice(m.from); // both inserted at one point: what landed, then what is being typed
+      const [a, b] = [m, t].sort((x, y) => x.from - y.from || x.to - y.to);
+      if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs; // the same span changed twice: the graph's
       return base.slice(0, a.from) + a.ins + base.slice(a.to, b.from) + b.ins + base.slice(b.to);
     };
 

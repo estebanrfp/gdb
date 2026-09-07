@@ -339,8 +339,11 @@
     //    other may interleave; a sheet of records tolerates that.
     //
     // 4. Cells are last-write-wins on the hybrid logical clock, one node
-    //    each; an emptied cell is removed. Sorting by a column is a batch of
-    //    puts that re-keys the rows — ids, and therefore cells, untouched.
+    //    each; an emptied cell is removed. Two writes that cross on one cell
+    //    are the engine's business: the loser re-applies its own region of
+    //    the text over the winner, and the same place goes to the winner.
+    //    Sorting by a column is a batch of puts that re-keys the rows — ids,
+    //    and therefore cells, untouched.
     //
     // 5. Presence is ephemeral: which cell each peer stands on rides a
     //    GenosRTC channel and dies with the session.

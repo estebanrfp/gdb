@@ -1380,18 +1380,44 @@
         }
 
         /**
-         * A field defends itself only while someone is typing in it RIGHT NOW.
-         * `document.activeElement` alone is not that test: a window that lost
-         * the system focus keeps naming its last field, and the document would
-         * stay frozen there until it was clicked again. Anything else adopts
-         * the incoming text and keeps the caret where it was.
+         * A field is being typed in RIGHT NOW only while it has the focus AND the
+         * window has the system focus: a window that lost it keeps naming its
+         * last field, and the document would stay frozen there until clicked
+         * again. Such a field merges what lands; anything else adopts the
+         * incoming text and keeps the caret where it was.
          */
+        const known = new WeakMap() // what the graph last held for a field: the base of the one-region merge the engine makes
+        const region = (base, text) => {
+            let from = 0; while (from < base.length && from < text.length && base[from] === text[from]) from++
+            let tail = 0; while (tail < base.length - from && tail < text.length - from && base[base.length - 1 - tail] === text[text.length - 1 - tail]) tail++
+            return { from, to: base.length - tail, ins: text.slice(from, text.length - tail) }
+        }
+        const mergeText = (base, mine, theirs) => {
+            const m = region(base, mine), t = region(base, theirs)
+            if (!t.ins && t.from === t.to) return mine // nothing new landed: the echo of this window's own save
+            if (!m.ins && m.from === m.to) return theirs
+            if (m.from === m.to && t.from === t.to && m.from === t.from) return base.slice(0, m.from) + t.ins + m.ins + base.slice(m.from) // both inserted at one point: what landed, then what is being typed
+            const [a, b] = [m, t].sort((x, y) => x.from - y.from || x.to - y.to)
+            if (a.to > b.from || (a.from === b.from && a.to === b.to)) return theirs // the same span changed twice: the graph's
+            return base.slice(0, a.from) + a.ins + base.slice(a.to, b.from) + b.ins + base.slice(b.to)
+        }
         const paintField = (field, text) => {
-            if (field.value === text) return
-            if (field === document.activeElement && document.hasFocus()) return
-            const { selectionStart: from, selectionEnd: to } = field
-            field.value = text
-            field.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length))
+            if (field.value !== text) {
+                if (field === document.activeElement && document.hasFocus()) {
+                    // The field being typed in RIGHT NOW takes the value merged under the caret:
+                    // the keystrokes not yet saved stay, what landed before them shifts the caret,
+                    // and the next save carries both — the engine's rescue is never undone.
+                    const caret = field.selectionStart, base = known.get(field) ?? field.value, r = region(base, text)
+                    field.value = mergeText(base, field.value, text)
+                    const at = caret + (r.from <= caret ? r.ins.length - (r.to - r.from) : 0)
+                    field.setSelectionRange(at, at)
+                } else {
+                    const { selectionStart: from, selectionEnd: to } = field
+                    field.value = text
+                    field.setSelectionRange(Math.min(from, text.length), Math.min(to, text.length))
+                }
+            }
+            known.set(field, text)
         }
 
         const renderEditor = (node) => {
@@ -1527,6 +1553,7 @@
         const saveDocument = async () => {
             if (!currentDocId) return
             const changes = { title: el.title.value, content: el.content.value, modified: Date.now() }
+            known.set(el.title, el.title.value); known.set(el.content, el.content.value) // what this save writes: the base its echo is judged against
             try {
                 if (currentPermission === "delete") {
                     // `acls.set` gates its local guard on 'write' alone, so a 'delete'
