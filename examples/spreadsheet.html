@@ -9,6 +9,8 @@
     /* Minimal profile: only the tokens this page paints, with the design
        guide's exact values. Dark, fixed — a sheet is a product surface. */
     :root {
+      --ok: #34c77b;
+      --danger: #ef5350;
       --bg-primary: #0d0f12;
       --bg-head: #14171c;
       --text-primary: #e8eaed;
@@ -226,6 +228,17 @@
     .a-label.here { fill: var(--text-primary); }
     .a-label.tie { fill: var(--danger); }
     .budget { margin: var(--space-3) 0 0; min-height: 3em; font: 12px/1.5 var(--mono); color: var(--text-secondary); white-space: pre-line; }
+
+    /* The graph, write by write: one line per node as it lands, newest first. */
+    .writes-head { margin-top: var(--space-5); }
+    .writes { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 0; list-style: none; font: 12px/1.6 var(--mono); color: var(--text-secondary); }
+    .writes li { display: flex; gap: var(--space-2); align-items: baseline; white-space: nowrap; }
+    .writes .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px); }
+    .writes .node { color: var(--text-primary); }
+    .writes .text { color: var(--ok); }
+    .writes .gone { color: var(--danger); }
+    .writes .at { color: var(--text-tertiary); }
+    .writes-empty { margin: 0; font: 12px/1.6 var(--mono); color: var(--text-tertiary); }
     .sheet tr.hovered td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
     .sheet th.hovered { color: var(--text-primary); }
 
@@ -301,6 +314,9 @@
     <svg id="cols-axis" class="cols-axis" aria-hidden="true"></svg>
     <svg id="axis" class="axis" aria-hidden="true"></svg>
     <p id="budget" class="budget"></p>
+    <h2 class="writes-head">The graph, write by write</h2>
+    <ol id="writes" class="writes"></ol>
+    <p id="writes-empty" class="writes-empty">No write yet. A cell is a node named after its row and its column; a row or a column is a node with a key.</p>
   </section>
   </div>
   <span class="presence" id="presence">0 peers</span>
@@ -487,7 +503,7 @@
       const id = td.dataset.id, text = td.firstChild.value;
       if (text === (pending.get(id) ?? valueOf(id))) return;
       pending.set(id, text);
-      if (text) await db.put({ type: 'cell', row: td.dataset.row, col: td.dataset.col, text }, id);
+      if (text) await db.put({ type: 'cell', row: td.dataset.row, col: td.dataset.col, text, by: db.room.selfId }, id); // `by`: the panel names the writer
       else await db.remove(id);
     }
 
@@ -769,9 +785,41 @@
       setDocWidth(bench.firstElementChild.getBoundingClientRect().width + step);
     });
 
+    // ── The graph, write by write ────────────────────────────────────────
+    // Every node as it lands, newest first, with the peer that wrote it and
+    // the clock stamp the engine gave it. What the list makes visible: a cell
+    // is one node named after its row and its column, so a row moves with
+    // its cells and no cell is rewritten; a sort lands as row writes and not
+    // one cell write; two peers on one cell land as two stamps on one name,
+    // the later one the winner — and, when their writes crossed, a third
+    // write by the loser with both contributions, the engine's rescue.
+    const writes = [];
+    const writesEl = document.getElementById('writes'), writesEmpty = document.getElementById('writes-empty');
+    const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const cellName = (v) => {
+      const i = rowAxis().findIndex((e) => e.id === v.row), j = colAxis().findIndex((e) => e.id === v.col);
+      return i >= 0 && j >= 0 ? `${colName(j)}${i + 1}` : `${shortId(v.row)}:${shortId(v.col)}`;
+    };
+    function logWrite(id, value, timestamp, action) {
+      const kind = value?.type ?? (cells.has(id) ? 'cell' : rows.has(id) ? 'row' : cols.has(id) ? 'col' : null);
+      if (!kind) return;
+      const v = value ?? cells.get(id) ?? rows.get(id) ?? cols.get(id);
+      const label = kind === 'cell' ? `${cellName(v)} · ${shortId(v.row)}:${shortId(v.col)}` : `${kind} ${shortId(id)} · key ${keyLabel(v.order)}`;
+      const detail = action === 'removed' || v.gone ? '<span class="gone">gone</span>' : kind === 'cell' ? `<span class="text">${esc(JSON.stringify(v.text.length > 18 ? v.text.slice(0, 17) + '…' : v.text))}</span>` : '';
+      writes.unshift({ by: kind === 'cell' ? v.by : null, label, detail, stamp: timestamp ? `${timestamp.physical % 100000}.${timestamp.logical}` : '', action });
+      if (writes.length > 30) writes.pop();
+      writesEl.replaceChildren(...writes.map((w) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="dot" style="background:${w.by ? colorOf(w.by) : 'var(--border-strong)'}"></span><span class="node">${w.label}</span>${w.detail}<span class="at">${w.stamp}</span><span class="at">${w.action}</span>`;
+        return li;
+      }));
+      writesEmpty.hidden = writes.length > 0;
+    }
+
     // ── The subscription: every node, sorted into its map ────────────────
     const byType = { row: rows, col: cols, cell: cells };
-    await db.map({}, ({ id, value, action }) => {
+    await db.map({}, ({ id, value, timestamp, action }) => {
+      if (action !== 'initial') logWrite(id, value, timestamp, action); // before the maps move: a removal still knows what it was
       if (action === 'removed') { rows.delete(id); cols.delete(id); cells.delete(id); }
       else {
         byType[value.type]?.set(id, value);
