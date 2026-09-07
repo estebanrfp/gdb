@@ -36,7 +36,7 @@ A string merges by the one region each side changed, found by common prefix and 
 - Divergence deeper than one step — the base is no longer what the other side replaced, or a peer reloaded and forgot — resolves by the clock, as before.
 - Three writers at one instant: two rescue each other; the third may still lose.
 - A removal beats an edit, as before.
-- Peers that send no `base` neither rescue nor are rescued.
+- Peers that send no `base` neither rescue nor are rescued. A peer older than 0.34 verifies live ops over every field they carry, so it refuses a 0.34 peer's writes until its next join brings them by delta: update a room's peers together, the Fallback Server included.
 - Nothing unsigned is ever stored: the merge is written and signed by a writer who could write there.
 
 ## What an application must do
