@@ -2,6 +2,8 @@
 
 Welcome to the official technical documentation for GenosDB.
 
+**Start here — 🗺️ [The GenosDB Ecosystem](https://estebanrfp.github.io/gdb/ecosystem.html)**: an interactive map of the whole stack — what runs inside your app, how peers find each other and sync, and the optional infrastructure you can host yourself (GenosSIG, GenosSRV, the native Rust peer).
+
 ## API Reference & Advanced Documentation 
 
   - 📘 [GDB API Reference](genosdb-api-reference.md) (Detailed API documentation)
