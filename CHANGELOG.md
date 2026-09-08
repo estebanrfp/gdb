@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.1] - 2026-09-08
+
+### Fixed
+
+- **The loser's rescue is for your own edit, never for one you only watched.** `graph.upsert` records what a value replaced for every write it applies, an op arriving from another peer included, so a peer that merely received both halves of somebody else's collision satisfied the rescue's condition too: it merged two writes it had not made and published the result signed by itself. On a node with an owner, that write is one every peer refuses — the receiving gate answers ownership before role, so not even a superadmin's is accepted — and it stays in the sender's oplog, re-offered on every delta and served on catch-up, so a newcomer asking that peer for the node was handed the copy nobody accepts and never saw the node at all. The rescue now runs only over a value this peer signed: with a security layer, the node's receipt has to name this identity; without one, nothing changes. What 0.34.0 added is untouched — both writers of a genuine collision still keep their contributions, two devices of one identity still merge on the node they own, and a collaborator with `write` still rescues its own edit. Two lines: the gate answers who this peer signs as, and the rescue asks. Pinned by `lib/tests/concurrency/rescue.spec.js` ("a third peer only watching a collision over someone else's node signs nothing, and the three converge"), red without the fix. Mirrored in the Fallback Server bundle.
+
 ## [0.34.0] - 2026-09-07
 
 ### Added
