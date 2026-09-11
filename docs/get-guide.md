@@ -80,14 +80,15 @@ setTimeout(() => {
 
 ## **Error Handling**
 - If the `id` is not a valid string, the method logs an error and returns `{ result: null }`.
-- If no node is found with the provided `id`, the method logs an error and returns `{ result: null }`.
+- If no node is found with the provided `id`, `result` is `null`. With a `callback`, the subscription stays: the callback receives `null` now and the node when it arrives.
 
 ---
 
 ## **Key Notes**
 1. **Real-Time Updates**:  
    - Real-time updates are only enabled if a `callback` is provided.  
-   - Ensure you call `unsubscribe` when updates are no longer needed to avoid memory leaks.
+   - Ensure you call `unsubscribe` when updates are no longer needed to avoid memory leaks.  
+   - When the node is removed the callback receives `null` once and the subscription ends.
 
 2. **Asynchronous Nature**:  
    - The method is asynchronous (`async`), so always use `await` or handle it with `.then()`.

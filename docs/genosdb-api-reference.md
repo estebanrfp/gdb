@@ -183,7 +183,7 @@ Retrieves a node by its ID. If a `callback` is provided, it enters reactive mode
 
 - **Parameters**:
   - `id` `{string}`
-  - `callback` `{Function}` _(optional)_ – The callback function, which receives the full node object (`{ id, value, edges, timestamp }`) or `null` if the node is deleted.
+  - `callback` `{Function}` _(optional)_ – The callback function, which receives the full node object (`{ id, value, edges, timestamp }`) or `null` if the node is deleted — or not held yet: the subscription waits for it and reports it when it arrives.
 - **Returns**: `{Promise<Object>}` – A promise resolving to an object with:
   - `result`: The initial node state.
   - `unsubscribe`: A function to stop listening for updates (if in reactive mode).

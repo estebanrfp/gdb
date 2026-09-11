@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-09-11
+
+### Fixed
+
+- **The sign-in sweep re-signs this identity's own nodes only.** Since 0.32.0 a superadmin's sign-in re-signed every node without a receipt it held — other identities' owned nodes included, which every peer refuses because ownership is answered before role, and ownerless data written before receipts existed. Each such re-sign left a receipt on the local copy naming the superadmin as the author of a node it never wrote, and that false receipt hid the node from its owner's own repair on the same device: the owner signed in later and the node still did not travel. The superadmin branch is gone — the sweep asks exactly what the gate accepts, its own nodes — and state written before receipts existed does not travel and is reset, not repaired ([MIGRATION.md](MIGRATION.md)). Pinned by the fourth test of `lib/tests/acl-sync/provenance.spec.js`: a superadmin signs in on a page holding another identity's node and ownerless data without receipts, then the owner does — no peer is offered a superadmin's write, the ownerless data stays where it is, the owner's node travels; red before. One line fewer. Mirrored in the native port (`Room::resign_own_nodes`); the Fallback Server never swept.
+- **`db.get(id, callback)` waits for a node it does not hold yet.** Subscribing to an id before the node arrived registered no listener at all: the callback got `null` once and the subscription was dead, and `db.sm.get` inherited it — the reason a reader who subscribed to an encrypted record before it arrived never saw the grant that opened it. The listener is now registered whether or not the node is held: the callback receives `null` now, the node when it arrives, its later states, and `null` once when it is removed, after which the subscription ends as before. Five lines fewer. Pinned by `lib/tests/reads/get.spec.js` (a plain node subscribed to before it exists; an encrypted record subscribed to before it exists, opened by a later grant), red before. The native port's `get_watch` still answers `None` for an absent id — parity pending (spec 011).
+- **A local-only database keeps no send queue.** Without `rtc` every write still queued for the live send, which failed against a transport that does not exist and retried every second for the life of the page, the queue growing with every write. The send now does nothing when there is nowhere to send to; the write applies and persists as before. Pinned by `lib/tests/local-only/local.spec.js`, red before.
+
 ## [0.34.2] - 2026-09-11
 
 ### Fixed
