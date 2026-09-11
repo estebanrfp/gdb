@@ -8,6 +8,7 @@ Two peers write the same node at the same instant, each over the same value. The
 - An op says what it wrote over: `base`, the stamp of the value it replaced. It travels in the op, outside the signature.
 - An op arrives whose `base` is what the local value replaced: both wrote over the same value. The store keeps the winner, as always. If the local value lost, this peer merges the base, its own value and the winner, and writes the merge with `put` — signed by it, based on the winner. Every peer applies that write by the clock, as any other.
 - If the local value won, nothing happens here: the other peer is the loser, and rescues its own edit.
+- Only over a value this peer wrote itself, known at the write: a peer that merely received both halves of somebody else's collision has nothing of its own to re-apply, and writes nothing.
 
 ## How two values merge
 
@@ -43,4 +44,4 @@ A string merges by the one region each side changed, found by common prefix and 
 
 Nothing, unless it holds its own copy of a value while a person edits it. An editor that keeps a line in a text field must paint an incoming value over what is being typed without losing the keystrokes not yet written — otherwise its next write, based on the winner, undoes the rescue. The [block editor](../examples/block-editor.html) shows how.
 
-Pinned by `lib/tests/concurrency/rescue.spec.js`: two peers write at the same instant from one base and both edits end on both peers; an undo made after seeing the other's edit stays undone; the fields of one object from two writers merge; two devices of one identity merge different fields of the node they own.
+Pinned by `lib/tests/concurrency/rescue.spec.js`: two peers write at the same instant from one base and both edits end on both peers; an undo made after seeing the other's edit stays undone; the fields of one object from two writers merge; two devices of one identity merge different fields of the node they own; a third peer that only watches a collision over someone else's node signs nothing and the three converge; the loser keeps its edit when the winner's op lands before its own receipt, on a node someone else wrote last.
