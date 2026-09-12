@@ -307,7 +307,7 @@ Encrypts a **value** instead of a whole record. The key derives from the active 
 
 - **What a verdict proves**: this identity signed this value at about that time. **What it does not prove**: that it was sent to you, that it was sent once (a peer can repeat an envelope inside the window — keep the window short, or put what makes the message unique into `value`), or that its author may do anything — authorization stays the graph's. Never branch a permission on `verify`: look at the node's owner and the signer's role in the graph instead.
 - **Never an operation.** An envelope's keys (`kind`, `from`, `at`) are not an operation's (`type`, `timestamp`, `originUser`): a signed graph operation never verifies as an envelope, and an envelope never applies as an operation.
-- **Cost**: one signature per call (~1 ms) and ~70 bytes. Sign the announcement, not the traffic: one signed "here I am" binds a connection to an identity, and everything else that connection sends inherits the name.
+- **Cost**: one signature per call (~1 ms) and about 240 bytes of envelope around the value (`from`, `at`, `kind` and a 65-byte signature as hex). Sign the announcement, not the traffic: one signed "here I am" binds a connection to an identity, and everything else that connection sends inherits the name.
 
 #### Example: presence that names who proved it
 
