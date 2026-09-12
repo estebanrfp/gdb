@@ -87,7 +87,7 @@ This is a user whose Ethereum address is hard-coded into the node's configuratio
 #### What They CAN Do:
 
 *   **Virtually anything.** Their `superadmin` role grants them permission for all defined actions, including the most critical one:
-    *   **Assigning roles to other users (`assignRole`).** This is the action that promotes `guest` users and builds the permission hierarchy of the network.
+    *   **Assigning roles to other users (`assignRole`).** This is the action that promotes `guest` users and builds the permission hierarchy of the network. Each assignment is a signed decision ordered by its own clock: the newest is the role on every peer and every device, and an older one — the promotion a demotion superseded, served by a peer that missed the demotion — never rolls a node back.
 
 #### Everything They CANNOT Do:
 

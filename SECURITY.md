@@ -28,7 +28,7 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | guarantee | status |
 |---|---|
 | Every operation is signed by its author and verified by every peer — live, delta and full state alike. What is not signed does not travel. | ✓ |
-| A new identity is a write-blocked `guest` until a superadmin signs a promotion. Only a superadmin sets a role, on every path. | ✓ |
+| A new identity is a write-blocked `guest` until a superadmin signs a promotion. Only a superadmin sets a role, on every path, and its newest signed decision is the role: an older one never rolls a node back, on any path or device. | ✓ |
 | A promotion reaches a peer that was away through any relay, receipt intact. | ✓ |
 | Node ACLs hold against a modified peer, on live operations and on state reconciliation. | ✓ |
 | Read access to encrypted records is cryptographic: `grant` wraps a key, `revoke` rotates it. | ✓ |

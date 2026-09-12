@@ -89,6 +89,15 @@ declare module "genosdb" {
     unsubscribe?: () => void
   }
 
+  /** What `db.sm.sign` returns and `db.sm.verify` reads: the signature covers `kind`, `from`, `at` and `value`. */
+  export interface SignedValue<V = any> {
+    kind: "app"
+    from: string
+    at: number
+    value: V
+    signature: string
+  }
+
   export interface GetResult<V = any> {
     result: NodeObject<V> | null
     /** Present when a callback was provided (reactive mode). */
@@ -232,6 +241,19 @@ declare module "genosdb" {
     abbrAddr(address: string): string
     encryptDataForCurrentUser(data: any): Promise<any>
     decryptDataForCurrentUser(encrypted: any): Promise<any>
+    /**
+     * Wrap a value in an envelope this identity signs — who, when, what — for the
+     * ephemeral channel. The graph is for facts; a signed envelope says who is
+     * saying something now: it labels, it never decides nor persists. The value
+     * travels in clear. Throws without a session.
+     */
+    sign(value: any): Promise<SignedValue>
+    /**
+     * Who signed an envelope: its `from` address when the signature holds and `at`
+     * lies within `maxAge` ms of now (default 60 000); otherwise null. Authorship
+     * in time — never authorization, which stays the graph's.
+     */
+    verify(envelope: SignedValue, maxAge?: number): string | null
     /** Node-level access control lists. */
     acls: ACLs
     [member: string]: any

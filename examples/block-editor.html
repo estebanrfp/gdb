@@ -406,12 +406,20 @@
     };
 
     // One debounced save per paragraph, so typing costs one put per pause.
+    // Before writing, the save takes what the graph holds NOW: a remote edit
+    // that landed on the graph reaches this paragraph a frame later, and a
+    // save in between would write over it as a plain overwrite — no
+    // collision for the engine to rescue, the other writer's letters gone.
+    // Merged first, the save carries both, exactly as the engine would.
     const savers = new Map();
     function scheduleSave(id, li) {
       clearTimeout(savers.get(id));
-      savers.set(id, setTimeout(() => {
-        savers.delete(id);
+      savers.set(id, setTimeout(async () => {
         const ta = li.querySelector('textarea');
+        const { result } = await db.get(id);
+        if (!savers.has(id)) return; // a blur flushed this save meanwhile
+        savers.delete(id);
+        if (result && result.value.text !== known.get(id)) updateBlock(id, result.value);
         known.set(id, ta.value);
         db.put({ text: ta.value, order: orderOf(li) }, id);
       }, 250));

@@ -70,7 +70,7 @@ The SM relies on a combination of Ethereum-based cryptographic identities, the W
 
 **Security in state reconciliation:**
 
-Catch-up (`deltaSync` / `fullStateSync`) is judged exactly like live traffic. Every node, tombstone and edge travels as the operation its author signed and is applied only if that author may make it — RBAC for plain data, owner or collaborator for ACL nodes, a superadmin's receipt for roles. A relay needs no authority of its own: the receipt travels with the node, so a Fallback Server or any peer can serve state it could not have written. `superAdmins` stays local configuration on each peer, never data.
+Catch-up (`deltaSync` / `fullStateSync`) is judged exactly like live traffic. Every node, tombstone and edge travels as the operation its author signed and is applied only if that author may make it — RBAC for plain data, owner or collaborator for ACL nodes, a superadmin's receipt for roles. A relay needs no authority of its own: a node travels as the operations its authors signed — a role node its subject rewrote as the superadmin's decision it proves, then the rewrite — so a Fallback Server or any peer can serve state it could not have written, and the constitution's newest decision is the role wherever the node lands. `superAdmins` stays local configuration on each peer, never data.
 
 **Conclusion:**
 
