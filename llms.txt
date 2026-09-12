@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.35.0 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.36.0 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -31,7 +31,7 @@ Install: `npm i genosdb` · Current version: 0.35.0 · Runtime dependencies: non
 - Options for `gdb(name, options)`: `rtc` (`true` or `{ relayUrls, turnConfig, cells }`), `sm`, `password`, `debug`, `saveDelay`, `oplogSize`.
 - With `rtc` enabled, `db.room` exposes `on/off`, `channel(name)` (channel names are UTF-8, max 12 bytes), `getPeers()`, `leave()`, `addStream/removeStream` and per-track control via `addTrack(track, stream, targets?, meta?)`, `removeTrack(track, targets?)`, `replaceTrack(oldTrack, newTrack, targets?, meta?)`. Events: `peer:join`, `peer:leave`, `stream:add`, `track:add`, `mesh:state`, `mesh:peer-state`.
 - `rtc: { cells: true }` enables Cellular Mesh, which partitions connections so a room scales beyond the point where full-mesh WebRTC collapses.
-- With `sm` configured, `db.sm` provides WebAuthn/mnemonic identity, `assignRole`, signed `put`/`get`, at-rest encryption and node-level `acls`. Roles are declared as `customRoles: { role: { can: [...], inherits: [...] } }` — note `customRoles`, not `roles`. Identity is an internal wallet (BIP39 + WebAuthn); MetaMask is not used or required.
+- With `sm` configured, `db.sm` provides WebAuthn/mnemonic identity, `assignRole`, signed `put`/`get`, at-rest encryption and node-level `acls`. `db.sm.sign(value)` / `db.sm.verify(envelope, maxAge?)` sign a value for the ephemeral channel: the graph is for facts, a signed envelope says who is saying something now — it labels (a named caret, who is in the room), it never decides nor persists; `verify` returns the signer's address or null, never a permission. Roles are declared as `customRoles: { role: { can: [...], inherits: [...] } }` — note `customRoles`, not `roles`. Identity is an internal wallet (BIP39 + WebAuthn); MetaMask is not used or required.
 - TypeScript definitions ship with the package and describe this exact surface.
 
 ## Documentation

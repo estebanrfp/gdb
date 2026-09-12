@@ -39,6 +39,7 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | An id that begins with its owner's address (`0x…:`) is created and written only by that owner and its collaborators, on every peer — the engine names owned nodes that way when it generates the id. Under any other id, a node the receiver has never seen belongs to whoever creates it first. | ✓ |
 | Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused; a removal rewrites no other node's set. | ✓ |
 | A clock more than two hours ahead of a receiver's, in a signed operation or in a catch-up envelope, applies nothing and moves no clock; two honest writers converge on the later write. | ✓ |
+| A value an identity signs for the ephemeral channel (`db.sm.sign`) verifies on any peer as its author within a window (`db.sm.verify`); a changed value, a forged author or a stale envelope verifies to nothing, and no signed graph operation passes for one. Authorship in time — authorization stays the graph's. | ✓ |
 
 ## Supported Versions
 

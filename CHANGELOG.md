@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-09-12
+
+### Added
+
+- **`db.sm.sign(value)` / `db.sm.verify(envelope, maxAge?)` — a value an identity signs for the ephemeral channel.** The graph is for facts: every write is signed by its author and verified by every peer under its node's rules. A message on a room channel proved nothing until now — it is transport — so a caret or a presence dot could carry a colour but never a name GenosDB would stand behind. `sign` wraps a value in an envelope this identity signs, `{ kind: "app", from, at, value, signature }` — who, when, what — and `verify`, on any peer, answers who signed it: the `from` address when the signature holds over the envelope as received and `at` lies within `maxAge` ms of the verifier's clock (60 000 by default), `null` otherwise. It labels; it never decides nor persists: a verdict is authorship in time, never authorization, and the value travels in clear. An envelope's keys (`kind`, `from`, `at`) are never an operation's (`type`, `timestamp`, `originUser`), so a signed operation never verifies as an envelope and an envelope never applies as an operation. Sign the announcement, not the traffic — one signed "here I am" binds a connection to an identity. Seven lines. Pinned by `lib/tests/signature/signed-value.spec.js`: verifies on another peer; a changed value, a forged author, a stale envelope or a signed operation in disguise verify to `null`. Documented with its rule of choice, an example and an anti-example in `sm-api-reference.md`; mirrored in the native port (`sm_sign` / `sm_verify`, C ABI). The one exception to the frozen API, decided for this and nothing more.
+
 ## [0.35.0] - 2026-09-11
 
 ### Fixed

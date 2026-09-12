@@ -297,6 +297,44 @@ Encrypts a **value** instead of a whole record. The key derives from the active 
 
 > **Why not `db.sm.put`?** That encrypts the whole record, hiding fields you may want public and forcing reads through `db.sm.map`, which is not reactive. An encrypted field leaves the node ordinary, so a reactive `db.map()` keeps carrying it. Reach for these whenever part of a record must stay public, or the record must stay live. Working demo of the full pattern: **[Encrypted Notes — What Peers Actually Hold](https://estebanrfp.github.io/gdb/examples/sm-encrypted-notes.html)**.
 
+### `db.sm.sign(value)` / `db.sm.verify(envelope, maxAge?)`
+
+**The graph is for facts; a signed envelope says who is saying something right now — it labels, it never decides nor persists; the plain channel is for the anonymous.** Use this pair for awareness with identity: a caret with a name, "who is in this room", "Alice is typing". Anything a peer must act on or keep — a vote, a grant, a command, a message worth history — is a graph write, signed and verified by every peer with the rules of its node.
+
+- **Signatures**: `(value: any): Promise<SignedValue>` · `(envelope: SignedValue, maxAge = 60000): string | null`
+
+`sign` wraps a value in an **envelope this identity signs**: `{ kind: "app", from, at, value, signature }` — who, when, what, and a signature over exactly those four fields. The value travels **in clear**: signing hides nothing. `verify`, on any peer, with or without a session of its own, answers **who signed it**: the `from` address when the signature holds over the envelope as received and `at` lies within `maxAge` milliseconds of the verifier's clock (either way), `null` otherwise.
+
+- **What a verdict proves**: this identity signed this value at about that time. **What it does not prove**: that it was sent to you, that it was sent once (a peer can repeat an envelope inside the window — keep the window short, or put what makes the message unique into `value`), or that its author may do anything — authorization stays the graph's. Never branch a permission on `verify`: look at the node's owner and the signer's role in the graph instead.
+- **Never an operation.** An envelope's keys (`kind`, `from`, `at`) are not an operation's (`type`, `timestamp`, `originUser`): a signed graph operation never verifies as an envelope, and an envelope never applies as an operation.
+- **Cost**: one signature per call (~1 ms) and ~70 bytes. Sign the announcement, not the traffic: one signed "here I am" binds a connection to an identity, and everything else that connection sends inherits the name.
+
+#### Example: presence that names who proved it
+
+```javascript
+// Joining: say who you are, once, signed — and again to each peer that arrives.
+const hello = await db.sm.sign({ room: "lobby" })
+wire.send(hello)
+db.room.on("peer:join", (peerId) => wire.send(hello, peerId))
+
+// Receiving: the envelope names its author, or nobody. Bind the connection, then
+// everything that connection sends — carets, keystrokes — wears that name.
+const who = new Map() // peerId → address
+wire.on("message", (msg, peerId) => {
+  if (msg?.kind === "app") { const from = db.sm.verify(msg); if (from) who.set(peerId, from); return }
+  paintCaret(peerId, who.get(peerId) ?? null, msg) // null: a window that proved nothing
+})
+```
+
+#### Anti-example: a signed message is not a permission
+
+```javascript
+// WRONG — the signature says who is asking, not whether they may.
+wire.on("message", (msg) => { if (db.sm.verify(msg) === OWNER) deleteEverything() })
+// RIGHT — write the fact to the graph; every peer judges it by the node's rules.
+await db.remove(nodeId) // refused on every peer unless this identity may remove it
+```
+
 #### Example: A public title with a private body
 
 ```javascript
