@@ -58,6 +58,7 @@ const { result } = await db.get('node-id', (node) => {
 
 - The `callback` will be executed immediately with the initial node value.
 - It will also be called whenever the node's value changes in the database.
+- It fires on a change that moves the node's clock forward. A value that lands under an older clock — a role node taking the constitution's decision over this device's newer bootstrap — is in the graph but does not fire it: read it with `db.get(id)`, or watch it with `db.map`, which reports a clock moved in either direction.
 
 ---
 

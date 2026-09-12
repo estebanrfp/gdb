@@ -103,7 +103,7 @@ The engine boots prudently (it waits for the first sync exchanges to converge be
 
 ### Key custody
 
-The signing key lives on your server — treat it accordingly: use a **dedicated governance identity** (not your personal superadmin key), inject it through the environment or a secret manager, and never commit it. If the server is ever compromised, removing its address from your clients' `superAdmins` revokes it entirely.
+The signing key lives on your server — treat it accordingly: use a **dedicated governance identity** (not your personal superadmin key), inject it through the environment or a secret manager, and never commit it. If the server is ever compromised, remove its address from your clients' `superAdmins`: from then on no peer accepts a decision it signs, and the decisions it signed before stop attesting, so they no longer travel to peers that lack them. What a peer already holds keeps its role until a superadmin rewrites it — reassign the roles it granted from a key you trust.
 
 ## Your own signaling
 
