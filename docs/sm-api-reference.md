@@ -326,6 +326,8 @@ wire.on("message", (msg, peerId) => {
 })
 ```
 
+Worked, in the catalogue: `examples/collab.html` labels every remote caret with the address its window proved in one signed hello; dCode names its presence dots and carets the same way.
+
 #### Anti-example: a signed message is not a permission
 
 ```javascript

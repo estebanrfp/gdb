@@ -897,6 +897,20 @@
       pointer-events: none;
       z-index: 2;
     }
+    /* The name over a caret: the address its window proved when it walked in. */
+    .cursor::after {
+      content: attr(data-name);
+      position: absolute;
+      left: 0;
+      bottom: 100%;
+      padding: 0 4px;
+      font: 11px/1.5 var(--mono, ui-monospace, monospace);
+      color: var(--bg-primary);
+      background-color: inherit;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .cursor[data-name=""]::after { content: none; }
 
     .selection-rect {
       position: absolute;
@@ -1888,6 +1902,7 @@
       if (isActive) {
         myAddress = activeAddress;
         watchMyRole();
+        sayHello(); // the room learns who this window is, once
       } else {
         unsubRole?.(); unsubRole = null;
         myAddress = null; myRole = null;
@@ -1987,6 +2002,7 @@
     room.on('peer:join', (peerId) => {
       peerCount++;
       updateStatus();
+      sayHello(peerId); // one arrival, one signed hello, to the one who arrived
       // Editors send the current doc to the new peer for an instant view; other
       // peers receive it anyway through the signed graph sync moments later.
       const current = getEditorHTML();
@@ -2002,6 +2018,7 @@
         cursorMap[peerId].rects?.forEach(el => el.remove());
         delete cursorMap[peerId];
       }
+      delete peerNames[peerId];
       if (peerVideos[peerId]) {
         // The tile, not just the <video>: removing the picture alone would
         // leave its label floating in the strip.
@@ -2237,8 +2254,14 @@
     // Clear formatting (keeps links unless selection includes them)
     btnClear.addEventListener('click', () => execCmd('removeFormat'));
 
-    // Cursor + selection tracking
+    // Cursor + selection tracking. The cursor messages are not signed — they
+    // are traffic. The one signed message is the hello a window sends when it
+    // walks in or signs in (db.sm.sign): every peer recovers who sent it
+    // (db.sm.verify) and that address labels every cursor from that window.
+    // It labels, it never decides: what a window may write is the graph's.
     const peerStyles = {};
+    const peerNames = {}; // peerId → the address that signed its hello
+    const sayHello = async (to) => { if (db.sm.isSecurityActive()) cursorChannel.send(await db.sm.sign({ hello: true }), to); };
     const ensurePeerStyle = (peerId) => {
       if (peerStyles[peerId]) return peerStyles[peerId];
       const color = `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
@@ -2278,12 +2301,18 @@
     editor.addEventListener('input', sendCursorPos);
 
     cursorChannel.on('message', (data, peerId) => {
+      if (data.kind === 'app') { // a signed hello: the window has an owner — or claims one and does not verify, and then names nobody
+        const who = db.sm.verify(data);
+        if (who) { peerNames[peerId] = shortAddr(who); if (cursorMap[peerId]) cursorMap[peerId].cursor.dataset.name = peerNames[peerId]; }
+        return;
+      }
       const { color } = ensurePeerStyle(peerId);
       // Cursor element
       if (!cursorMap[peerId]) {
         const cursor = document.createElement('div');
         cursor.className = 'cursor';
         cursor.style.backgroundColor = color;
+        cursor.dataset.name = peerNames[peerId] ?? '';
         editor.appendChild(cursor);
         cursorMap[peerId] = { cursor, rects: [] };
       }
