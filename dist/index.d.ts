@@ -128,6 +128,9 @@ declare module "genosdb" {
      */
     "peer:join": (peerId: string, type?: string) => void
     "peer:leave": (peerId: string) => void
+    /** Radio presence: a peer announced itself on the relay (seen) or sent its bye (lost). Not a connection: use peer:join / peer:leave for that. */
+    "peer:seen": (peerId: string, type?: string) => void
+    "peer:lost": (peerId: string, type?: string) => void
     "stream:add": (stream: MediaStream, peerId: string, meta?: any) => void
     "track:add": (track: MediaStreamTrack, stream: MediaStream, peerId: string, meta?: any) => void
     /** Cellular Mesh: local overlay state (cellId, isBridge, bridges…). */
@@ -144,6 +147,8 @@ declare module "genosdb" {
     channel<T = any>(name: string): RoomChannel<T>
     /** Connected peer ids mapped to their RTC connections. */
     getPeers(): Record<string, unknown>
+    /** Round-trip time to a connected peer, in ms. */
+    ping(peerId: string): Promise<number>
     /** Disconnect from the room and all peers. */
     leave(): void
     addStream(stream: MediaStream, targets?: string | string[], meta?: any): void
@@ -191,6 +196,8 @@ declare module "genosdb" {
     /** Owner-only. One level per address; granting again replaces the previous level. */
     grant(nodeId: string, ethAddress: string, permission: "read" | "write" | "delete"): Promise<any>
     revoke(nodeId: string, ethAddress: string): Promise<any>
+    /** The owner and the collaborators of an ACL node; `null` when the node is missing or has no owner. */
+    getPermissions(nodeId: string): Promise<{ owner: string; collaborators: Record<string, "read" | "write" | "delete"> } | null>
     delete(nodeId: string): Promise<any>
   }
 
@@ -262,10 +269,8 @@ declare module "genosdb" {
   // ── Options ────────────────────────────────────────────────────────
 
   export interface CellsOptions {
+    /** Peers per cell; `"auto"` and anything below 2 mean the default of 10. */
     cellSize?: "auto" | number
-    bridgesPerEdge?: number
-    maxCellSize?: number
-    targetCells?: number
     debug?: boolean
   }
 
@@ -289,7 +294,7 @@ declare module "genosdb" {
     debug?: boolean
     /** Debounce (ms) for persisting the graph. Defaults to `200`. */
     saveDelay?: number
-    /** Max operations kept for delta P2P sync. Defaults to `20`. */
+    /** Max operations kept for delta P2P sync. Defaults to `200`. */
     oplogSize?: number
   }
 
