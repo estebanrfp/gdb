@@ -13,7 +13,7 @@ GenosDB is **zero-trust and serverless**: every operation is cryptographically s
 - **Governance** — a superadmin declares advancement rules up front; the engine resolves each user's role by **last-match-wins** (promotion and automatic demotion), signing every change for peers to verify — from a browser session, or 24/7 via the always-on [Fallback Server](docs/genosdb-fallback-server.md).
 - **Confidentiality** — every peer in a room replicates the full graph; what protects a record is encryption (`db.sm.put`), not who receives it. Selective replication cannot be a control in a serverless network: a modified peer can always re-forward what it already holds.
 
-Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md). The normative list — every invariant the engine keeps, with the test that pins it, the residuals accepted by design and the rule an audit follows — is [docs/invariants.md](docs/invariants.md); the design questions already closed, with the alternatives rejected, are [docs/decisions.md](docs/decisions.md).
+Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
 
 ## Threat model
 
@@ -23,7 +23,7 @@ What the model leaves open inside those bounds, by design: a signature is valid 
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.35.2; the row-by-row list is [docs/invariants.md](docs/invariants.md).
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.35.2.
 
 | guarantee | status |
 |---|---|

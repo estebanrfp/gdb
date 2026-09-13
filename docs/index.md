@@ -9,8 +9,6 @@ Welcome to the official technical documentation for GenosDB.
   - 📘 [GDB API Reference](genosdb-api-reference.md) (Detailed API documentation)
   - 🤝 [Distributed Trust Model](genosdb-distributed-trust-model.md) (P2P trust via cryptographic identity, signed ops, and RBAC enforcement)
   - 🔒 [Zero Trust Security Model](zero-trust-security-model.md) (Understanding GenosDB Zero-Trust Security Model: From Guest to SuperAdmin)
-  - 📐 [Invariants](invariants.md) (The normative list: every guarantee the engine keeps, the test that pins it, the residuals by design, and what counts as a finding)
-  - ⚖️ [Decisions](decisions.md) (The design questions already closed, with the alternatives considered and rejected)
  
   - 🧪 [GenosDB Examples](genosdb-examples.md) (Live demos and community projects)
   - ✨ [GenosDB Features](genosdb-features.md) (Comprehensive feature overview and architecture)
