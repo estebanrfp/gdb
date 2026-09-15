@@ -51,7 +51,7 @@ A full-state sync is initiated under two specific conditions:
     *   A received node is applied only if it is **strictly newer** (by HLC timestamp) than the local copy — or than a local tombstone recording its deletion. Local nodes unknown to the sender are preserved.
     *   The transmitted removals delete any local node they beat, so recent deletions win over stale copies.
     *   Every applied operation is **recorded in the receiver's Oplog**, so its own window keeps serving future delta syncs.
-    *   It advances its `HybridClock` and `globalTimestamp` to the highest timestamp observed, "fast-forwarding" itself so it can immediately participate in future delta syncs from a known-good state.
+    *   It advances its `HybridClock` and `globalTimestamp` to the highest timestamp it applied, "fast-forwarding" itself so it can immediately participate in future delta syncs from a known-good state. The envelope itself is a container: it is never signed and carries no clock — only applied, signed operations move a peer's clock.
 
 3.  **Reciprocity:** If the receiver holds nodes the sender lacks, it replies once with its own full state, so reconciliation converges in both directions; that reply is terminal and is never answered with another full state.
 

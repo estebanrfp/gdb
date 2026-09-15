@@ -187,6 +187,8 @@ declare module "genosdb" {
     customRoles?: Record<string, CustomRole>
     /** Governance rules (`{ if: <query>, then: { assignRole } }`). */
     governanceRules?: any[]
+    /** Silent passkey resume: the tab keeps the authenticator's secret so a reload resumes the session. `false` keeps no secret anywhere and asks the authenticator on every page load. Defaults to `true`. */
+    resume?: boolean
     [option: string]: any
   }
 

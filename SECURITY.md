@@ -13,7 +13,7 @@ GenosDB is **zero-trust and serverless**: every operation is cryptographically s
 - **Governance** — a superadmin declares advancement rules up front; the engine resolves each user's role by **last-match-wins** (promotion and automatic demotion), signing every change for peers to verify — from a browser session, or 24/7 via the always-on [Fallback Server](docs/genosdb-fallback-server.md).
 - **Confidentiality** — every peer in a room replicates the full graph; what protects a record is encryption (`db.sm.put`), not who receives it. Selective replication cannot be a control in a serverless network: a modified peer can always re-forward what it already holds.
 
-Full details: [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
+Full details: [cryptographic specification](CRYPTOGRAPHY.md) · [zero-trust security model](docs/zero-trust-security-model.md) · [SM architecture](docs/sm-architecture.md) · [ACLs](docs/sm-acls-module.md) · [Governance](docs/governance.md).
 
 ## Threat model
 
@@ -23,7 +23,7 @@ What the model leaves open inside those bounds, by design: a signature is valid 
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.35.2.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.36.0.
 
 | guarantee | status |
 |---|---|
@@ -35,11 +35,12 @@ Each guarantee is pinned by a conformance test run against the built engine, in 
 | Governance promotes only with a superadmin's signature, from a browser or 24/7 from the Fallback Server. | ✓ |
 | An expired role is a guest on every peer. | ✓ |
 | The Fallback Server relays proofs, never authority: it verifies incoming operations and refuses roles it cannot verify against its constitution. | ✓ |
-| A passkey protects the private key with a secret only the authenticator yields; nothing on disk decrypts it. | ✓ |
+| A passkey protects the private key with a secret only the authenticator yields, or is refused: nothing the page persists decrypts it, and an application may keep the secret out of the tab altogether (`sm: { resume: false }`). | ✓ |
 | An id that begins with its owner's address (`0x…:`) is created and written only by that owner and its collaborators, on every peer — the engine names owned nodes that way when it generates the id. Under any other id, a node the receiver has never seen belongs to whoever creates it first. | ✓ |
 | Edges travel as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node, and only if it is newer than the one it holds. A forged, stale or unsigned set is refused; a removal rewrites no other node's set. | ✓ |
-| A clock more than two hours ahead of a receiver's, in a signed operation or in a catch-up envelope, applies nothing and moves no clock; two honest writers converge on the later write. | ✓ |
+| A signed operation more than two hours ahead of a receiver's clock applies nothing and moves no clock; a catch-up envelope is a container that is never signed, never verified and carries no clock; two honest writers converge on the later write. | ✓ |
 | A value an identity signs for the ephemeral channel (`db.sm.sign`) verifies on any peer as its author within a window (`db.sm.verify`); a changed value, a forged author or a stale envelope verifies to nothing, and no signed graph operation passes for one. Authorship in time — authorization stays the graph's. | ✓ |
+| Every key derived from a secret is bound to its purpose: record envelopes, the self-only field and the passkey wrap derive with HKDF-SHA-256 and a purpose string, every sealed format is versioned, and an earlier format is refused with its reason, never opened. | ✓ |
 
 ## Supported Versions
 

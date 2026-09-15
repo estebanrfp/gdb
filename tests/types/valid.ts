@@ -10,9 +10,10 @@ const db4 = await gdb("my-db", {
   rtc: {
     relayUrls: ["wss://relay1.example.com"],
     turnConfig: [{ urls: ["turn:server.com:3478"], username: "user", credential: "pass" }],
-    cells: { cellSize: "auto", bridgesPerEdge: 2, maxCellSize: 50, targetCells: 100, debug: false },
+    cells: { cellSize: "auto", debug: false },
   },
   sm: { superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"] },
+  // resume: false — the tab keeps no passkey secret, every load asks the authenticator
 })
 
 // ── CRUD ────────────────────────────────────────────────────────────
@@ -116,3 +117,6 @@ console.log(db2.selfId)
 const db5 = await gdb("typed-geo")
 await db5.map({ query: { location: { $near: { latitude: 40.7589, longitude: -73.9851, radius: 5 } } } })
 await db5.map({ query: { $near: { latitude: 40.7589, longitude: -73.9851, radius: 5 } } })
+
+const strict = await gdb("strict", { sm: { superAdmins: ["0xE5639DfE345F8ab845bEBE63a1C7322F9c6fF5c7"], resume: false } })
+console.log(strict.sm?.isSecurityActive())

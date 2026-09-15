@@ -30,6 +30,7 @@ A lightweight, decentralized graph database designed for modern web applications
 - [How it works](#how-it-works)
 - [Main Features](#main-features)
 - [Project Status](#project-status)
+- [Verification and Audits](#verification-and-audits)
 - [Installation](#installation)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -120,6 +121,15 @@ For deployments that need guaranteed availability on top of that, the optional [
 
 ---
 
+## Verification and Audits
+
+GenosDB is closed source by design; what it does cryptographically is not. [CRYPTOGRAPHY.md](https://github.com/estebanrfp/gdb/blob/main/CRYPTOGRAPHY.md) specifies the protocol end to end — identity, operation signing, verification and authorization, ordering and replay, encrypted records, WebAuthn key protection, signaling and transport, persistence — and states the boundaries of the security model as design decisions with their reasons. Its last section is a set of commands anyone can run against the published npm bundle to confirm that the code matches the document: checking the claims requires no trust in the maintainer.
+
+- **Guarantees and their status** — [SECURITY.md](https://github.com/estebanrfp/gdb/blob/main/SECURITY.md) lists every guarantee, each pinned by a conformance test run in real browsers over real WebRTC, and how to report a vulnerability.
+- **Independent review** — security researchers, auditors and organizations evaluating GenosDB are invited to review the specification against the bundle. Published audit reports will be listed in this section, with date, reviewer and scope. To coordinate a review, see [Business Inquiries & Collaboration](#business-inquiries--collaboration).
+
+---
+
 ## Installation
 
 ### 1. Via NPM
@@ -166,6 +176,7 @@ We’ve created a collection of interactive examples to help you understand how 
 - 🤝 [CONTRIBUTING.md](https://github.com/estebanrfp/gdb/blob/main/CONTRIBUTING.md) (How to contribute examples and guidelines)
 - 🔀 [MIGRATION.md](https://github.com/estebanrfp/gdb/blob/main/MIGRATION.md) (Migrate from "new GDB()" to "await gdb(..)")
 - 🛡️ [SECURITY.md](https://github.com/estebanrfp/gdb/blob/main/SECURITY.md) (Security policy and vulnerability reporting)
+- 🔐 [CRYPTOGRAPHY.md](https://github.com/estebanrfp/gdb/blob/main/CRYPTOGRAPHY.md) (Cryptographic specification: what is signed, verified and encrypted, and how to verify the bundle)
 
 ---
 

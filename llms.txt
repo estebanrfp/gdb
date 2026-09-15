@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.35.2 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.36.0 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -41,6 +41,7 @@ Install: `npm i genosdb` · Current version: 0.35.2 · Runtime dependencies: non
 - [Examples](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-examples.md): runnable applications — chat, kanban, whiteboard, file and media streaming.
 - [Ordered lists](https://github.com/estebanrfp/gdb/blob/main/docs/ordered-lists.md): fractional order keys for shared lists — insert, move, paste — and the engine's deterministic tie order.
 - [Zero-trust security model](https://github.com/estebanrfp/gdb/blob/main/docs/zero-trust-security-model.md): what each role can and cannot do.
+- [Cryptographic specification](https://github.com/estebanrfp/gdb/blob/main/CRYPTOGRAPHY.md): what is signed, verified and encrypted — identity, operation signing, key envelopes, WebAuthn, signaling — and the commands that check the published bundle against it.
 - [GenosRTC architecture](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
 - [Cellular Mesh](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
 - [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
