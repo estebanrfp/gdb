@@ -257,7 +257,7 @@ Role nodes carry `priority: true`; they are routed through the role path of the 
 
 ### 6.4 Replay
 
-Operations are idempotent under HLC: a re-delivered operation compares equal or older to what the receiver holds and is a no-op. There is no per-operation nonce beyond the HLC pair. A removal is a tombstone kept in the operation log; an `upsert` of an absent id is refused unless it is newer than the tombstone. The tombstone lives only as long as the log window (default 50 operations in the browser, 1 000 in GenosSRV), which is a stated limitation (§12).
+Operations are idempotent under HLC: a re-delivered operation compares equal or older to what the receiver holds and is a no-op. There is no per-operation nonce beyond the HLC pair. A removal is a tombstone kept in the operation log; an `upsert` of an absent id is refused unless it is newer than the tombstone. The tombstone lives only as long as the log window (default 200 operations in the browser, 1 000 in GenosSRV), which is a stated limitation (§12).
 
 ### 6.5 Ephemeral channel envelopes
 
@@ -496,7 +496,7 @@ A security model is defined as much by where it stops as by what it enforces. Th
 
 5. **Replay is absorbed by idempotence, not by nonces.** A re-delivered operation compares equal or older under HLC and is a no-op, so no nonce registry is needed. Ephemeral-channel envelopes leave no trace in the graph to compare against and are bounded by a time window instead (60 s by default).
 
-6. **A tombstone lives as long as the operation-log window** (50 operations in the browser, 1 000 in GenosSRV). A bounded log is what keeps delta synchronisation proportional to the window rather than to history. State older than the window can return through a laggard's full state; it is then judged by the same gate as everything else.
+6. **A tombstone lives as long as the operation-log window** (200 operations in the browser, 1 000 in GenosSRV). A bounded log is what keeps delta synchronisation proportional to the window rather than to history. State older than the window can return through a laggard's full state; it is then judged by the same gate as everything else.
 
 **Confidentiality**
 
@@ -598,3 +598,4 @@ A reader who wants to go further can pretty-print any of these files (`npx prett
 | Date | Version covered | Change |
 |---|---|---|
 | 2026-09-15 | 0.36.0 | First public specification. |
+| 2026-09-16 | 0.36.0 | §6.4, §12.6: the browser's default log window is 200 operations, not 50 (`oplogSize`, unchanged since 0.33.4). |
