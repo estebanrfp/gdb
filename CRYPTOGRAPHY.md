@@ -10,7 +10,7 @@
 
 The security of GenosDB does not depend on the algorithm being secret. It depends only on the secrecy of private keys. This document therefore describes the whole protocol — what is signed, how keys are derived, how records are sealed and who can open them — so that anyone can evaluate the design without reading the source.
 
-The source is proprietary. The published bundle is not hidden: it is **minified, not obfuscated and not encrypted**. Every constant named in this document — algorithm identifiers, iteration counts, salts, storage keys, the signing prefix — is present as a plain string literal in the files npm installs. Section 13 lists them with the exact `grep` that finds each one, so the reader can confirm that the bundle does what this document says it does.
+The source is proprietary. The published bundle is not hidden: it is **minified, not obfuscated and not encrypted**. Every constant named in this document — algorithm identifiers, iteration counts, salts, storage keys, the signing prefix — is present as a plain string literal in the files npm installs. Section 13 lists them with the exact `grep` that finds each one, so the reader can confirm that the bundle carries what this document names.
 
 Two things this document does not do: it does not claim the implementation is free of bugs (that is what an external audit is for, and none has been performed yet), and it does not describe internal code structure, only observable protocol.
 
@@ -526,7 +526,7 @@ ls package/dist/            # gdb.min.js  sm.min.js  genosrtc.min.js …
 grep -c '_0x[0-9a-f]'  package/dist/sm.min.js     # 0 → no obfuscator patterns
 ```
 
-Every constant below is a literal string in the bundle. Each command prints `1` or more if the bundle matches this document:
+Every constant below is a literal string in the bundle. Each command prints `1` or more if the bundle carries the constant:
 
 ```bash
 cd package/dist
