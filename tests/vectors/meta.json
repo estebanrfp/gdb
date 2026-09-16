@@ -1,0 +1,47 @@
+{
+  "purpose": "Reference pin for every vector in this directory (spec 012 §2; ROADMAP M0).",
+  "generated_at": "2026-09-16T13:18:15.859Z",
+  "references": {
+    "genosdb": {
+      "path": "../GenosDB",
+      "sha": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
+      "head": "2026-09-16 13:01:39 +0200",
+      "subject": "README, CRYPTOGRAPHY: the greps confirm what the bundle carries — every primitive, parameter and format the document names — not that the code matches the document; three sentences say exactly that",
+      "dirty_files": [
+        "M CRYPTOGRAPHY.md",
+        " M README.md",
+        " M lib/tests/INVARIANTS.md",
+        " M lib/tests/README.md",
+        " M package.json",
+        "?? lib/tests/vectors/",
+        "?? tests/vectors/"
+      ]
+    },
+    "genossrv": {
+      "path": "../GenosSRV",
+      "sha": "ef6b3cbeb18be9480df44fad62138cf47df2431e",
+      "head": "2026-09-15 22:40:37 +0200",
+      "subject": "release: 0.12.0 — mirror of genosdb 0.36.0, catch-up envelopes and the hello are containers",
+      "dirty_files": []
+    }
+  },
+  "bundle": {
+    "dist/index.js": "bac54ee39a7f4af1ec9f108101e3587f07d831243af6b60e1cf130b75a13793e",
+    "dist/gdb.min.js": "19e22138234ce30149ac03db5fd3627bd97389efafcf13f6f0b9cda9e38a0fe3",
+    "dist/sm.min.js": "7b4c593e6b8464e6bb3a8de4826836e9661a6762d078d6306f2e2e6a21383ce4"
+  },
+  "environment": {
+    "runtime": "bun 1.3.10",
+    "platform": "darwin",
+    "icu_locale": "en-US"
+  },
+  "notes": [
+    "Vector files themselves omit timestamps so double-runs are byte-identical (determinism check).",
+    "dirty_files lists uncommitted reference changes present at extraction time; pure-function vectors (hlc, conflict, sm, encoding, query) do not depend on the listed files.",
+    "bundle: SHA-256 of the dist files present at extraction time; the published tarball must hash the same for these vectors to describe it."
+  ],
+  "public": {
+    "generator": "GenosDB-Rust/tools/publish-vectors.mjs",
+    "note": "A projection of the private conformance vectors, produced by one command: never edited by hand."
+  }
+}

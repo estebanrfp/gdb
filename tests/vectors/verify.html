@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GenosDB conformance vectors — the published bundle</title>
+<style>
+  :root { --bg: #0f1115; --fg: #e6e6e6; --muted: #9aa0a6; --ok: #3fb950; --fail: #f85149; --line: #262a31; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  body { margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; max-width: 72rem; margin-inline: auto; }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
+  p { color: var(--muted); margin: 0 0 1rem; }
+  #status { color: var(--fg); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+  td { padding: .35rem .5rem; border-top: 1px solid var(--line); vertical-align: top; }
+  td:first-child { width: 1.5rem; }
+  .ok { color: var(--ok); } .fail { color: var(--fail); }
+  code { font-family: var(--mono); }
+</style>
+</head>
+<body>
+<h1>GenosDB conformance vectors — bundle ⇔ vectors</h1>
+<p>This page loads <code>../../dist/index.js</code>, the published bundle, and drives it through its public API over the vectors in this folder: the bundle must open the key envelopes and the sealed record, derive the self-only key and refuse what the reference refuses, judge the signed values and derive every pinned address from its phrase. <code>verify.mjs</code> proves the same vectors from the specification alone; together they bind the specification to the bundle (CRYPTOGRAPHY.md §13).</p>
+<p id="status">running…</p>
+<table id="rows"></table>
+<script type="module">
+  import { gdb } from "../../dist/index.js"
+
+  const rows = []
+  const table = document.getElementById("rows"), status = document.getElementById("status")
+  const row = (name, ok, detail = "") => {
+    rows.push({ name, ok, detail })
+    const tr = table.insertRow()
+    tr.insertCell().textContent = ok ? "✓" : "✗"
+    tr.cells[0].className = ok ? "ok" : "fail"
+    tr.insertCell().textContent = name + (ok || !detail ? "" : ` — ${detail}`)
+  }
+  const sortKeys = (v) => Array.isArray(v) ? v.map(sortKeys) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v
+  const eq = (a, b) => JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b))
+  const attempt = (p) => p.then((v) => v, (e) => `threw: ${e.message}`)
+
+  try {
+    const [sm, sp, ee, pl] = await Promise.all(["sm.json", "sm-protocol.json", "envelope-encryption.json", "sm-payload.json"].map((f) => fetch(f).then((r) => r.json())))
+    // A local-only database: no transport, the Security Manager on, the vector's owner as the constitution.
+    const db = await gdb(`vectors-${Date.now().toString(36)}`, { rtc: false, sm: { superAdmins: [ee.ownerAddress] } })
+    const login = async (phrase, expected, what) => { await db.sm.loginOrRecoverUserWithMnemonic(phrase); const got = db.sm.getActiveEthAddress(); row(`${what} — phrase derives ${expected} (§3.1)`, got === expected, String(got)); return got === expected }
+
+    // 1. The owner writes the sealed record as the wire carries it and opens it through its own envelope.
+    if (await login(ee.ownerMnemonic, ee.ownerAddress, "owner")) {
+      await db.put({ _gdbWrapperType: "_gdbSecurePayloadV1", _payload: ee.sealed.encrypted, collaborators: { [ee.readerAddress]: "read" }, _meta: { owner: ee.ownerAddress, iv: ee.sealed.iv, keys: { [ee.ownerAddress]: ee.envelopeForOwner, [ee.readerAddress]: ee.envelopeForReader } } }, "SM_ID_PREFIX_vectors")
+      const got = await attempt(db.sm.get("vectors"))
+      row("owner opens the sealed record through its envelope (§7.2, §7.3)", got?.result?.decrypted === true && eq(got.result.value, ee.plaintext), JSON.stringify(got?.result ?? got))
+    }
+    // 2. The reader opens the same record through the envelope wrapped for it.
+    if (await login(ee.readerMnemonic, ee.readerAddress, "reader")) {
+      const got = await attempt(db.sm.get("vectors"))
+      row("reader opens the sealed record through its envelope (§7.3)", got?.result?.decrypted === true && eq(got.result.value, ee.plaintext), JSON.stringify(got?.result ?? got))
+    }
+    // 3. The self-only identity opens every field the reference sealed and refuses what it refused.
+    if (await login(pl.identity.mnemonic, pl.identity.address, "self-only identity")) {
+      for (const c of pl.decryptable) row(`decryptDataForCurrentUser · ${c.label} (§7.5)`, eq(await attempt(db.sm.decryptDataForCurrentUser(c.encrypted_string)), c.plaintext))
+      for (const c of pl.rejects) row(`decryptDataForCurrentUser refuses · ${c.label} (§7.5)`, c.rejected === true && (await db.sm.decryptDataForCurrentUser(c.input).then(() => false, () => true)))
+    }
+    // 4. The signed values, judged by the bundle. The window is the Node verifier's to prove: here maxAge is unbounded,
+    //    so the one stale envelope must verify to its author.
+    for (const c of sp.signed_value.verify) {
+      const stale = c.envelope.kind === "app" && Number.isFinite(c.envelope.at) && Math.abs(c.now_ms - c.envelope.at) > c.max_age_ms
+      const want = stale ? c.envelope.from : c.expected
+      const got = db.sm.verify(c.envelope, 1e15)
+      row(`db.sm.verify · ${c.name} (§6.5)`, got === want, String(got))
+    }
+    // 5. The pinned phrase of sm.json derives its pinned address.
+    const mn = sm.identity.find((c) => c.name === "mnemonic-address")
+    await login(mn.input.key, mn.expected, "sm.json identity")
+  } catch (e) {
+    row("the page ran to the end", false, e.message)
+  }
+  const failed = rows.filter((r) => !r.ok).length
+  window.vectorsResult = { passed: rows.length - failed, failed, rows }
+  status.textContent = `${rows.length} checks, ${failed} failed`
+  status.className = failed ? "fail" : "ok"
+</script>
+</body>
+</html>

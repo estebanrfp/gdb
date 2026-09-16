@@ -1,0 +1,464 @@
+{
+  "meta": {
+    "generator": "tools/extract-sm.mjs",
+    "reference": {
+      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
+      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+    },
+    "notes": "Reference: GenosSRV sm-server.js (1:1 wire port of browser SSM, per its header). Keys are public Hardhat TEST keys. Signatures are RFC-6979 deterministic (double-run asserted). signOps pass-through asserted."
+  },
+  "identity": [
+    {
+      "name": "privkey-address",
+      "input": {
+        "key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+      },
+      "expected": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "name": "mnemonic-address",
+      "input": {
+        "key": "test test test test test test test test test test test junk"
+      },
+      "expected": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    }
+  ],
+  "canonicalize": [
+    {
+      "name": "key-sort-nested",
+      "input": {
+        "b": 1,
+        "a": {
+          "z": 2,
+          "y": [
+            3,
+            {
+              "d": 4,
+              "c": 5
+            }
+          ]
+        }
+      },
+      "expected": "{\"a\":{\"y\":[3,{\"c\":5,\"d\":4}],\"z\":2},\"b\":1}"
+    },
+    {
+      "name": "arrays-preserve-order",
+      "input": {
+        "list": [
+          3,
+          1,
+          2
+        ],
+        "nested": [
+          {
+            "b": 1,
+            "a": 2
+          }
+        ]
+      },
+      "expected": "{\"list\":[3,1,2],\"nested\":[{\"a\":2,\"b\":1}]}"
+    },
+    {
+      "name": "utf16-key-sort",
+      "input": {
+        "0": 5,
+        "2": 7,
+        "10": 6,
+        "é": 1,
+        "Z": 2,
+        "a": 3,
+        "ß": 4,
+        "𝕒": 8,
+        "ﬀ": 9
+      },
+      "expected": "{\"0\":5,\"2\":7,\"10\":6,\"Z\":2,\"a\":3,\"ß\":4,\"é\":1,\"𝕒\":8,\"ﬀ\":9}"
+    },
+    {
+      "name": "numbers",
+      "input": {
+        "int": 1,
+        "neg": -7,
+        "float": 1.5,
+        "negZero": 0,
+        "tiny": 1e-7,
+        "big": 1e+21,
+        "frac": 0.1,
+        "sci": -1.5e-9,
+        "max": 9007199254740991
+      },
+      "expected": "{\"big\":1e+21,\"float\":1.5,\"frac\":0.1,\"int\":1,\"max\":9007199254740991,\"neg\":-7,\"negZero\":0,\"sci\":-1.5e-9,\"tiny\":1e-7}"
+    },
+    {
+      "name": "undefined-values-omitted",
+      "input": {
+        "b": 1
+      },
+      "expected": "{\"b\":1}"
+    },
+    {
+      "name": "null-and-bools",
+      "input": {
+        "n": null,
+        "t": true,
+        "f": false
+      },
+      "expected": "{\"f\":false,\"n\":null,\"t\":true}"
+    },
+    {
+      "name": "string-escapes",
+      "input": {
+        "s": "a\"b\n\t\u0001é€𝄞"
+      },
+      "expected": "{\"s\":\"a\\\"b\\n\\t\\u0001é€𝄞\"}"
+    },
+    {
+      "name": "empty-structures",
+      "input": {
+        "o": {},
+        "a": []
+      },
+      "expected": "{\"a\":[],\"o\":{}}"
+    },
+    {
+      "name": "typical-op",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "expected": "{\"id\":\"doc:1\",\"originUser\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"timestamp\":{\"logical\":7,\"physical\":1750000000000},\"type\":\"upsert\",\"value\":{\"n\":2,\"title\":\"Hola\"}}"
+    }
+  ],
+  "sign": [
+    {
+      "name": "sign-upsert-0",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        }
+      },
+      "expected": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x7d1d4d795736c86b19750f09f9fb602585c623e6b2494b76f60493a60244283a53c1b9b51bc701b6431702e32ab5feb1f500bd93a5beee8e7fe219a4dd1bdcfc1b"
+      }
+    },
+    {
+      "name": "sign-link-1",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "input": {
+        "type": "link",
+        "sourceId": "doc:1",
+        "targetId": "doc:2",
+        "timestamp": {
+          "physical": 1750000000001,
+          "logical": 8
+        }
+      },
+      "expected": {
+        "type": "link",
+        "sourceId": "doc:1",
+        "targetId": "doc:2",
+        "timestamp": {
+          "physical": 1750000000001,
+          "logical": 8
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0xb0560f58b3460d8a3b3e9953180517928f09720ca63de5608f1d9b1565332bd216ae2438af85c39cdb309bacf896f8ec30c472f599be1cf6c23acaabcccf4b9a1c"
+      }
+    },
+    {
+      "name": "sign-remove-2",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "input": {
+        "type": "remove",
+        "id": "doc:2",
+        "value": {
+          "gone": true
+        },
+        "timestamp": {
+          "physical": 1750000000002,
+          "logical": 9
+        }
+      },
+      "expected": {
+        "type": "remove",
+        "id": "doc:2",
+        "value": {
+          "gone": true
+        },
+        "timestamp": {
+          "physical": 1750000000002,
+          "logical": 9
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x3ca229df6a33fc2fa26de730ecb7ed9f366a50a256306d877ee2032645db542c44a16c50a7222978d29c68637087f4fc0c65006b72870e1f91f2bf057ae5ae831c"
+      }
+    },
+    {
+      "name": "sign-upsert-3",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "input": {
+        "type": "upsert",
+        "id": "doc:numeric-keys",
+        "value": {
+          "0": "zero",
+          "2": "two",
+          "10": "ten",
+          "b": "bee",
+          "a": "aye"
+        },
+        "timestamp": {
+          "physical": 1750000000004,
+          "logical": 11
+        }
+      },
+      "expected": {
+        "type": "upsert",
+        "id": "doc:numeric-keys",
+        "value": {
+          "0": "zero",
+          "2": "two",
+          "10": "ten",
+          "b": "bee",
+          "a": "aye"
+        },
+        "timestamp": {
+          "physical": 1750000000004,
+          "logical": 11
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x8aea25160d6b235d805a85b326281f8f8de5c6b2e10bacdd1b82a2711e3a8240238f25aa1400e3709a0271fd5aa6c795c8873f2e2495866afdb9e6240b5d5f641c"
+      }
+    },
+    {
+      "name": "sign-upsert-4",
+      "signer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "input": {
+        "type": "upsert",
+        "id": "user:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "value": {
+          "ethAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "role": "manager",
+          "assignedByEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "expiresAt": null,
+          "priority": true
+        },
+        "timestamp": {
+          "physical": 1750000000003,
+          "logical": 10
+        }
+      },
+      "expected": {
+        "type": "upsert",
+        "id": "user:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "value": {
+          "ethAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "role": "manager",
+          "assignedByEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "expiresAt": null,
+          "priority": true
+        },
+        "timestamp": {
+          "physical": 1750000000003,
+          "logical": 10
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x19c7945af43a99df8e226099acd40c723f0426500277c1a0271985123108abdb3824599851b375915bb47f209340ecfe1ad7d2219938a0485a3a2a595f61a9551b"
+      }
+    }
+  ],
+  "verify": [
+    {
+      "name": "verify-valid",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x7d1d4d795736c86b19750f09f9fb602585c623e6b2494b76f60493a60244283a53c1b9b51bc701b6431702e32ab5feb1f500bd93a5beee8e7fe219a4dd1bdcfc1b"
+      },
+      "expected": {
+        "ok": true,
+        "normalizedOriginEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payload": {
+          "type": "upsert",
+          "id": "doc:1",
+          "value": {
+            "title": "Hola",
+            "n": 2
+          },
+          "timestamp": {
+            "physical": 1750000000000,
+            "logical": 7
+          }
+        }
+      }
+    },
+    {
+      "name": "verify-valid-by-other-instance",
+      "input": {
+        "type": "upsert",
+        "id": "doc:numeric-keys",
+        "value": {
+          "0": "zero",
+          "2": "two",
+          "10": "ten",
+          "b": "bee",
+          "a": "aye"
+        },
+        "timestamp": {
+          "physical": 1750000000004,
+          "logical": 11
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x8aea25160d6b235d805a85b326281f8f8de5c6b2e10bacdd1b82a2711e3a8240238f25aa1400e3709a0271fd5aa6c795c8873f2e2495866afdb9e6240b5d5f641c"
+      },
+      "expected": {
+        "ok": true,
+        "normalizedOriginEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payload": {
+          "type": "upsert",
+          "id": "doc:numeric-keys",
+          "value": {
+            "0": "zero",
+            "2": "two",
+            "10": "ten",
+            "b": "bee",
+            "a": "aye"
+          },
+          "timestamp": {
+            "physical": 1750000000004,
+            "logical": 11
+          }
+        }
+      }
+    },
+    {
+      "name": "verify-tampered-value",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 999
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x7d1d4d795736c86b19750f09f9fb602585c623e6b2494b76f60493a60244283a53c1b9b51bc701b6431702e32ab5feb1f500bd93a5beee8e7fe219a4dd1bdcfc1b"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "invalid-signature"
+      }
+    },
+    {
+      "name": "verify-origin-mismatch",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "signature": "0x7d1d4d795736c86b19750f09f9fb602585c623e6b2494b76f60493a60244283a53c1b9b51bc701b6431702e32ab5feb1f500bd93a5beee8e7fe219a4dd1bdcfc1b"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "address-mismatch"
+      }
+    },
+    {
+      "name": "verify-missing-signature",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "missing-fields"
+      }
+    },
+    {
+      "name": "verify-lowercase-addresses-normalized",
+      "input": {
+        "type": "upsert",
+        "id": "doc:1",
+        "value": {
+          "title": "Hola",
+          "n": 2
+        },
+        "timestamp": {
+          "physical": 1750000000000,
+          "logical": 7
+        },
+        "originUser": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "originEthAddress": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "signature": "0x7d1d4d795736c86b19750f09f9fb602585c623e6b2494b76f60493a60244283a53c1b9b51bc701b6431702e32ab5feb1f500bd93a5beee8e7fe219a4dd1bdcfc1b"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "invalid-signature"
+      }
+    }
+  ]
+}

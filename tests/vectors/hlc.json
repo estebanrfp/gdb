@@ -1,0 +1,477 @@
+{
+  "meta": {
+    "generator": "tools/extract-hlc.mjs",
+    "reference": {
+      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
+      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+    },
+    "notes": "Canonical: GenosDB browser HybridClock. GenosSRV copy cross-checked equivalent on all regular cases; NaN divergence recorded. `log` global stubbed (warn path, no state effect). nan-fields case: NaN serializes as null in JSON — reconstruct NaN when replaying."
+  },
+  "compare": [
+    {
+      "name": "null-null",
+      "input": {
+        "a": null,
+        "b": null
+      },
+      "expected": 0
+    },
+    {
+      "name": "null-ts",
+      "input": {
+        "a": null,
+        "b": {
+          "physical": 1000,
+          "logical": 1
+        }
+      },
+      "expected": -1
+    },
+    {
+      "name": "ts-null",
+      "input": {
+        "a": {
+          "physical": 1000,
+          "logical": 1
+        },
+        "b": null
+      },
+      "expected": 1
+    },
+    {
+      "name": "undefined-ts",
+      "input": {
+        "a": null,
+        "b": {
+          "physical": 1000,
+          "logical": 1
+        }
+      },
+      "expected": -1
+    },
+    {
+      "name": "phys-greater",
+      "input": {
+        "a": {
+          "physical": 2000,
+          "logical": 0
+        },
+        "b": {
+          "physical": 1000,
+          "logical": 99
+        }
+      },
+      "expected": 1
+    },
+    {
+      "name": "phys-smaller",
+      "input": {
+        "a": {
+          "physical": 1000,
+          "logical": 99
+        },
+        "b": {
+          "physical": 2000,
+          "logical": 0
+        }
+      },
+      "expected": -1
+    },
+    {
+      "name": "phys-equal-log-greater",
+      "input": {
+        "a": {
+          "physical": 1000,
+          "logical": 5
+        },
+        "b": {
+          "physical": 1000,
+          "logical": 4
+        }
+      },
+      "expected": 1
+    },
+    {
+      "name": "phys-equal-log-smaller",
+      "input": {
+        "a": {
+          "physical": 1000,
+          "logical": 4
+        },
+        "b": {
+          "physical": 1000,
+          "logical": 5
+        }
+      },
+      "expected": -1
+    },
+    {
+      "name": "identical",
+      "input": {
+        "a": {
+          "physical": 1000,
+          "logical": 5
+        },
+        "b": {
+          "physical": 1000,
+          "logical": 5
+        }
+      },
+      "expected": 0
+    },
+    {
+      "name": "zero-vs-zero",
+      "input": {
+        "a": {
+          "physical": 0,
+          "logical": 0
+        },
+        "b": {
+          "physical": 0,
+          "logical": 0
+        }
+      },
+      "expected": 0
+    },
+    {
+      "name": "negative-physical",
+      "input": {
+        "a": {
+          "physical": -5,
+          "logical": 1
+        },
+        "b": {
+          "physical": 3,
+          "logical": 0
+        }
+      },
+      "expected": -1
+    },
+    {
+      "name": "large-values",
+      "input": {
+        "a": {
+          "physical": 9007199254740991,
+          "logical": 9007199254740991
+        },
+        "b": {
+          "physical": 9007199254740991,
+          "logical": 9007199254740990
+        }
+      },
+      "expected": 1
+    }
+  ],
+  "now": [
+    {
+      "name": "advancing",
+      "input": {
+        "wall_sequence": [
+          1000,
+          1001,
+          1002,
+          1003
+        ],
+        "calls": 3
+      },
+      "expected": [
+        {
+          "physical": 1001,
+          "logical": 1
+        },
+        {
+          "physical": 1002,
+          "logical": 2
+        },
+        {
+          "physical": 1003,
+          "logical": 3
+        }
+      ]
+    },
+    {
+      "name": "frozen-same-ms",
+      "input": {
+        "wall_sequence": [
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "calls": 3
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        },
+        {
+          "physical": 1000,
+          "logical": 3
+        }
+      ]
+    },
+    {
+      "name": "clock-goes-backwards",
+      "input": {
+        "wall_sequence": [
+          1000,
+          900,
+          800,
+          1500
+        ],
+        "calls": 3
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        },
+        {
+          "physical": 1500,
+          "logical": 3
+        }
+      ]
+    },
+    {
+      "name": "logical-never-resets-on-advance",
+      "input": {
+        "wall_sequence": [
+          1000,
+          1000,
+          1000,
+          5000,
+          5000
+        ],
+        "calls": 4
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        },
+        {
+          "physical": 5000,
+          "logical": 3
+        },
+        {
+          "physical": 5000,
+          "logical": 4
+        }
+      ]
+    }
+  ],
+  "update": [
+    {
+      "name": "learn-ahead-remote",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "update",
+            {
+              "physical": 5000,
+              "logical": 10
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 5000,
+          "logical": 12
+        }
+      ]
+    },
+    {
+      "name": "learn-behind-remote-logical-still-bumps",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "now"
+          ],
+          [
+            "update",
+            {
+              "physical": 10,
+              "logical": 3
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 5
+        }
+      ]
+    },
+    {
+      "name": "remote-logical-dominates",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "update",
+            {
+              "physical": 1000,
+              "logical": 50
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 52
+        }
+      ]
+    },
+    {
+      "name": "sequential-updates",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "update",
+            {
+              "physical": 2000,
+              "logical": 1
+            }
+          ],
+          [
+            "update",
+            {
+              "physical": 2000,
+              "logical": 5
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 2000,
+          "logical": 7
+        }
+      ]
+    },
+    {
+      "name": "invalid-null-noop",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "now"
+          ],
+          [
+            "update",
+            null
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        }
+      ]
+    },
+    {
+      "name": "invalid-missing-logical-noop",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "now"
+          ],
+          [
+            "update",
+            {
+              "physical": 9999
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        }
+      ]
+    },
+    {
+      "name": "invalid-string-fields-noop",
+      "input": {
+        "wall_now_ms": 1000,
+        "ops": [
+          [
+            "now"
+          ],
+          [
+            "update",
+            {
+              "physical": "9999",
+              "logical": "1"
+            }
+          ],
+          [
+            "now"
+          ]
+        ]
+      },
+      "expected": [
+        {
+          "physical": 1000,
+          "logical": 1
+        },
+        {
+          "physical": 1000,
+          "logical": 2
+        }
+      ]
+    }
+  ]
+}

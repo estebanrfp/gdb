@@ -96,7 +96,7 @@ A server peer takes its key from `GDB_SM_KEY`: a BIP-39 mnemonic (derived along 
 
 Before signing or verifying, the payload is canonicalized:
 
-1. Object keys are sorted lexicographically, **recursively** at every depth.
+1. Object keys are sorted lexicographically, **recursively** at every depth — by UTF-16 code units, integer-like keys first in ascending order, as JavaScript orders properties.
 2. Arrays keep their order; their elements are canonicalized.
 3. Scalars are unchanged.
 4. The result is serialized with `JSON.stringify`.
@@ -125,7 +125,7 @@ digest    = keccak256( "\x19Ethereum Signed Message:\n" ‖ decimal(len(message)
 signature = ECDSA_secp256k1_sign(digest)            // 65 bytes: r ‖ s ‖ v, hex
 ```
 
-This is EIP-191 `personal_sign`. The `v` byte makes the public key — and therefore the address — recoverable from `(digest, signature)` alone.
+This is EIP-191 `personal_sign`. Signing is deterministic (RFC 6979) with a low `s`; `v` is 27 or 28. The `v` byte makes the public key — and therefore the address — recoverable from `(digest, signature)` alone.
 
 ### 4.4 Wire form
 
@@ -149,7 +149,7 @@ Every incoming operation passes two gates, on **every** path by which an operati
 2. Both addresses must parse and must be equal after EIP-55 normalisation.
 3. The payload is rebuilt (drop `signature`, `originEthAddress`, `base`), canonicalized, and the address recovered from the signature must equal `originEthAddress`.
 
-Any failure discards the operation. The signature fields are **kept** on the operation after verification, because gate 2 re-verifies against the local node and persists them as provenance.
+Any failure discards the operation — named `missing-fields`, `invalid-address`, `address-mismatch` or `invalid-signature`. The signature fields are **kept** on the operation after verification, because gate 2 re-verifies against the local node and persists them as provenance.
 
 ### 5.2 Control messages and catch-up envelopes
 
@@ -243,7 +243,7 @@ Signature recovery costs ~1 ms. Results are cached under the key `signature ‖ 
 
 ### 6.1 Hybrid Logical Clock
 
-Every operation carries `{ physical: ms since epoch, logical: counter }`. `now()` returns `max(local physical, Date.now())` with `logical` incremented; receiving a timestamp advances the local clock to `max` of both components. Comparison is lexicographic `(physical, logical)`.
+Every operation carries `{ physical: ms since epoch, logical: counter }`. A clock starts at `(Date.now(), 0)`. `now()` returns `max(local physical, Date.now())` with `logical` incremented; receiving a timestamp sets `physical` to the `max` of both and `logical` to the `max` of both plus one, and a timestamp missing either number is ignored. Comparison is lexicographic `(physical, logical)`; a missing timestamp sorts before every timestamp.
 
 ### 6.2 Future bound
 
@@ -267,7 +267,7 @@ For values sent over the data channel rather than written to the graph, `db.sm.s
 { kind: "app", from: <address>, at: Date.now(), value, signature }
 ```
 
-signed with the same canonicalization and EIP-191 scheme. `db.sm.verify(envelope, maxAge = 60 000 ms)` returns `from` only if `kind == "app"`, `|now − at| ≤ maxAge`, and the recovered address equals `from`. The key set `{kind, from, at}` is disjoint from an operation's `{type, timestamp, originUser}`, so an envelope can never pass as a graph operation or vice versa. Verification establishes authorship in time; **authorization stays the graph's**.
+signed with the same canonicalization and EIP-191 scheme over the envelope without `signature`. `db.sm.verify(envelope, maxAge = 60 000 ms)` returns `from` only if `kind == "app"`, `|now − at| ≤ maxAge`, and the recovered address equals `from`. The key set `{kind, from, at}` is disjoint from an operation's `{type, timestamp, originUser}`, so an envelope can never pass as a graph operation or vice versa. Verification establishes authorship in time; **authorization stays the graph's**.
 
 ---
 
@@ -302,7 +302,7 @@ Stored node value:
 }
 ```
 
-The node id is stored with the internal prefix `SM_ID_PREFIX_`; the API exposes it without the prefix.
+The node id is stored with the internal prefix `SM_ID_PREFIX_`; the API exposes it without the prefix. Every hex field carries a lowercase `0x` prefix, and the 16-byte GCM tag follows the ciphertext.
 
 ### 7.3 Key envelopes
 
@@ -320,7 +320,7 @@ wrapped     := AES-256-GCM(key = kek, iv, CEK)
 envelope    = { v: 2, p: compressed(eph.pub), i: iv, c: wrapped, r: compressed(readerPub) }
 ```
 
-The reader recomputes `kek` from `ECDH(readerPriv, p)` with its own compressed public key in `info`, and unwraps. The ephemeral key is discarded; `r` is kept so the owner can re-wrap on rotation without re-reading the directory. Binding the purpose and both public keys into `info` means a shared secret never yields a key outside the envelope it was derived for. An envelope whose `v` is not `2` is refused with its reason: records sealed by an earlier release are re-saved, never opened.
+The reader recomputes `kek` from `ECDH(readerPriv, p)` with its own compressed public key in `info`, and unwraps. `info` concatenates raw bytes: the 19-byte purpose, then the two 33-byte compressed keys. The ephemeral key is discarded; `r` is kept so the owner can re-wrap on rotation without re-reading the directory. Binding the purpose and both public keys into `info` means a shared secret never yields a key outside the envelope it was derived for. An envelope whose `v` is not `2` is refused with its reason: records sealed by an earlier release are re-saved, never opened.
 
 ### 7.4 Grant and revoke
 
@@ -591,6 +591,8 @@ grep -c 'gdb_oplog_'                                gdb.min.js
 
 A reader who wants to go further can pretty-print any of these files (`npx prettier --parser babel sm.min.js`) and follow the same identifiers this document uses.
 
+The greps confirm the constants; the vectors confirm the arithmetic. [`tests/vectors/`](tests/vectors/) carries the cryptographic subset of the conformance vectors the native port replays, produced by executing the reference engine with public test keys: canonical forms, signatures, verification verdicts, key envelopes, a sealed record, self-encrypted fields, signed values and clock sequences. `node tests/vectors/verify.mjs` (Node 20 or later; `npm install` in a clone, or `@noble/curves`, `@noble/hashes` and `@msgpack/msgpack` beside the folder) re-derives every one of them from this document alone — WebCrypto, `@noble/curves`, `@noble/hashes`, `@msgpack/msgpack`, no GenosDB code — prints one line per check and exits non-zero on the first byte that differs; `meta.json` pins the SHA-256 of the three bundle files the vectors were extracted beside, and `--dist <dir>` binds an extracted tarball's `dist/` to them. [`tests/vectors/verify.html`](https://estebanrfp.github.io/gdb/tests/vectors/verify.html) drives the published bundle itself through its public API over the same vectors, in the browser, with nothing to install.
+
 ---
 
 ## 14. Revision history
@@ -599,3 +601,4 @@ A reader who wants to go further can pretty-print any of these files (`npx prett
 |---|---|---|
 | 2026-09-15 | 0.36.0 | First public specification. |
 | 2026-09-16 | 0.36.0 | §6.4, §12.6: the browser's default log window is 200 operations, not 50 (`oplogSize`, unchanged since 0.33.4). |
+| 2026-09-16 | 0.36.0 | §13: conformance vectors under `tests/vectors/` with an independent verifier and the bundle's SHA-256 pinned; §4.1, §4.3, §5.1, §6.1, §6.5, §7.2, §7.3 state what the vectors made explicit. |

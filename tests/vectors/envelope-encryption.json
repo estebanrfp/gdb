@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "generator": "tools/extract-envelope.mjs",
+    "reference": {
+      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
+      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+    },
+    "notes": "Envelopes EXECUTED from the browser SSM with fixed private keys and a fixed CEK (genosdb 0.36.0, format v2). Ephemeral keys and IVs are one real run's randomness: conformance validates by UNWRAPPING with the given keys, never by re-generating. The wrapping key is HKDF-SHA-256(ikm = x-coordinate of the ECDH point, salt = empty, info = \"genosdb/envelope/v2\" ‖ ephemeral compressed pub ‖ reader compressed pub); AES-256-GCM with the 16-byte tag appended, 12-byte IV, no AAD; content = msgpack → deflate → AES-GCM. An envelope whose v is not 2 is refused."
+  },
+  "ownerMnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+  "readerMnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
+  "ownerPriv": "0x1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727",
+  "readerPriv": "0x7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae",
+  "ownerAddress": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+  "readerAddress": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+  "ownerPub": "0x0237b0bb7a8288d38ed49a524b5dc98cff3eb5ca824c9f9dc0dfdb3d9cd600f299",
+  "readerPub": "0x0338f04e283c453f6c5c28f5291f12540ae5e27c2fd1a863f2596d8fbd99d24fde",
+  "cek": "0xabababababababababababababababababababababababababababababababab",
+  "plaintext": {
+    "secret": "parity",
+    "n": 7
+  },
+  "sealed": {
+    "iv": "0x4b0efcddbf061eedf27a68b7",
+    "encrypted": "0xd94eaadf23c96df3e3b62d968098f6bfffd03d65c0ebc64135db07dc3b46d0fc68087e5246c5b5cc4ae8"
+  },
+  "envelopeForOwner": {
+    "v": 2,
+    "p": "0x03d43d735e9756ac9500255c5d973e59ffd74e3efff177ba70ee48c1ed8c4cce3f",
+    "i": "0x7f48d46495f1712677661120",
+    "c": "0x9b86839429d774ffdadbf0d766253fe19fe33544b59ff63bf09fbaf09b2f90adb3495d3975b3a3f86447aab0ab89ca0e",
+    "r": "0x0237b0bb7a8288d38ed49a524b5dc98cff3eb5ca824c9f9dc0dfdb3d9cd600f299"
+  },
+  "envelopeForReader": {
+    "v": 2,
+    "p": "0x036e47b25d6ab6980532eebd460f60dc493117b182961cf0398dcffa9711384fb7",
+    "i": "0xceb1e25768d6088f4e7172b4",
+    "c": "0x27b4b4cd0b9b53ef4fd21771fd8d8acb9a1eee8d6956178a1000e9f6f766115f8c00bd22354d265059032edf21fdd9d8",
+    "r": "0x0338f04e283c453f6c5c28f5291f12540ae5e27c2fd1a863f2596d8fbd99d24fde"
+  },
+  "dhSharedPointExample_owner_x_reader": "0x044df40022a106c78d3e06b10b4870a57e8d932a4189ebe4194fbb8a087621ea854244616f0691a7f21bb36eed1de3af124e882619c391f77bb0865af3648b92e2",
+  "refused": {
+    "anEnvelopeWithoutVersion": "sealed before 0.36.0 — re-save the record."
+  }
+}

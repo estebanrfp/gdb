@@ -1,0 +1,422 @@
+{
+  "meta": {
+    "generator": "tools/extract-sm-protocol.mjs",
+    "reference": {
+      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
+      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+    },
+    "notes": "Verdicts from EXECUTING SoftwareSecurityManager.verifyIncomingOperations (real browser module) with pinned wallets/roles/clock; outgoing batches from GenosSRV signOps (1:1 signing port). Resolves TO-EXTRACT(sm-protocol-msgs); pins binary values through sign→verify; since genosdb 0.36.0 the hello and the catch-up envelopes are containers — admitted verbatim, never signed."
+  },
+  "addresses": {
+    "A": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "B": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "C": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "D": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+  },
+  "keys": {
+    "A": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+  },
+  "now_ms": 1750000000000,
+  "sign": [
+    {
+      "name": "hello-passes-unsigned",
+      "key": "A",
+      "input": [
+        {
+          "type": "sync",
+          "timestamp": null
+        }
+      ],
+      "expected": [
+        {
+          "type": "sync",
+          "timestamp": null
+        }
+      ]
+    },
+    {
+      "name": "already-signed-passthrough",
+      "key": "A",
+      "input": [
+        {
+          "type": "upsert",
+          "id": "pre",
+          "value": {
+            "v": 1
+          },
+          "timestamp": {
+            "physical": 1749999999997,
+            "logical": 0
+          },
+          "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "signature": "0x96502acef51ebdd848ae5bcdd2644bc7d1a46358bb150d67225c68ff35557cce4dbeeb158a24f24b3ecadb72bcd7b1b5e1266b6958273f067774ed26053ec5ab1c"
+        }
+      ],
+      "expected": [
+        {
+          "type": "upsert",
+          "id": "pre",
+          "value": {
+            "v": 1
+          },
+          "timestamp": {
+            "physical": 1749999999997,
+            "logical": 0
+          },
+          "originUser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "originEthAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "signature": "0x96502acef51ebdd848ae5bcdd2644bc7d1a46358bb150d67225c68ff35557cce4dbeeb158a24f24b3ecadb72bcd7b1b5e1266b6958273f067774ed26053ec5ab1c"
+        }
+      ]
+    },
+    {
+      "name": "fresh-op-signed",
+      "key": "A",
+      "input": [
+        {
+          "type": "upsert",
+          "id": "n9",
+          "value": {
+            "hello": "world"
+          },
+          "timestamp": {
+            "physical": 1749999999990,
+            "logical": 3
+          }
+        }
+      ],
+      "expected": [
+        {
+          "type": "upsert",
+          "id": "n9",
+          "value": {
+            "hello": "world"
+          },
+          "timestamp": {
+            "physical": 1749999999990,
+            "logical": 3
+          },
+          "originUser": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "originEthAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "signature": "0x43c72f8520d0d6dd98b0a8c0ca58e75023efd0fb90b86f0eafdc2405dec486345ba0cb6d978b635e39c482e08840a5ec46276d65889c778a75260b83bb24a0a51c"
+        }
+      ]
+    },
+    {
+      "name": "binary-value-signed",
+      "key": "A",
+      "input": [
+        {
+          "type": "upsert",
+          "id": "nb",
+          "value": {
+            "blob": {
+              "0": 0,
+              "1": 7,
+              "2": 128,
+              "3": 255
+            }
+          },
+          "timestamp": {
+            "physical": 1749999999991,
+            "logical": 0
+          }
+        }
+      ],
+      "expected": [
+        {
+          "type": "upsert",
+          "id": "nb",
+          "value": {
+            "blob": {
+              "0": 0,
+              "1": 7,
+              "2": 128,
+              "3": 255
+            }
+          },
+          "timestamp": {
+            "physical": 1749999999991,
+            "logical": 0
+          },
+          "originUser": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "originEthAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "signature": "0x43041762ceaaa6f18379f0952eded0a598b39a266ac7846a5281019df7973ca55b901d89cda13918536771425029bda5c28dac9845ec9bff5ab2e39f77aad1681b"
+        }
+      ]
+    },
+    {
+      "name": "delta-envelope-passes-unsigned",
+      "key": "A",
+      "input": [
+        {
+          "type": "deltaSync",
+          "operations": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          }
+        }
+      ],
+      "expected": [
+        {
+          "type": "deltaSync",
+          "operations": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "fullstate-envelope-passes-unsigned",
+      "key": "A",
+      "input": [
+        {
+          "type": "fullStateSync",
+          "graphData": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          },
+          "removals": []
+        }
+      ],
+      "expected": [
+        {
+          "type": "fullStateSync",
+          "graphData": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          },
+          "removals": []
+        }
+      ]
+    }
+  ],
+  "signed_value": {
+    "at_ms": 1750000000000,
+    "value": {
+      "where": {
+        "line": 12,
+        "col": 3
+      },
+      "who": "alice",
+      "tags": [
+        "caret",
+        "ok"
+      ],
+      "n": null
+    },
+    "envelope": {
+      "kind": "app",
+      "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "at": 1750000000000,
+      "value": {
+        "where": {
+          "line": 12,
+          "col": 3
+        },
+        "who": "alice",
+        "tags": [
+          "caret",
+          "ok"
+        ],
+        "n": null
+      },
+      "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+    },
+    "verify": [
+      {
+        "name": "intact",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1750000001000,
+        "max_age_ms": 60000,
+        "expected": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      },
+      {
+        "name": "intact-from-the-past-within-window",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1749999970000,
+        "max_age_ms": 60000,
+        "expected": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      },
+      {
+        "name": "tampered-value",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "mallory",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1750000001000,
+        "max_age_ms": 60000,
+        "expected": null
+      },
+      {
+        "name": "forged-from",
+        "envelope": {
+          "kind": "app",
+          "from": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1750000001000,
+        "max_age_ms": 60000,
+        "expected": null
+      },
+      {
+        "name": "stale-outside-window",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1750000120000,
+        "max_age_ms": 60000,
+        "expected": null
+      },
+      {
+        "name": "stale-inside-a-longer-window",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          },
+          "signature": "0x7b324b5eea7363029960547a0fdfd200c9c127c809811f02ec99177cced7392e13cb22d7d228f2abe12e2e356f25f5d0aaffe3977b456e130b7eefb367dc87761b"
+        },
+        "now_ms": 1750000120000,
+        "max_age_ms": 600000,
+        "expected": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      },
+      {
+        "name": "missing-signature",
+        "envelope": {
+          "kind": "app",
+          "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "at": 1750000000000,
+          "value": {
+            "where": {
+              "line": 12,
+              "col": 3
+            },
+            "who": "alice",
+            "tags": [
+              "caret",
+              "ok"
+            ],
+            "n": null
+          }
+        },
+        "now_ms": 1750000001000,
+        "max_age_ms": 60000,
+        "expected": null
+      },
+      {
+        "name": "operation-in-disguise",
+        "envelope": {
+          "type": "upsert",
+          "id": "n1",
+          "value": {
+            "v": 1
+          },
+          "timestamp": {
+            "physical": 1750000000000,
+            "logical": 0
+          },
+          "originUser": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "originEthAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "signature": "0x375787a9a0ba1fc4a9e5ff1ba40e74a10eabb9280a91af571ab3112cae16b4841d6553235cd7d24f1e02b06eda1cc39c11b8bef9a93d83bd47f8ac840cc98c091c"
+        },
+        "now_ms": 1750000001000,
+        "max_age_ms": 60000,
+        "expected": null
+      }
+    ]
+  }
+}
