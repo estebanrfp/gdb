@@ -2,8 +2,8 @@
   "meta": {
     "generator": "tools/extract-sm-protocol.mjs",
     "reference": {
-      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
-      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+      "genosdb": "583d318f6e1650e9220b6565f3468123393bf9d8",
+      "genossrv": "61a5dff795a559c3c4008f3ff24bea88ba0a707f"
     },
     "notes": "Verdicts from EXECUTING SoftwareSecurityManager.verifyIncomingOperations (real browser module) with pinned wallets/roles/clock; outgoing batches from GenosSRV signOps (1:1 signing port). Resolves TO-EXTRACT(sm-protocol-msgs); pins binary values through sign→verify; since genosdb 0.36.0 the hello and the catch-up envelopes are containers — admitted verbatim, never signed."
   },

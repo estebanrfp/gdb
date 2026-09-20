@@ -2,8 +2,8 @@
   "meta": {
     "generator": "tools/extract-hlc.mjs",
     "reference": {
-      "genosdb": "bce91966dc5b2251e679ab96f8ebed3202b29f5e",
-      "genossrv": "ef6b3cbeb18be9480df44fad62138cf47df2431e"
+      "genosdb": "583d318f6e1650e9220b6565f3468123393bf9d8",
+      "genossrv": "61a5dff795a559c3c4008f3ff24bea88ba0a707f"
     },
     "notes": "Canonical: GenosDB browser HybridClock. GenosSRV copy cross-checked equivalent on all regular cases; NaN divergence recorded. `log` global stubbed (warn path, no state effect). nan-fields case: NaN serializes as null in JSON — reconstruct NaN when replaying."
   },
