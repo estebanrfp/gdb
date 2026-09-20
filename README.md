@@ -127,6 +127,7 @@ GenosDB is closed source by design; what it does cryptographically is not. [CRYP
 
 - **Guarantees and their status** — [SECURITY.md](https://github.com/estebanrfp/gdb/blob/main/SECURITY.md) lists every guarantee, each pinned by a conformance test run in real browsers over real WebRTC, and how to report a vulnerability.
 - **Independent review** — security researchers, auditors and organizations evaluating GenosDB are invited to review the specification against the bundle. Published audit reports are listed in [docs/audits](https://github.com/estebanrfp/gdb/blob/main/docs/audits/index.md), with date, reviewer and scope. To coordinate a review, see [Business Inquiries & Collaboration](#business-inquiries--collaboration).
+- **Audit toolkit** — [genosdb-audit](https://github.com/estebanrfp/genosdb-audit) is open source (MIT): passive provenance checks against the official CDN release and review of Zero Trust evidence. Pull requests are welcome from anyone.
 
 ---
 
@@ -235,6 +236,7 @@ We value community contributions and welcome your help in improving GenosDB! Cur
 
 - 📝 Improving our documentation.
 - 💡 Submitting usage examples and tutorials.
+- 🔍 Extending the open-source audit toolkit, [genosdb-audit](https://github.com/estebanrfp/genosdb-audit).
 - 🐞 Reporting bugs or suggesting new features.
 
 Please read our [Contribution Guidelines](https://github.com/estebanrfp/gdb/blob/main/CONTRIBUTING.md) for more details.
