@@ -11,7 +11,7 @@ Welcome to the official technical documentation for GenosDB.
   - 🔒 [Zero Trust Security Model](zero-trust-security-model.md) (Understanding GenosDB Zero-Trust Security Model: From Guest to SuperAdmin)
   - 🔐 [Cryptographic Specification](../CRYPTOGRAPHY.md) (What is signed, verified and encrypted — identity, operations, envelopes, WebAuthn, signaling — and the commands that check the published bundle against it)
   - 🔎 [Security Audits](audits/index.md) (Published audits: date, reviewer, scope, what held, what was found and how it was fixed)
-  - ♾️ [Continuity](../CONTINUITY.md) (What an application can rely on across releases: builds that last, API stability, an engine that is specified)
+  - ♾️ [Continuity](../CONTINUITY.md) (Development continuity: builds that last, API stability, an engine that is specified)
   - 🤖 [GenosDB Skill](https://github.com/estebanrfp/genosdb-skill) (For AI coding agents: the frozen API, patterns, security model and testing rules — `npx skills add`; source in `skills/genosdb/`)
  
   - 🧪 [GenosDB Examples](genosdb-examples.md) (Live demos and community projects)
