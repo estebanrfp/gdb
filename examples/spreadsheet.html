@@ -804,7 +804,7 @@
       const kind = value?.type ?? (cells.has(id) ? 'cell' : rows.has(id) ? 'row' : cols.has(id) ? 'col' : null);
       if (!kind) return;
       const v = value ?? cells.get(id) ?? rows.get(id) ?? cols.get(id);
-      const label = kind === 'cell' ? `${cellName(v)} · ${shortId(v.row)}:${shortId(v.col)}` : `${kind} ${shortId(id)} · key ${keyLabel(v.order)}`;
+      const label = esc(kind === 'cell' ? `${cellName(v)} · ${shortId(v.row)}:${shortId(v.col)}` : `${kind} ${shortId(id)} · key ${keyLabel(v.order)}`); // a peer's type renders as text
       const detail = action === 'removed' || v.gone ? '<span class="gone">gone</span>' : kind === 'cell' ? `<span class="text">${esc(JSON.stringify(v.text.length > 18 ? v.text.slice(0, 17) + '…' : v.text))}</span>` : '';
       writes.unshift({ by: kind === 'cell' ? v.by : null, label, detail, stamp: timestamp ? `${timestamp.physical % 100000}.${timestamp.logical}` : '', action });
       if (writes.length > 30) writes.pop();

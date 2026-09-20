@@ -71,7 +71,7 @@ The full query engine is available server-side (`db.map` with every operator, re
 
 ## Governance: an always-on superadmin
 
-In the browser, the governance engine runs only while a superadmin keeps a tab open. The fallback server removes that limitation: give it a signing identity and it becomes the room's **24/7 governance authority** — promotions, demotions and role expirations no longer depend on anyone being connected.
+In the browser, the governance engine runs only while a superadmin keeps a tab open. The fallback server removes that limitation: give it a signing identity and it becomes the room's **24/7 governance authority** — promotions and demotions no longer depend on anyone being connected. (An expired role is a guest on every peer by itself, engine or not.)
 
 ### How authority works
 

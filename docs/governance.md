@@ -56,7 +56,7 @@ const db = await gdb("my-app", {
 | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `if`              | yes      | A standard GenosDB query (the same language used by `db.map`) evaluated against `user:<address>` nodes.                   |
 | `then.assignRole` | yes      | The role to assign when the condition matches. Must be one of the defined roles.                                          |
-| `offsetTimestamp` | no       | Minimum time in milliseconds since the user node's last write. The rule only fires once the node has been stable that long. |
+| `offsetTimestamp` | no       | Minimum time in milliseconds the engine has seen the user node unchanged (its last write, as the engine observed it). The rule only fires once the node has been stable that long. |
 
 ## Conditions are GenosDB queries
 
@@ -66,7 +66,7 @@ The `if` block is passed verbatim to the query engine, so **every operator avail
 // Reputation range
 { if: { role: "user", reputation: { $between: [50, 100] } }, then: { assignRole: "manager" } }
 
-// Corporate e-mail whitelist
+// Corporate e-mail whitelist — `email` is what the newcomer wrote in its own bootstrap
 { if: { role: "guest", email: { $regex: "@company\\.com$" } }, then: { assignRole: "user" } }
 
 // Nested logic: points OR invitation
@@ -87,7 +87,7 @@ Rules are evaluated against the **`user:<address>` node** — the same node wher
 > await db.put({ ...result.value, points: newPoints }, id)
 > ```
 
-> **Who writes a metric decides what the rule is worth.** Only the user's own session or a superadmin may write a `user:` node. A metric the user writes into their own node is self-reported, so a rule on it is self-service promotion. For merit that must resist a modified client, have an authority compute it — the Fallback Server or a superadmin counting signed nodes and writing the result. Time-based objectives (`offsetTimestamp`) need no metric at all.
+> **Who writes a metric decides what the rule is worth.** Only the user's own session or a superadmin may write a `user:` node. A metric the user writes into their own node is self-reported, so a rule on it is self-service promotion — and a metric an authority writes there is overwritten by the user's next self-write, while a rule reads `user:` nodes only. No metric resists a modified client today. Time-based objectives (`offsetTimestamp`) need no metric at all: the engine measures them on its own clock.
 
 ## Conflict resolution: last-match-wins
 
@@ -107,11 +107,13 @@ A user with 4 points matches the floor, the manager rule **and** the admin rule 
 
 > **The floor rule matters.** It catches every onboarded member regardless of points, so a node that drops below the lowest threshold demotes cleanly instead of getting stuck at a stale tier.
 
+> **A rule decides over a term.** `assignRole(address, role, expiresAt)` grants a role until a date, and every peer reads it as `guest` past it, engine or not. A rule that matches that node replaces what the node holds, term included — the role becomes permanent — and an expired identity keeps its `role` label, so a rule that matches the label revives it in the next cycle. If a tier must stay time-limited, let rules govern the tiers below it and match none of its labels, floor included.
+
 ## Engine behavior
 
 - Runs **only while a superadmin is logged in** on that device — their key signs every `assignRole`.
 - Evaluates **all** rules **every 4 seconds** and resolves each node by last-match-wins (above).
-- Skips: nodes that are not `user:<address>`, **superadmins (immunity)**, and nodes more recent than `offsetTimestamp`. Writes only when the resolved role differs from the current one.
+- Skips: nodes that are not `user:<address>`, **superadmins (immunity)**, and nodes it has watched for less than `offsetTimestamp` — measured on the engine's own clock from the moment it first saw the node's current stamp, never on the stamp itself. Writes only when the resolved role differs from the current one.
 - P2P consistency: a metric must have synced to the superadmin's node before a rule can see it (typically a few seconds).
 
 ## Try it

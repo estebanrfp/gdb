@@ -381,12 +381,13 @@
     const el = (id) => document.getElementById(id);
     const row = (html) => { const li = document.createElement('li'); li.innerHTML = html; return li; };
     const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const t = (x) => esc(String(x ?? '')); // a peer's field renders as text
     function drawLayers() {
-      el('ops').replaceChildren(...ops.map((o) => row(`<span class="dot" style="background:${colorOf(o.who)}"></span><span class="who">${o.who}</span>` +
+      el('ops').replaceChildren(...ops.map((o) => row(`<span class="dot" style="background:${colorOf(o.who)}"></span><span class="who">${t(o.who)}</span>` +
         `${o.del ? `<span class="del">−${o.del}</span>` : ''}${o.ins ? `<span class="ins">+${esc(JSON.stringify(o.ins))}</span>` : ''}` +
         `<span class="at">@${o.at}</span><span class="${o.how === 'dropped' ? 'dropped' : 'at'}">${o.how}</span>`)));
       el('ops-empty').hidden = ops.length > 0;
-      el('snaps').replaceChildren(...snaps.map((s) => row(`<span class="dot" style="background:${colorOf(s.by ?? '')}"></span><span class="who">${s.by ?? '—'}</span>` +
+      el('snaps').replaceChildren(...snaps.map((s) => row(`<span class="dot" style="background:${colorOf(s.by ?? '')}"></span><span class="who">${t(s.by ?? '—')}</span>` +
         `<span>${s.len} chars</span><span class="at">${s.stamp ? `${s.stamp.physical % 100000}.${s.stamp.logical}` : ''}</span><span class="at">folded ${s.folded}${s.kept ? `, kept ${s.kept}` : ''}</span>`)));
       el('snaps-empty').hidden = snaps.length > 0;
       el('pending').textContent = edits.size ? `${edits.size} edit${edits.size === 1 ? '' : 's'} pending on top of the last snapshot` : 'nothing pending: the field is the snapshot';
@@ -396,7 +397,7 @@
       for (const [name, p] of peers) {
         if (!p.hash || Date.now() - p.seen > 30000) continue;
         total++; const ok = p.hash === mine; if (ok) same++;
-        rows.push(row(`<span class="dot" style="background:${colorOf(name)}"></span><span class="who">${name}</span><span>${p.hash}</span><span class="${ok ? 'same' : 'diff'}">${ok ? 'same text' : 'differs — a snapshot is on its way'}</span>`));
+        rows.push(row(`<span class="dot" style="background:${colorOf(name)}"></span><span class="who">${t(name)}</span><span>${t(p.hash)}</span><span class="${ok ? 'same' : 'diff'}">${ok ? 'same text' : 'differs — a snapshot is on its way'}</span>`));
       }
       el('peers').replaceChildren(...rows);
       el('verdict').textContent = total ? (same === total ? `${total + 1} windows, one text` : `${total - same} of ${total} windows differ`) : 'open another window to compare';

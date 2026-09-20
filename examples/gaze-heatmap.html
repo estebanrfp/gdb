@@ -1391,6 +1391,7 @@ db.map(({ id, value, action }) =&gt; {
 
     const seconds = value => `${value.toFixed(1)} s`
 
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])) // a peer's zone name renders as text
     const renderNumbers = (all, page) => {
       const totals = new Map()
       const firsts = new Map()
@@ -1413,7 +1414,7 @@ db.map(({ id, value, action }) =&gt; {
         const first = firsts.get(zone) ?? []
         const soonest = first.length ? Math.min(...first) / 1000 : null
         return `<tr>
-          <td class="bar" style="--share: ${looked ? time / looked : 0}">${zone}</td>
+          <td class="bar" style="--share: ${looked ? time / looked : 0}">${esc(zone)}</td>
           <td>${seconds(time)}</td>
           <td>${soonest === null ? "—" : `${soonest.toFixed(1)} s`}</td>
           <td>${winkCount.get(zone) ?? 0}</td>

@@ -1,8 +1,8 @@
 # GenosDB Cryptographic Protocol Specification
 
-**Applies to:** `genosdb@0.36.0` (browser bundle), GenosRTC as shipped inside it, GenosSRV 1:1 port.
+**Applies to:** `genosdb@0.36.1` (browser bundle), GenosRTC as shipped inside it, GenosSRV 1:1 port.
 **Status:** protocol description, written from the source and checked against the published bundle. Not an audit.
-**Last revised:** 2026-09-15 — the protocol as shipped in 0.36.0.
+**Last revised:** 2026-09-20 — the protocol as shipped in 0.36.1.
 
 ---
 
@@ -195,23 +195,29 @@ if id starts with "user:"                          — a ROLE node
     else:
         reject unless mode == write and author == the node's own address
         reject if local exists and can(role(author), write) is false
-        accept iff c.value.role == r.role and c.value.expiresAt == r.expiresAt
-                                                   (the subject may rewrite its node but never its role)
+        accept iff c.value.role == r.role and c.value.expiresAt == r.expiresAt and c.value.priority is not true
+                                                   (the subject may rewrite its node but never its role, nor carry the constitution's flag)
 
 else                                               — a DATA node
     reject unless can(role(author), mode)          mode ∈ {write, link, delete}
     owner := local.value.owner ?? local.value._meta.owner ?? owner named by the id prefix "0x…:"
     if owner:
         write/link: accept iff author == owner or collaborators[author] ∈ {write, delete}
+        write by a non-owner: additionally accept iff policy(c.value) == policy(local.value)
+                    policy = {owner, collaborators, _meta.keys} in canonical JSON (sorted keys)
+                                                   (a collaborator changes content, never policy)
         delete:     accept iff author == owner or collaborators[author] == delete
     else:
         accept iff c.value has no owner, or author == c.value.owner   (a new owned node is self-created)
+        reject if local exists and can(role(author), delete) is false
+                                                   (an existing un-owned node takes an owner only from a role that could delete it)
 ```
 
 Consequences:
 
 - Only a superadmin's signature can set a role, and its **newest** signed decision is the role, on every path and device.
 - A node whose id begins with an address and a colon (`0x…:`) can only be created by that address on a peer that has never seen it. The engine names owned nodes this way when it generates ids.
+- A collaborator's write carries the owner's policy unchanged — owner, collaborators and the envelope table — or is refused on every receiver; a `revoke` therefore cannot be undone by a write from a copy that predates it, whatever its stamp.
 - Edges apply as the set their last `link`/`unlink` signed; on catch-up a peer takes a set only from an author allowed to link on that node and only if it is newer than the set it holds.
 
 ### 5.6 Two policies applied before the gate
@@ -521,7 +527,7 @@ A security model is defined as much by where it stops as by what it enforces. Th
 Install the exact version and confirm the files are plain minified JavaScript:
 
 ```bash
-npm pack genosdb@0.36.0 && tar xzf genosdb-0.36.0.tgz
+npm pack genosdb@0.36.1 && tar xzf genosdb-0.36.1.tgz
 ls package/dist/            # gdb.min.js  sm.min.js  genosrtc.min.js …
 grep -c '_0x[0-9a-f]'  package/dist/sm.min.js     # 0 → no obfuscator patterns
 ```
@@ -602,3 +608,4 @@ The greps confirm the constants; the vectors confirm the arithmetic. [`tests/vec
 | 2026-09-15 | 0.36.0 | First public specification. |
 | 2026-09-16 | 0.36.0 | §6.4, §12.6: the browser's default log window is 200 operations, not 50 (`oplogSize`, unchanged since 0.33.4). |
 | 2026-09-16 | 0.36.0 | §13: conformance vectors under `tests/vectors/` with an independent verifier and the bundle's SHA-256 pinned; §4.1, §4.3, §5.1, §6.1, §6.5, §7.2, §7.3 state what the vectors made explicit. |
+| 2026-09-20 | 0.36.1 | §5.5: a non-owner's write keeps the owner's policy (`owner`, `collaborators`, `_meta.keys`); the subject never carries `priority`; an existing un-owned node takes an owner only from a role that could delete it. |

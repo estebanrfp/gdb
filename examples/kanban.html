@@ -155,10 +155,10 @@
         taskDiv.className = "task";
         taskDiv.setAttribute("data-id", id);
         taskDiv.setAttribute("draggable", true);
-        taskDiv.innerHTML = `
-          <span>${text}</span>
-          <button class="delete-button" onclick="deleteTask('${id}')">×</button>
-        `;
+        const span = document.createElement("span"); span.textContent = text; // a peer's text renders as text
+        const del = document.createElement("button"); del.className = "delete-button"; del.textContent = "×";
+        del.addEventListener("click", () => deleteTask(id));
+        taskDiv.replaceChildren(span, del);
         taskDiv.addEventListener("dragstart", (e) => handleDragStart(e, id));
         taskDiv.dataset.createdAt = createdAt ?? "";
         placeSorted(taskDiv, columnElement);

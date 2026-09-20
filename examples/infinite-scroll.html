@@ -194,10 +194,10 @@
     function createPostElement(post) {
       const postElement = document.createElement('div');
       postElement.className = 'post';
-      postElement.innerHTML = `
-      <img src="${post.value.image}" alt="Post image">
-      <h3>${post.value.title}</h3>
-    `;
+      const img = document.createElement('img'); img.alt = 'Post image'; // a peer's value renders as text; a source needs a scheme
+      if (/^https?:\/\//i.test(String(post.value.image ?? ''))) img.src = post.value.image;
+      const h3 = document.createElement('h3'); h3.textContent = post.value.title ?? '';
+      postElement.replaceChildren(img, h3);
       postElement.addEventListener('click', () => openModal(post));
       return postElement;
     }

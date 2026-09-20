@@ -10,6 +10,7 @@ Welcome to the official technical documentation for GenosDB.
   - 🤝 [Distributed Trust Model](genosdb-distributed-trust-model.md) (P2P trust via cryptographic identity, signed ops, and RBAC enforcement)
   - 🔒 [Zero Trust Security Model](zero-trust-security-model.md) (Understanding GenosDB Zero-Trust Security Model: From Guest to SuperAdmin)
   - 🔐 [Cryptographic Specification](../CRYPTOGRAPHY.md) (What is signed, verified and encrypted — identity, operations, envelopes, WebAuthn, signaling — and the commands that check the published bundle against it)
+  - 🔎 [Security Audits](audits/index.md) (Published audits: date, reviewer, scope, what held, what was found and how it was fixed)
  
   - 🧪 [GenosDB Examples](genosdb-examples.md) (Live demos and community projects)
   - ✨ [GenosDB Features](genosdb-features.md) (Comprehensive feature overview and architecture)

@@ -581,7 +581,7 @@
                 tagsToDisplay = [postValue.tags.trim()];
             }
 
-            elements.modalTags.innerHTML = tagsToDisplay.map(tag => `<span class="post-tag">${tag}</span>`).join("");
+            elements.modalTags.replaceChildren(...tagsToDisplay.map(tag => Object.assign(document.createElement("span"), { className: "post-tag", textContent: String(tag) }))); // a peer's tag renders as text
             elements.modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }

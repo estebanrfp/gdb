@@ -23,16 +23,19 @@ What the model leaves open inside those bounds, by design: a signature is valid 
 
 ## Verified guarantees
 
-Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.36.0.
+Each guarantee is pinned by a conformance test run against the built engine, in real browsers over real WebRTC. Status as of 0.36.1.
 
 | guarantee | status |
 |---|---|
 | Every operation is signed by its author and verified by every peer — live, delta and full state alike. What is not signed does not travel. | ✓ |
 | A new identity is a write-blocked `guest` until a superadmin signs a promotion. Only a superadmin sets a role, on every path, and its newest signed decision is the role: an older one never rolls a node back, on any path or device. | ✓ |
+| The priority path is the constitution's: a subject's write of its own role node never carries `priority`; only a superadmin's signature does. | ✓ |
 | A promotion reaches a peer that was away through any relay, receipt intact. | ✓ |
 | Node ACLs hold against a modified peer, on live operations and on state reconciliation. | ✓ |
+| A collaborator writes a node's content, never its policy: a write by anyone but the owner that changes `owner`, `collaborators` or the envelope table is refused on every peer — so a `revoke` cannot be undone by a write from a copy that predates it, whatever its stamp — and an existing node without an owner takes one only from a role that could delete it. | ✓ |
 | Read access to encrypted records is cryptographic: `grant` wraps a key, `revoke` rotates it. | ✓ |
 | Governance promotes only with a superadmin's signature, from a browser or 24/7 from the Fallback Server. | ✓ |
+| A governance time objective (`offsetTimestamp`) is met by the engine's own observation of the node — how long it has watched the node's current stamp — never by the age of a stamp the subject signed. | ✓ |
 | An expired role is a guest on every peer. | ✓ |
 | The Fallback Server relays proofs, never authority: it verifies incoming operations and refuses roles it cannot verify against its constitution. | ✓ |
 | A passkey protects the private key with a secret only the authenticator yields, or is refused: nothing the page persists decrypts it, and an application may keep the secret out of the tab altogether (`sm: { resume: false }`). | ✓ |
