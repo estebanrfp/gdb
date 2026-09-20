@@ -8,7 +8,7 @@
 4. **The same transport on every peer and on the Fallback Server** — `cells` versus full mesh — and the same `superAdmins` and `customRoles` everywhere.
 5. **Clocks.** An operation stamped more than **two hours ahead** of a receiver's clock is refused, never clamped. A peer with a wrong clock sees its own writes and nobody else does.
 6. **One subscription** (not re-created on a session change); **no `leave()` on `pagehide`** (a frozen tab would drop the peer; the engine already leaves on `beforeunload`); **one channel** multiplexing every ephemeral kind.
-7. **A wire-breaking release** (0.23, 0.27, 0.28, 0.32, 0.33, 0.36.0) needs every peer of the room updated together. A superadmin signing in once re-signs its own older state.
+7. **A wire-breaking release** (the CHANGELOG marks each one) needs every peer of the room updated together. A superadmin signing in once re-signs its own older state.
 
 ## Traps
 
