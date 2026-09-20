@@ -166,7 +166,7 @@ Inserts or updates a node.
 - **Parameters**:
   - `value` `{Object}` – Node content (must be serializable).
   - `id` `{string}` _(optional)_ – If provided, updates the node.
-- **Returns**: `{Promise<string>}` – Node ID (hash or custom).
+- **Returns**: `{Promise<string>}` – Node ID: a random UUID, `${owner}:<uuid>` when the value carries an `owner`, or the id you passed.
 
 ```js
 const id = await db.put({ type: "User", name: "Ana" })
