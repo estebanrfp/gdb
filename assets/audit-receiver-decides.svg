@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 450" width="760" height="450" role="img" aria-label="What a receiver decides. An incoming signed operation is checked against the receiver's own copy at four points: signature and author, the author's role, the node's policy, and only then applied.">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3ad"/>
+    </marker>
+    <marker id="a-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e5534b"/>
+    </marker>
+    <marker id="a-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34c77b"/>
+    </marker>
+    <style>
+      .f { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .t { font-size: 16px; font-weight: 700; fill: #e6e9ee; }
+      .s { font-size: 12.5px; fill: #e6e9ee; }
+      .m { font-size: 11.5px; fill: #9aa3ad; }
+      .no { font-size: 11.5px; font-weight: 600; fill: #e5534b; }
+      .ok { font-size: 12px; font-weight: 700; fill: #34c77b; }
+      .num { font-size: 11px; font-weight: 700; fill: #6b7480; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="759" height="449" rx="14" fill="#14171c" stroke="#262b33"/>
+  <text x="28" y="40" class="f t">What a receiver decides</text>
+  <text x="28" y="62" class="f m">Nothing consults the sender. Every check reads this peer's own copy.</text>
+
+  <!-- hostile sender -->
+  <rect x="28" y="86" width="196" height="46" rx="9" fill="#1b1f26" stroke="#3a3040"/>
+  <text x="42" y="106" class="f s">A signed operation</text>
+  <text x="42" y="123" class="f m">from any peer — possibly modified</text>
+  <line x1="126" y1="132" x2="126" y2="158" stroke="#9aa3ad" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- checks -->
+  <g>
+    <rect x="28" y="158" width="404" height="52" rx="9" fill="#1b1f26" stroke="#262b33"/>
+    <text x="42" y="178" class="f num">1</text>
+    <text x="60" y="178" class="f s">The signature, and the author it recovers</text>
+    <text x="60" y="196" class="f m">the claimed author must be the one who signed</text>
+    <line x1="432" y1="184" x2="516" y2="184" stroke="#e5534b" stroke-width="1.5" marker-end="url(#a-no)"/>
+    <text x="524" y="188" class="f no">refused</text>
+  </g>
+  <line x1="126" y1="210" x2="126" y2="228" stroke="#9aa3ad" stroke-width="1.5" marker-end="url(#a)"/>
+  <g>
+    <rect x="28" y="228" width="404" height="52" rx="9" fill="#1b1f26" stroke="#262b33"/>
+    <text x="42" y="248" class="f num">2</text>
+    <text x="60" y="248" class="f s">The author's role, as this peer holds it</text>
+    <text x="60" y="266" class="f m">its own constitution decides; an expired role is a guest</text>
+    <line x1="432" y1="254" x2="516" y2="254" stroke="#e5534b" stroke-width="1.5" marker-end="url(#a-no)"/>
+    <text x="524" y="258" class="f no">refused</text>
+  </g>
+  <line x1="126" y1="280" x2="126" y2="298" stroke="#9aa3ad" stroke-width="1.5" marker-end="url(#a)"/>
+  <g>
+    <rect x="28" y="298" width="404" height="60" rx="9" fill="#1b1f26" stroke="#34c77b" stroke-opacity=".45"/>
+    <text x="42" y="318" class="f num">3</text>
+    <text x="60" y="318" class="f s">The node's policy, on this peer's own copy</text>
+    <text x="60" y="336" class="f m">owner, collaborators and the envelope table must arrive</text>
+    <text x="60" y="351" class="f m">unchanged from a writer who is not the owner</text>
+    <line x1="432" y1="328" x2="516" y2="328" stroke="#e5534b" stroke-width="1.5" marker-end="url(#a-no)"/>
+    <text x="524" y="332" class="f no">refused</text>
+  </g>
+  <line x1="126" y1="358" x2="126" y2="378" stroke="#34c77b" stroke-width="1.5" marker-end="url(#a-ok)"/>
+  <rect x="28" y="378" width="196" height="46" rx="9" fill="#17251d" stroke="#34c77b" stroke-opacity=".55"/>
+  <text x="42" y="398" class="f ok">Applied</text>
+  <text x="42" y="415" class="f m">and only now is the clock moved</text>
+
+  <!-- the question the whole thing answers -->
+  <text x="470" y="392" class="f s">A finding, here, is one thing:</text>
+  <text x="470" y="414" class="f m">can a peer make another peer apply, accept</text>
+  <text x="470" y="431" class="f m">or reveal something outside its authority?</text>
+
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" width="1000" height="420" role="img" aria-label="There is no server to audit. GenosDB 0.36.1 security audit: every peer verifies, nothing is trusted.">
+  <defs>
+    <style>
+      .f { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .eyebrow { font-size: 15px; font-weight: 600; letter-spacing: 2.4px; fill: #9aa3ad; }
+      .h { font-size: 56px; font-weight: 700; fill: #e6e9ee; letter-spacing: -1px; }
+      .sub { font-size: 21px; font-weight: 400; fill: #9aa3ad; }
+      .tag { font-size: 13px; font-weight: 600; fill: #34c77b; letter-spacing: .6px; }
+      .peer { font-size: 12px; font-weight: 600; fill: #9aa3ad; letter-spacing: .4px; }
+      .none { font-size: 12px; font-weight: 600; fill: #6b7480; letter-spacing: .4px; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="420" fill="#14171c"/>
+  <rect x="0.5" y="0.5" width="999" height="419" fill="none" stroke="#262b33"/>
+
+  <!-- left: the claim -->
+  <g class="f">
+    <text x="64" y="108" class="eyebrow">GENOSDB · SECURITY AUDIT · SEPTEMBER 2026</text>
+    <text x="64" y="196" class="h">There is no</text>
+    <text x="64" y="258" class="h">server to audit</text>
+    <rect x="64" y="292" width="44" height="3" fill="#34c77b"/>
+    <text x="64" y="342" class="sub">Every peer verifies. Nothing is trusted.</text>
+  </g>
+
+  <!-- right: three peers, no centre -->
+  <g transform="translate(700 210)">
+    <!-- mesh edges -->
+    <g stroke="#2f3641" stroke-width="1.5">
+      <line x1="0" y1="-104" x2="-92" y2="56"/>
+      <line x1="0" y1="-104" x2="92" y2="56"/>
+      <line x1="-92" y1="56" x2="92" y2="56"/>
+    </g>
+    <!-- no server in the middle -->
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#39414d" stroke-width="1.5" stroke-dasharray="4 5"/>
+    <line x1="-19" y1="19" x2="19" y2="-19" stroke="#39414d" stroke-width="1.5"/>
+    <rect x="-46" y="40" width="92" height="18" fill="#14171c"/>
+    <text x="0" y="53" text-anchor="middle" class="f none">NO SERVER</text>
+
+    <!-- peers, each with its own verdict -->
+    <g>
+      <circle cx="0" cy="-104" r="30" fill="#1b1f26" stroke="#34c77b" stroke-width="1.6"/>
+      <path d="M -11 -105 l 7 8 l 15 -16" fill="none" stroke="#34c77b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="-146" text-anchor="middle" class="f peer">VERIFIES</text>
+    </g>
+    <g>
+      <circle cx="-92" cy="56" r="30" fill="#1b1f26" stroke="#34c77b" stroke-width="1.6"/>
+      <path d="M -103 55 l 7 8 l 15 -16" fill="none" stroke="#34c77b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="-92" y="104" text-anchor="middle" class="f peer">VERIFIES</text>
+    </g>
+    <g>
+      <circle cx="92" cy="56" r="30" fill="#1b1f26" stroke="#34c77b" stroke-width="1.6"/>
+      <path d="M 81 55 l 7 8 l 15 -16" fill="none" stroke="#34c77b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="92" y="104" text-anchor="middle" class="f peer">VERIFIES</text>
+    </g>
+  </g>
+
+  <text x="936" y="380" text-anchor="end" class="f tag">genosdb.com</text>
+</svg>
