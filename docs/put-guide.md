@@ -1,7 +1,7 @@
 ### **Method: `put(value, id)`**
 
 #### **Description**
-The `put` method inserts or updates a node in the graph with the specified `value` and `id`. If no `id` is provided, it generates a random UUID (`${owner}:<uuid>` when the value carries an `owner`) to serve as the node's identifier. The method ensures that changes are persisted to storage and notifies listeners of the update.
+The `put` method inserts or updates a node in the graph with the specified `value` and `id`. If no `id` is provided, it generates a random UUID to serve as the node's identifier. The method ensures that changes are persisted to storage and notifies listeners of the update.
 
 This method is useful for adding new nodes or updating existing ones in the graph.
 ---
@@ -15,7 +15,7 @@ This method is useful for adding new nodes or updating existing ones in the grap
 
 2. **`id`** (optional):
    - Type: String
-   - Description: The unique identifier for the node. If not provided, the method generates a random UUID — prefixed `${owner}:` when the value carries an `owner`.
+   - Description: The unique identifier for the node. If not provided, the method will automatically generate a random UUID.
 
 ---
 
@@ -36,7 +36,7 @@ This method is useful for adding new nodes or updating existing ones in the grap
 
 2. **Automatic ID Generation**:
 
-   - If no `id` is provided, the method generates a random UUID (`crypto.randomUUID()`); when the value carries an `owner`, the id is `${owner}:<uuid>` — an owned id that every peer enforces. The id never depends on the value: two `put`s of the same value make two nodes.
+   - If no `id` is provided, the method generates a random UUID.
 
 3. **Persistence**:
 
@@ -103,7 +103,7 @@ console.log("Generated Node ID:", nodeId)
 
 In this example:
 
-- The method generates a random UUID for the node. The id does not depend on the value, so putting `{ product: "Laptop", price: 999 }` twice creates two nodes.
+- The method automatically generates a random UUID for the node, independent of the value `{ product: "Laptop", price: 999 }`.
 
 ---
 
@@ -127,7 +127,7 @@ In this example:
 
 - **Persistence**: All changes made by `put` are persisted to storage using `saveGraphToOPFS`. This ensures durability of the data.
 - **Notifications**: The method emits events to notify listeners of the change. This is useful for real-time updates in applications.
-- **Id Generation**: If no `id` is provided, the method creates a random UUID — `${owner}:<uuid>` when the value carries an `owner`, so only that owner and its collaborators may write, link or delete the node on every peer.
+- **Id Generation**: If no `id` is provided, the method creates a random UUID — `${owner}:<uuid>` when the value carries an `owner`. Two `put`s of the same value make two nodes.
 
 ---
 
@@ -142,6 +142,6 @@ In this example:
 
 1. **Adding New Data**: Use `put` to insert new nodes into the graph when creating records (e.g., users, products).
 2. **Updating Existing Data**: Use `put` to modify the value of an existing node by providing its `id`.
-3. **Automatic ID Management**: When you don't need to manage IDs manually, rely on the generated UUIDs; choose your own ids when identity matters — a fixed `settings` node, `user:<address>`, seed data.
+3. **Automatic ID Management**: When you don't need to manage IDs manually, rely on the automatically generated UUIDs.
 
 ---
