@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.2] - 2026-09-20
+
+Documentation only; the bundle is byte-identical to 0.36.1. The README on npm catches up with the repository.
+
+### Changed
+
+- **`CONTINUITY.md`.** What an application built on GenosDB can rely on across releases: builds that last, a definitive API from 1.0 under Semantic Versioning, `latest` stable by default with experiments under the `next` tag, an engine that is specified. The README points to it once, names the source code as proprietary by design, and leaves the contribution policy to `CONTRIBUTING.md`.
+- **Official skill for AI coding agents.** `skills/genosdb/` ships with the engine and is published to [estebanrfp/genosdb-skill](https://github.com/estebanrfp/genosdb-skill): `npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global`. The README and the documentation index link it.
+
 ## [0.36.1] - 2026-09-20
 
 The release that closes the findings of the run-1 security audit: three defects in the engine's authorization layer — what a value is allowed to carry — none in signing, verification, key derivation or ordering. Nothing changes on the wire and no format changes; every receiver that updates protects itself, whatever its peers run. Fallback Server: GenosSRV 0.12.1 carries the same two gate changes.

@@ -5,7 +5,7 @@ description: Build applications on GenosDB — the serverless, peer-to-peer grap
 
 # GenosDB — building applications
 
-**Applies to `genosdb@0.36.1`.** This skill ships in the same commit as the engine. If the version in your `package.json` is newer, read the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md) for what changed since.
+**Applies to `genosdb@0.36.2`.** This skill ships in the same commit as the engine. If the version in your `package.json` is newer, read the [CHANGELOG](https://github.com/estebanrfp/gdb/blob/main/CHANGELOG.md) for what changed since.
 
 GenosDB is a graph database that runs entirely in the browser (OPFS, cross-tab), syncs peer to peer over WebRTC with Nostr signaling, and decides authorization on every device: **every operation is signed by its author and verified by every peer that receives it, and nothing a peer cannot verify is applied.** There is no server in the data path. The optional Fallback Server is an always-on peer that adds availability, never authority.
 
