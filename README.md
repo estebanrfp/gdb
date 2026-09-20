@@ -277,7 +277,7 @@ This project includes third-party dependencies with their own respective license
 
 ## Maintenance
 
-This repository provides production builds of GenosDB (GDB), a decentralized P2P graph database designed for modern web applications. These builds are freely available for anyone to use and integrate into their projects. Please note that the source code is proprietary by design; the production builds are provided. The project is actively maintained by Esteban Fuster Pozzi ([@estebanrfp](https://github.com/estebanrfp)), with development and verification support from AI systems audited under the Spec Driven Development (SDD) methodology. Future maintenance may also involve qualified developers aligned with our vision. GenosDB 1.0 stable is next; what it brings — API stability and builds that last — is in [CONTINUITY.md](https://github.com/estebanrfp/gdb/blob/main/CONTINUITY.md).
+This repository provides production builds of GenosDB (GDB), a decentralized P2P graph database designed for modern web applications. These builds are freely available for anyone to use and integrate into their projects. Please note that the source code is proprietary by design; the production builds are provided. The project is actively maintained by Esteban Fuster Pozzi ([@estebanrfp](https://github.com/estebanrfp)), with development and verification support from AI systems audited under the Spec Driven Development (SDD) methodology. Future maintenance may also involve qualified developers aligned with our vision. What an application built on GenosDB can rely on across releases — builds that last and a stable API — is stated in [CONTINUITY.md](https://github.com/estebanrfp/gdb/blob/main/CONTINUITY.md).
 
 ## Author
 
