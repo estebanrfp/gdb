@@ -237,7 +237,7 @@ We value community contributions and welcome your help in improving GenosDB! Cur
 - 💡 Submitting usage examples and tutorials.
 - 🐞 Reporting bugs or suggesting new features.
 
-Please read our [Contribution Guidelines](https://github.com/estebanrfp/gdb/blob/main/CONTRIBUTING.md) for more details. We do not accept pull requests for the core source code at this time.
+Please read our [Contribution Guidelines](https://github.com/estebanrfp/gdb/blob/main/CONTRIBUTING.md) for more details.
 
 ## Community
 
