@@ -9,3 +9,7 @@ Published security audits of GenosDB, its transport (GenosRTC) and its Fallback 
 ## Reports
 
   - 🔎 [Security audit — GenosDB 0.36.0](2026-09-19-genosdb-0.36.0.md) (September 2026: method, what held, the four findings and their fixes in 0.36.1, the two disproved candidates, what was not covered, evidence)
+
+## Tooling
+
+  - 🧰 [genosdb-audit](https://github.com/estebanrfp/genosdb-audit) (MIT toolkit for reviewing Zero Trust evidence and fingerprinting the official CDN release; pull requests welcome from anyone)
