@@ -161,6 +161,12 @@ For interactive, AI-assisted GenosDB documentation:
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/estebanrfp/gdb)
 
+Building with an AI coding agent? Install the official GenosDB skill — the frozen API, the patterns, the security model and the testing rules, maintained in the same commit as the engine:
+
+```bash
+npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global
+```
+
 ## Examples
 
 We’ve created a collection of interactive examples to help you understand how GDB works in real-world scenarios. These examples cover everything from basic setup to advanced features like RBAC and P2P synchronization.
