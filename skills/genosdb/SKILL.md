@@ -20,6 +20,7 @@ The public API is **frozen**. Never invent a method, an option or an operator: e
 | [API.md](API.md) | you write any call — boot options, nodes, queries, `db.room`, `db.sm`, the Fallback Server |
 | [PATTERNS.md](PATTERNS.md) | you model data, build a realtime UI, paginate, order a list, do presence, pick an app shape, bundle |
 | [SECURITY.md](SECURITY.md) | the app has users — roles, ownership, ACLs, encryption, passkeys, governance, and the threat model |
+| [IDENTITY.md](IDENTITY.md) | you build registration, login, recovery or passkeys — the identity door, its phases drawn from the security state, the phrase, the session chip |
 | [TESTING.md](TESTING.md) | you must prove that peers sync — Playwright, one browser context per peer, nothing faked |
 | [PITFALLS.md](PITFALLS.md) | "it doesn't sync", clocks, relays, caches, and the traps that cost hours |
 
