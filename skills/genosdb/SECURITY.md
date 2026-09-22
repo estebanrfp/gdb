@@ -67,6 +67,8 @@ A channel message is transport: it carries a colour, never a name GenosDB stands
 - Metrics a rule reads live on the `user:<address>` node, which its subject may rewrite (all but `role` and `expiresAt`): a metric the user writes is self-service promotion, and no metric on that node resists a modified client. Time objectives need no metric.
 - **A rule decides over a term.** A role assigned by hand with `expiresAt` becomes permanent when a rule matches its node; an expired identity keeps its `role` label, so a rule matching the label revives it. If a tier must stay time-limited, let rules govern the tiers below it and match none of its labels.
 
+The constitution designed from the app's actions, the ladder recipe, who runs the engine, the demo identities and how to test a promotion: [GOVERNANCE.md](GOVERNANCE.md).
+
 ## Five things never to do
 
 1. Never trust a channel message, a query string or another peer's word for authorization: gate on the graph and the role.
