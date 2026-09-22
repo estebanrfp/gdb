@@ -162,7 +162,7 @@ For interactive, AI-assisted GenosDB documentation:
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/estebanrfp/gdb)
 
-Building with an AI coding agent? Install the official GenosDB skill — the frozen API, the patterns, the security model and the testing rules, maintained in the same commit as the engine:
+Building with an AI coding agent? Install the official GenosDB skill — the frozen API, the patterns, the security model and the testing rules, maintained in its own repository and kept in step with every release:
 
 ```bash
 npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global

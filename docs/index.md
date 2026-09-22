@@ -12,7 +12,7 @@ Welcome to the official technical documentation for GenosDB.
   - 🔐 [Cryptographic Specification](../CRYPTOGRAPHY.md) (What is signed, verified and encrypted — identity, operations, envelopes, WebAuthn, signaling — and the commands that check the published bundle against it)
   - 🔎 [Security Audits](audits/index.md) (Published audits: date, reviewer, scope, what held, what was found and how it was fixed)
   - ♾️ [Continuity](../CONTINUITY.md) (Development continuity: builds that last, API stability, an engine that is specified)
-  - 🤖 [GenosDB Skill](https://github.com/estebanrfp/genosdb-skill) (For AI coding agents: the frozen API, patterns, security model and testing rules — `npx skills add`; source in `skills/genosdb/`)
+  - 🤖 [GenosDB Skill](https://github.com/estebanrfp/genosdb-skill) (For AI coding agents: the frozen API, patterns, security model and testing rules — `npx skills add`)
  
   - 🧪 [GenosDB Examples](genosdb-examples.md) (Live demos and community projects)
   - ✨ [GenosDB Features](genosdb-features.md) (Comprehensive feature overview and architecture)
