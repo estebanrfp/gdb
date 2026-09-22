@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.4] - 2026-09-22
+
+Documentation only; the bundle is byte-identical to 0.36.1. The README on npm catches up with the repository.
+
+### Changed
+
+- **The skill lives in its own repository.** The official skill for AI coding agents, [estebanrfp/genosdb-skill](https://github.com/estebanrfp/genosdb-skill), is written and maintained there and is no longer carried here: the `skills/` directory is gone from the public repository, and the README and the [documentation index](docs/index.md) only link it. The install command is unchanged: `npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global`. The 0.36.2 entry below is reworded accordingly.
+
 ## [0.36.3] - 2026-09-20
 
 Documentation only; the bundle is byte-identical to 0.36.1. The README on npm catches up with the repository.
