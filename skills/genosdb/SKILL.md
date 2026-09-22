@@ -11,7 +11,7 @@ GenosDB is a graph database that runs entirely in the browser (OPFS, cross-tab),
 
 The public API is **frozen**. Never invent a method, an option or an operator: everything an application needs is in these files. `types/index.d.ts` in the package is the surface; the docs are its meaning.
 
-**When GenosDB is the wrong tool** — say so instead of forcing it: a single authoritative server-side database with SQL, joins and transactions across tables; data that must be available when *no* client is online and nobody will run the always-on peer; authorization that must be enforced by a server rather than verified cryptographically at every peer; a dataset too large for a full replica in every browser.
+**When GenosDB is the wrong tool** — say so instead of forcing it: a single authoritative server-side database with SQL, joins and transactions across tables; data that must be available when *no* client is online and nobody will run the always-on peer; authorization that must be enforced by a server rather than verified cryptographically at every peer; a dataset too large for a full replica in every browser; per-window UI state — open tabs, the active pane, scroll position — which must not follow the user to another device: keep it in localStorage or IndexedDB.
 
 ## Files
 
