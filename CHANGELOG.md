@@ -20,7 +20,7 @@ Documentation only; the bundle is byte-identical to 0.36.1. The README on npm ca
 ### Changed
 
 - **`CONTINUITY.md`.** What an application built on GenosDB can rely on across releases: builds that last, a definitive API from 1.0 under Semantic Versioning, `latest` stable by default with experiments under the `next` tag, an engine that is specified. The README points to it once, names the source code as proprietary by design, and leaves the contribution policy to `CONTRIBUTING.md`.
-- **Official skill for AI coding agents.** `skills/genosdb/` ships with the engine and is published to [estebanrfp/genosdb-skill](https://github.com/estebanrfp/genosdb-skill): `npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global`. The README and the documentation index link it.
+- **Official skill for AI coding agents.** The skill lives in its own repository, [estebanrfp/genosdb-skill](https://github.com/estebanrfp/genosdb-skill), where it is written and maintained; it is not part of this repository or of the bundle. Install it with `npx skills add https://github.com/estebanrfp/genosdb-skill --skill genosdb --global`. The README and the documentation index link it.
 
 ## [0.36.1] - 2026-09-20
 
