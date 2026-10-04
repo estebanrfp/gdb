@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.5] - 2026-10-04
+
+### Fixed
+
+- **A passkey session resumed on reload signs what it writes.** The silent resume ran before the sync channel existed, so the signing wrap never reached it: the page looked signed in while every write left unsigned and every peer refused it, live and on catch-up. Signing a session back in by hand was the only way out. Pinned by `lib/tests/identity/resume-sync.spec.js`, red before.
+
 ## [0.36.4] - 2026-09-22
 
 Documentation only; the bundle is byte-identical to 0.36.1. The README on npm catches up with the repository.
