@@ -158,7 +158,7 @@ db.use(async (operations) => {
 
 ### `scope(field, values)`
 
-Puts this replica in parts of the graph instead of all of it. Each value is a sync room of its own, where the nodes whose value carries `field` with that value are synced among the replicas that are in it; replicas that share no value are never connected. A node without the field does not travel. Leaving a part disconnects and deletes nothing. Never stated, the replica is in the whole graph, as ever. See [Scope](genosdb-partial-replica.md).
+Puts this replica in parts of the graph instead of all of it. Each value is a sync room of its own, where the nodes whose value carries `field` with that value are synced among the replicas that are in it; replicas that share no value are never connected. A node without the field does not travel. Leaving a part disconnects and deletes nothing. Never stated, the replica is in the whole graph, as ever. See [Scope](genosdb-scope.md).
 
 - **Parameters**:
   - `field` `{string}` – The field of a node's value that names the part it belongs to: one name, or a list of them.

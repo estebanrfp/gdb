@@ -60,7 +60,7 @@ This dual-mode architecture offers the performance of delta-syncing with the abs
 
 #### **C. Parts of the Graph: The Same Protocol, a Room for Each Part**
 
-A replica that states a [scope](genosdb-partial-replica.md) is in parts of the graph instead of all of it, and each part is a sync room of its own. In that room the handshake, the delta and the fallback are the ones above, over the nodes of that part alone: the `sync` request carries the newest timestamp the peer holds of that part and a digest of it, a delta is the Oplog window of that part, and a full state is that part. One thing differs: there a reply goes to the peer that asked, not to the room, so peers already in step exchange nothing when someone arrives.
+A replica that states a [scope](genosdb-scope.md) is in parts of the graph instead of all of it, and each part is a sync room of its own. In that room the handshake, the delta and the fallback are the ones above, over the nodes of that part alone: the `sync` request carries the newest timestamp the peer holds of that part and a digest of it, a delta is the Oplog window of that part, and a full state is that part. One thing differs: there a reply goes to the peer that asked, not to the room, so peers already in step exchange nothing when someone arrives.
 
 ### **2. The Integrated Zero-Trust Security Layer: The Security Manager (SM) Module**
 

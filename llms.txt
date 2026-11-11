@@ -45,7 +45,7 @@ Install: `npm i genosdb` · Current version: 0.37.0 · Runtime dependencies: non
 - [Cryptographic specification](https://github.com/estebanrfp/gdb/blob/main/CRYPTOGRAPHY.md): what is signed, verified and encrypted — identity, operation signing, key envelopes, WebAuthn, signaling — and the commands that check the published bundle against it.
 - [GenosRTC architecture](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
 - [Cellular Mesh](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
-- [Scope](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-partial-replica.md): a replica in parts of the graph — the channels it follows, the lands around it — each a sync room of its own.
+- [Scope](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-scope.md): a replica in parts of the graph — the channels it follows, the lands around it — each a sync room of its own.
 - [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
 - [Whitepaper](https://github.com/estebanrfp/gdb/blob/main/WHITEPAPER.md): architecture and design rationale.
 - [Articles](https://genosdb.com): concepts, comparisons and tutorials.

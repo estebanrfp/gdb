@@ -19,7 +19,7 @@ The smallest thing GenosDB does, and the shape of everything else: `db.get(id, c
 Two `db.map()` subscriptions watching different filters, side by side. A node belongs to whichever query it currently matches, so flipping one field makes the engine work both out for you — `removed` from one list, `added` to the other, in the same write. Press a button in one column and watch the row appear in the other: no routing code, because the queries **are** the routing.
 
 ### [Channels — A Replica Is in the Channels It Follows](https://estebanrfp.github.io/gdb/examples/channels.html)
-One database for every channel, and each browser is connected only with those who follow a channel it follows: `scope: ["channel", followed]` ([Scope](genosdb-partial-replica.md)). Each channel is a room of its own, and the page's single `db.map()` never changes: following a channel brings its history from whoever is in it, unfollowing leaves the room and deletes nothing. Open it in two browsers and follow different channels.
+One database for every channel, and each browser is connected only with those who follow a channel it follows: `scope: ["channel", followed]` ([Scope](genosdb-scope.md)). Each channel is a room of its own, and the page's single `db.map()` never changes: following a channel brings its history from whoever is in it, unfollowing leaves the room and deletes nothing. Open it in two browsers and follow different channels.
 
 ### [Advanced To-Do List](https://estebanrfp.github.io/gdb/examples/advanced-todolist.html)
 A complete task management app, featuring real-time syncing, task filtering (all/active/completed), inline editing, persistent storage, and a clean responsive UI. Ideal for showcasing reactive CRUD operations.

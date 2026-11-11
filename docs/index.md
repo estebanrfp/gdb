@@ -52,7 +52,7 @@ Welcome to the official technical documentation for GenosDB.
   - 🔄 [GenosDB Hybrid Delta Protocol](genosdb-hybrid-delta-protocol.md) (Details the dual-mode engine ensuring real-time speed via delta updates and reliability via a full-state fallback.)
 
   - 🕰️ [GenosDB Hybrid Logical Clock (HLC)](genosdb-hybrid-logical-clock.md) (An advanced timestamping system that blends physical time with a logical counter to ensure causal event ordering and enable robust, deterministic conflict resolution.)
-  - 🧩 [GenosDB Scope](genosdb-partial-replica.md) (`db.scope`: a replica is in parts of the graph — the channels it follows, the lands around it — each a room of its own: replicas that share no part are never connected)
+  - 🧩 [GenosDB Scope](genosdb-scope.md) (`db.scope`: a replica is in parts of the graph — the channels it follows, the lands around it — each a room of its own: replicas that share no part are never connected)
 
   - 🤝 [GenosDB Concurrent Writes — the loser's rescue](genosdb-concurrent-writes.md) (Two writes over the same value keep both contributions without a CRDT: the writer whose op lost the race re-applies its edit over the winner as an ordinary signed write.)
 

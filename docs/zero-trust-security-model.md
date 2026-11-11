@@ -142,7 +142,7 @@ Where a perimeter must be physical, the unit is the **database name**: the room
 is derived from it, so each name is its own sync universe and a peer only
 replicates the graphs of the rooms it joins. Use separate databases for separate
 sharing scopes, and let encryption gate reading within each one. A
-[scope](genosdb-partial-replica.md) divides one database into parts a replica
+[scope](genosdb-scope.md) divides one database into parts a replica
 follows, each a sync room of its own — a choice any peer can make, never a
 perimeter.
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`db.scope(field, values)`: a replica is in parts of the graph.** Each value is a sync room of its own, where the nodes that carry it are synced among the replicas that are in it: replicas that share no value are never connected, and leaving a part deletes nothing. Never stated, nothing changes. [Scope](docs/genosdb-partial-replica.md) · `examples/channels.html`.
+- **`db.scope(field, values)`: a replica is in parts of the graph.** Each value is a sync room of its own, where the nodes that carry it are synced among the replicas that are in it: replicas that share no value are never connected, and leaving a part deletes nothing. Never stated, nothing changes. [Scope](docs/genosdb-scope.md) · `examples/channels.html`.
 
 ### Fixed
 
