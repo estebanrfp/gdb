@@ -2,8 +2,8 @@
   "meta": {
     "generator": "tools/extract-sm-payload.mjs",
     "reference": {
-      "genosdb": "583d318f6e1650e9220b6565f3468123393bf9d8",
-      "genossrv": "61a5dff795a559c3c4008f3ff24bea88ba0a707f"
+      "genosdb": "0a76ca08987ecebb333ca7dfd84f818bbd815f3c",
+      "genossrv": "bd18178ef918c227823ae606d3a64fb4288f2832"
     },
     "notes": "encryptDataForCurrentUser / decryptDataForCurrentUser — the field-level self-encryption the port exposes as gdb_sm_encrypt/gdb_sm_decrypt — executed from the browser SM. AES-GCM uses a random IV, so ciphertexts are NOT reproducible: the byte-exact claim is the DERIVED KEY, and the compatibility claim is that the native port opens ciphertexts the reference produced (and refuses what it refuses). Native→browser is a live claim and belongs in the harness, not here. Note the traps: the key is HKDF-SHA-256 of the RAW private key bytes with an empty salt and the purpose \"genosdb/self-encrypt/v3\" as info (genosdb 0.36.0 — no PBKDF2 anywhere in this path); the pipeline is msgpack→deflate→encrypt (inverting it yields data the browser cannot open); and the type tag is the literal \"aes-gcm-self-ssm-v3\" — the earlier v2 is refused by its tag."
   },
@@ -26,9 +26,9 @@
     {
       "label": "a string",
       "plaintext": "hello from the browser",
-      "encrypted_string": "{\"iv\":\"0xcc40fb3beb6e5fc191821438\",\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0xcc40fb3beb6e5fc191821438",
-      "ciphertext": "0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e",
+      "encrypted_string": "{\"iv\":\"0x6fc4de12a41c15a413e6f99b\",\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x6fc4de12a41c15a413e6f99b",
+      "ciphertext": "0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
@@ -41,25 +41,25 @@
         ],
         "n": 42
       },
-      "encrypted_string": "{\"iv\":\"0x0d6334e49d94b087ee34f725\",\"encrypted\":\"0xb4dac7a8e6b826db5bb92656fc70a530430c7f2ed74a0f653a165b500ad5fcac47bd0f45f717051589ef013bab4dea362ec0d886\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0x0d6334e49d94b087ee34f725",
-      "ciphertext": "0xb4dac7a8e6b826db5bb92656fc70a530430c7f2ed74a0f653a165b500ad5fcac47bd0f45f717051589ef013bab4dea362ec0d886",
+      "encrypted_string": "{\"iv\":\"0x7cde77a6ffbccc0f2784d158\",\"encrypted\":\"0x2b62b723dfcbad7295a35c0e2102622529306fc5c4cc5dd465de1d0bef070ae085724b08cb81eafc1d64720df0707b4ce92836cf\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x7cde77a6ffbccc0f2784d158",
+      "ciphertext": "0x2b62b723dfcbad7295a35c0e2102622529306fc5c4cc5dd465de1d0bef070ae085724b08cb81eafc1d64720df0707b4ce92836cf",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
       "label": "a number",
       "plaintext": 1234.5,
-      "encrypted_string": "{\"iv\":\"0x83eee43178ceea46f7af3f09\",\"encrypted\":\"0xcc752f34ff7d93b73bb73d5bed465075d22872712cf8b8accf9a35903744\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0x83eee43178ceea46f7af3f09",
-      "ciphertext": "0xcc752f34ff7d93b73bb73d5bed465075d22872712cf8b8accf9a35903744",
+      "encrypted_string": "{\"iv\":\"0x5ba3dff3e6a31c9b192044c1\",\"encrypted\":\"0x7aed95d03561da48d8b96779f422f44fd72cf6938d97987e8b48a3768c26\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x5ba3dff3e6a31c9b192044c1",
+      "ciphertext": "0x7aed95d03561da48d8b96779f422f44fd72cf6938d97987e8b48a3768c26",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
       "label": "null",
       "plaintext": null,
-      "encrypted_string": "{\"iv\":\"0x179675ff06e2509dab63d20e\",\"encrypted\":\"0x31644d20d335615e9779dbb2f57942b0929b1a0513cefd53a8\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0x179675ff06e2509dab63d20e",
-      "ciphertext": "0x31644d20d335615e9779dbb2f57942b0929b1a0513cefd53a8",
+      "encrypted_string": "{\"iv\":\"0x0e4e728a0ade0a9608e66124\",\"encrypted\":\"0xd95ad14a8069535d0f2db97110beab1066e7047d03633ad73f\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x0e4e728a0ade0a9608e66124",
+      "ciphertext": "0xd95ad14a8069535d0f2db97110beab1066e7047d03633ad73f",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
@@ -71,9 +71,9 @@
           "three": true
         }
       ],
-      "encrypted_string": "{\"iv\":\"0xf8583e6ca9aa6036d3a98ae7\",\"encrypted\":\"0x420b736e9d8620ac2d0cf79e65092e82ea022f754fc3e87fc99d64a382b002a26436df7cc7f4\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0xf8583e6ca9aa6036d3a98ae7",
-      "ciphertext": "0x420b736e9d8620ac2d0cf79e65092e82ea022f754fc3e87fc99d64a382b002a26436df7cc7f4",
+      "encrypted_string": "{\"iv\":\"0x1a78ff3ec8834335907c7a89\",\"encrypted\":\"0xd9ad5ee0e662e1383c619c167b7a21ad2c6c1c9e9ba89391bb2bc2c1a697261fd59a5d6daf18\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x1a78ff3ec8834335907c7a89",
+      "ciphertext": "0xd9ad5ee0e662e1383c619c167b7a21ad2c6c1c9e9ba89391bb2bc2c1a697261fd59a5d6daf18",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
@@ -81,9 +81,9 @@
       "plaintext": {
         "text": "ñandú 🛡️ 日本語"
       },
-      "encrypted_string": "{\"iv\":\"0xdf47b3927f1bee03cc526695\",\"encrypted\":\"0xa51b6cb749b6e23fa0537b7ec5e1df256deec684bb937395f2fa6356334b13b06ff37bee01aac829ef11f3a5cd0a86bf7966ac10123d139e64fbc7\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0xdf47b3927f1bee03cc526695",
-      "ciphertext": "0xa51b6cb749b6e23fa0537b7ec5e1df256deec684bb937395f2fa6356334b13b06ff37bee01aac829ef11f3a5cd0a86bf7966ac10123d139e64fbc7",
+      "encrypted_string": "{\"iv\":\"0xc58fc55b25eac39f091b248b\",\"encrypted\":\"0xa4b853767b555d7bd7e65c2e9d7b4edb8282dfcce2da0135a1c9aca29a6393d3901286a5b4574fe1ca60f083fb95400fa92e4064b43afba2b17ccc\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0xc58fc55b25eac39f091b248b",
+      "ciphertext": "0xa4b853767b555d7bd7e65c2e9d7b4edb8282dfcce2da0135a1c9aca29a6393d3901286a5b4574fe1ca60f083fb95400fa92e4064b43afba2b17ccc",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
@@ -101,9 +101,9 @@
           }
         }
       },
-      "encrypted_string": "{\"iv\":\"0x042ecfd98ca5f481e4212ad4\",\"encrypted\":\"0x158e84ae6a9959eebc7b96f39f769fd2e02656485c12fe50919355676989a604135919eb6f8422b8\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0x042ecfd98ca5f481e4212ad4",
-      "ciphertext": "0x158e84ae6a9959eebc7b96f39f769fd2e02656485c12fe50919355676989a604135919eb6f8422b8",
+      "encrypted_string": "{\"iv\":\"0x1a5d86fb8c356dcbcd09ebaf\",\"encrypted\":\"0x2983362dbd81de863fa4cd33ee1207fbeff3db1779e3666232ebcb45a026eb4be4dc2c1482d8514d\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x1a5d86fb8c356dcbcd09ebaf",
+      "ciphertext": "0x2983362dbd81de863fa4cd33ee1207fbeff3db1779e3666232ebcb45a026eb4be4dc2c1482d8514d",
       "type": "aes-gcm-self-ssm-v3"
     },
     {
@@ -313,9 +313,9 @@
           199
         ]
       },
-      "encrypted_string": "{\"iv\":\"0x226456a2cf18ac518c9baa72\",\"encrypted\":\"0x134dac3f762b18563633d0e147ca7d58ba20017d00f0a98f67dbc655f5b284fc3143b8dade86071fe410cc533f7a626a44f0be575cd3c099121d4af7f1ccbedb9fb1ac9e9e4109c8641f7ed9a2bae3143afd073c936b11a5241f8ee8fb0232c76228704972d70f41a274ccf11e0df9f681486eac12a96c6ccc94017c651024f23bcaf5c45c1458553ab93d2c64d71798f71114360aaa8f7e716ba3742216cf3ae147415e1cf3e4c6df174329cf9031f3d3119117b2f2530d1e805231ffde8a6716c88ab96384071289db0e73c8d06d31960088670cd7961316993b1185d2f5a1603f6c6bdcfed028c0c6742088cd8446e540ca5b4bf6c74082c05cc97760f7701b04a3edb86093da9490a0651d2750256291178eb1e67d870642ffe0d51641ed0bde594364b60142554f39cd758aa5fdea9ff8a9827b69ded945949e81bd4fd494f4fd029cfb433efccdd233cab5aa01dc\",\"type\":\"aes-gcm-self-ssm-v3\"}",
-      "iv": "0x226456a2cf18ac518c9baa72",
-      "ciphertext": "0x134dac3f762b18563633d0e147ca7d58ba20017d00f0a98f67dbc655f5b284fc3143b8dade86071fe410cc533f7a626a44f0be575cd3c099121d4af7f1ccbedb9fb1ac9e9e4109c8641f7ed9a2bae3143afd073c936b11a5241f8ee8fb0232c76228704972d70f41a274ccf11e0df9f681486eac12a96c6ccc94017c651024f23bcaf5c45c1458553ab93d2c64d71798f71114360aaa8f7e716ba3742216cf3ae147415e1cf3e4c6df174329cf9031f3d3119117b2f2530d1e805231ffde8a6716c88ab96384071289db0e73c8d06d31960088670cd7961316993b1185d2f5a1603f6c6bdcfed028c0c6742088cd8446e540ca5b4bf6c74082c05cc97760f7701b04a3edb86093da9490a0651d2750256291178eb1e67d870642ffe0d51641ed0bde594364b60142554f39cd758aa5fdea9ff8a9827b69ded945949e81bd4fd494f4fd029cfb433efccdd233cab5aa01dc",
+      "encrypted_string": "{\"iv\":\"0x562142be40efe696863874dc\",\"encrypted\":\"0x59fbeb83e9bd0b125f2e01c26cb939b562efe9a09427f51c2958d09095b3dba5823c3861717fe4ce7c6065efc817a3eb9993cad27836dd7b35270ca7ff22c0254b09b271d96eb83e6ba5a12424774d8840898135e943a1be61f997c09769e2b951d2e9bc3437ef66ade827b3a5205bb89f5f7a1584fe99c4c57447a47076d1743b8e0c1c6874a369ba0a51b137ac28aad1fba58ab4823a078f3bba861c0830cef9192ed2a93aec19ff96ad757fc93b8e35649e034da3a8858fe2b75e43a46560ddbe98773b799065cc9be79e4cdbcaeeaf0c0e79481be87cecc10c5454bc3f48f3126c5bb4cb3e004b3e3cdc835f27ce9603a01ec66272b8944ce54ad190769806a3c65dc307915f17e766b9e5bfc0628e3eb63866bfd6532d6948eca3ddf721ce90bd934484b46048f6ed36bd247441be4d7149d1e1ad3139f0f99bd374ce780796895ab8996385fd52dfff5a8490778e\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "iv": "0x562142be40efe696863874dc",
+      "ciphertext": "0x59fbeb83e9bd0b125f2e01c26cb939b562efe9a09427f51c2958d09095b3dba5823c3861717fe4ce7c6065efc817a3eb9993cad27836dd7b35270ca7ff22c0254b09b271d96eb83e6ba5a12424774d8840898135e943a1be61f997c09769e2b951d2e9bc3437ef66ade827b3a5205bb89f5f7a1584fe99c4c57447a47076d1743b8e0c1c6874a369ba0a51b137ac28aad1fba58ab4823a078f3bba861c0830cef9192ed2a93aec19ff96ad757fc93b8e35649e034da3a8858fe2b75e43a46560ddbe98773b799065cc9be79e4cdbcaeeaf0c0e79481be87cecc10c5454bc3f48f3126c5bb4cb3e004b3e3cdc835f27ce9603a01ec66272b8944ce54ad190769806a3c65dc307915f17e766b9e5bfc0628e3eb63866bfd6532d6948eca3ddf721ce90bd934484b46048f6ed36bd247441be4d7149d1e1ad3139f0f99bd374ce780796895ab8996385fd52dfff5a8490778e",
       "type": "aes-gcm-self-ssm-v3"
     }
   ],
@@ -327,32 +327,32 @@
     },
     {
       "label": "the earlier format tag (v2)",
-      "input": "{\"iv\":\"0xcc40fb3beb6e5fc191821438\",\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e\",\"type\":\"aes-gcm-self-ssm-v2\"}",
+      "input": "{\"iv\":\"0x6fc4de12a41c15a413e6f99b\",\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c\",\"type\":\"aes-gcm-self-ssm-v2\"}",
       "rejected": true
     },
     {
       "label": "missing type",
-      "input": "{\"iv\":\"0xcc40fb3beb6e5fc191821438\",\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e\"}",
+      "input": "{\"iv\":\"0x6fc4de12a41c15a413e6f99b\",\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c\"}",
       "rejected": true
     },
     {
       "label": "missing iv",
-      "input": "{\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "input": "{\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c\",\"type\":\"aes-gcm-self-ssm-v3\"}",
       "rejected": true
     },
     {
       "label": "missing ciphertext",
-      "input": "{\"iv\":\"0xcc40fb3beb6e5fc191821438\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "input": "{\"iv\":\"0x6fc4de12a41c15a413e6f99b\",\"type\":\"aes-gcm-self-ssm-v3\"}",
       "rejected": true
     },
     {
       "label": "tampered ciphertext (GCM tag must fail)",
-      "input": "{\"iv\":\"0xcc40fb3beb6e5fc191821438\",\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a00\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "input": "{\"iv\":\"0x6fc4de12a41c15a413e6f99b\",\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac00\",\"type\":\"aes-gcm-self-ssm-v3\"}",
       "rejected": true
     },
     {
       "label": "tampered iv",
-      "input": "{\"iv\":\"0xcc40fb3beb6e5fc191821400\",\"encrypted\":\"0x9f476c90e7dd81e93aed9417d54a1e5247f22a74eebbdd3aa0a124048308b82e816c568e8fd1da36b6b34903554a9e\",\"type\":\"aes-gcm-self-ssm-v3\"}",
+      "input": "{\"iv\":\"0x6fc4de12a41c15a413e6f900\",\"encrypted\":\"0x7752e48c6b9fda48188c699f5d501c47e221f803e980cd636eb1e1166e6081df25a0a9e0d8e7d3b4cabe8c0426ac6c\",\"type\":\"aes-gcm-self-ssm-v3\"}",
       "rejected": true
     }
   ]
