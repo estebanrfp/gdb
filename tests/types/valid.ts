@@ -53,6 +53,11 @@ await db.map({ query: { type: "post" } }, ({ id, value, action, edges, timestamp
 // ── Middleware ──────────────────────────────────────────────────────
 db.use(async (operations) => operations.filter((op) => op.type !== "remove"))
 
+// ── Scope: a replica in parts of the graph (api-reference) ──────────
+const scoped = await gdb("workspace", { rtc: true, scope: ["channel", ["general", "design"]] })
+scoped.scope("channel", ["general", "random"])
+scoped.rooms?.get("general")?.room.channel("typing").send({ typing: true })
+
 // ── db.room (genosrtc-api-reference) ────────────────────────────────
 const room = db3.room!
 room.on("peer:join", (peerId, type) => {

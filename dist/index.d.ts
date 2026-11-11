@@ -298,6 +298,12 @@ declare module "genosdb" {
     saveDelay?: number
     /** Max operations kept for delta P2P sync. Defaults to `200`. */
     oplogSize?: number
+    /**
+     * Open in these parts of the graph: `[field, values]`, as
+     * `db.scope(field, values)`. Stated here, the replica never joins the
+     * room of the whole graph.
+     */
+    scope?: [field: string, values: Array<string | number>]
   }
 
   // ── Database ───────────────────────────────────────────────────────
@@ -333,8 +339,22 @@ declare module "genosdb" {
         previousStates: Map<string, any>
       ) => Promise<any[] | void> | any[] | void
     ): void
-    /** P2P room (present when `rtc` is enabled). */
-    room?: Room
+    /**
+     * Be in these parts of the graph: a sync room for each value of `field`,
+     * and in each the nodes whose value carries it. Peers that share no value
+     * are never connected; a node without the field does not travel. Leaving
+     * a part disconnects and deletes nothing. Never called: the whole graph,
+     * as ever.
+     */
+    scope(field: string, values: Array<string | number>): void
+    /** P2P room (present when `rtc` is enabled and no scope is stated). */
+    room?: Room | null
+    /**
+     * The sync room of each part this replica is in, by value — where an
+     * application with a scope opens its own channels. Without a scope: the
+     * whole graph's, under `undefined`.
+     */
+    rooms?: Map<string | number | undefined, { room: Room }>
     /** This peer's id (present when `rtc` is enabled). */
     selfId?: string
     /** Security Manager (present when `sm` is configured). */

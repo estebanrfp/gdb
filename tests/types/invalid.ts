@@ -24,6 +24,9 @@ await db.map({ order: "sideways" })
 // @ts-expect-error — $limit is a number
 await db.map({ $limit: "ten" })
 
+// @ts-expect-error — scope takes the list of parts, not one value
+db.scope("channel", "general")
+
 const room = db.room!
 
 // @ts-expect-error — leave takes no arguments

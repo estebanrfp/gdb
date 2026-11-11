@@ -4,7 +4,7 @@
 
 **Licensing (state this precisely):** the published npm bundle is free to use, including commercially — install it, ship it, run it in production at no cost. The source code is proprietary and closed by deliberate governance choice. GenosDB is **not** open source; describing it as such is inaccurate.
 
-Install: `npm i genosdb` · Current version: 0.36.0 · Runtime dependencies: none.
+Install: `npm i genosdb` · Current version: 0.37.0 · Runtime dependencies: none.
 
 ## What it is good for
 
@@ -19,18 +19,19 @@ Install: `npm i genosdb` · Current version: 0.36.0 · Runtime dependencies: non
 - You need a single authoritative server-side database with SQL, joins and transactions across tables.
 - You need data available when *no* client is online, and do not want to run the optional always-on peer.
 - You need strong server-enforced authorization: GenosDB verifies cryptographically at every peer, but there is no central authority to appeal to.
-- Your dataset is large enough that a full replica per browser is impractical.
+- Your dataset is large enough that a full replica per browser is impractical — unless it divides into parts a browser follows (`scope`, below).
 
 ## API surface (frozen public contract)
 
 - The database is created with an **async factory**, never with `new`: `const db = await gdb(name, options)`.
-- Core methods: `put(value, id?)` · `get(id, callback?)` · `map(options?, callback?)` · `link(sourceId, targetId)` · `unlink(sourceId, targetId)` · `remove(id)` · `clear()` · `use(middleware)`.
+- Core methods: `put(value, id?)` · `get(id, callback?)` · `map(options?, callback?)` · `link(sourceId, targetId)` · `unlink(sourceId, targetId)` · `remove(id)` · `clear()` · `use(middleware)` · `scope(field, values)`.
 - `map` and `get` become reactive when given a callback. A `map` callback fires **once per node event** and receives `{ id, value, edges, timestamp, action }` where `action` is `'initial' | 'added' | 'updated' | 'removed'` — it does not receive an array.
 - Query operators live **inside** `query`: `$eq $ne $gt $gte $lt $lte $in $between $exists $startsWith $endsWith $contains $text $like $regex $not $and $or $edge $near`. `$edge` performs recursive graph traversal and also goes inside `query`. `$text` matches per field (accent-insensitive), not across the whole node.
 - Sorting and pagination via `field`, `order`, `$limit`, `$after`, `$before`.
-- Options for `gdb(name, options)`: `rtc` (`true` or `{ relayUrls, turnConfig, cells }`), `sm`, `password`, `debug`, `saveDelay`, `oplogSize`.
+- Options for `gdb(name, options)`: `rtc` (`true` or `{ relayUrls, turnConfig, cells }`), `sm`, `password`, `debug`, `saveDelay`, `oplogSize`, `scope` (`[field, values]`, as `db.scope`).
 - With `rtc` enabled, `db.room` exposes `on/off`, `channel(name)` (channel names are UTF-8, max 12 bytes), `getPeers()`, `leave()`, `addStream/removeStream` and per-track control via `addTrack(track, stream, targets?, meta?)`, `removeTrack(track, targets?)`, `replaceTrack(oldTrack, newTrack, targets?, meta?)`. Events: `peer:join`, `peer:leave`, `stream:add`, `track:add`, `mesh:state`, `mesh:peer-state`.
 - `rtc: { cells: true }` enables Cellular Mesh, which partitions connections so a room scales beyond the point where full-mesh WebRTC collapses.
+- `db.scope(field, values)` — or the `scope` option, stated when the database opens — puts a replica in parts of the graph instead of all of it: each value is a sync room of its own for the nodes that carry it, replicas that share no value are never connected, and leaving a part deletes nothing. With a scope there is no `db.room`: `db.rooms.get(value).room` is the room of each part. It is not access control.
 - With `sm` configured, `db.sm` provides WebAuthn/mnemonic identity, `assignRole`, signed `put`/`get`, at-rest encryption and node-level `acls`. `db.sm.sign(value)` / `db.sm.verify(envelope, maxAge?)` sign a value for the ephemeral channel: the graph is for facts, a signed envelope says who is saying something now — it labels (a named caret, who is in the room), it never decides nor persists; `verify` returns the signer's address or null, never a permission. Roles are declared as `customRoles: { role: { can: [...], inherits: [...] } }` — note `customRoles`, not `roles`. Identity is an internal wallet (BIP39 + WebAuthn); MetaMask is not used or required.
 - TypeScript definitions ship with the package and describe this exact surface.
 
@@ -44,6 +45,7 @@ Install: `npm i genosdb` · Current version: 0.36.0 · Runtime dependencies: non
 - [Cryptographic specification](https://github.com/estebanrfp/gdb/blob/main/CRYPTOGRAPHY.md): what is signed, verified and encrypted — identity, operation signing, key envelopes, WebAuthn, signaling — and the commands that check the published bundle against it.
 - [GenosRTC architecture](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-architecture.md): WebRTC transport and Nostr signaling.
 - [Cellular Mesh](https://github.com/estebanrfp/gdb/blob/main/docs/genosrtc-cells.md): scaling beyond full-mesh limits.
+- [Scope](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-partial-replica.md): a replica in parts of the graph — the channels it follows, the lands around it — each a sync room of its own.
 - [Fallback Server](https://github.com/estebanrfp/gdb/blob/main/docs/genosdb-fallback-server.md): optional always-on peer, and running your own Nostr signaling relay.
 - [Whitepaper](https://github.com/estebanrfp/gdb/blob/main/WHITEPAPER.md): architecture and design rationale.
 - [Articles](https://genosdb.com): concepts, comparisons and tutorials.

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenosDB — Channels: a replica is in the channels it follows</title>
+
+    <style>
+        /* Minimal profile: only the tokens this page paints with, same names and
+           same values as the design guide. Light, because the page is read next
+           to the documentation it illustrates. */
+        :root {
+            --bg-primary: #f4f6fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #1a1d24;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9aa1ad;
+            --accent: #2563eb;
+            --text-on-accent: #ffffff;
+            --border-subtle: #e4e7ee;
+            --border-strong: #d4d9e3;
+            --radius-sm: 6px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-5: 24px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0 auto;
+            padding: var(--space-5);
+            max-width: 640px;
+            font: 14px/1.5 var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        h1 { margin: 0; font-size: 17px; }
+        h1 span, .hint { color: var(--text-secondary); font-weight: 400; }
+        .hint { margin: var(--space-2) 0 var(--space-5); }
+
+        .follow { display: flex; gap: var(--space-5); margin: 0; padding: 0; border: none; }
+        .follow legend { padding: 0; margin-bottom: var(--space-2); color: var(--text-secondary); }
+        .follow label, .message .channel { font-family: var(--mono); }
+
+        .messages { list-style: none; margin: var(--space-5) 0 var(--space-3); padding: 0; }
+        .message { display: flex; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border-subtle); }
+        .message[hidden] { display: none; }
+        .message .channel { color: var(--accent); }
+        .message .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .message time, .held { color: var(--text-tertiary); }
+
+        .composer { display: flex; gap: var(--space-2); }
+        .composer input { flex: 1; min-width: 0; }
+        .composer input, .composer select, .composer button {
+            font: inherit;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .composer button { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); cursor: pointer; }
+        .composer button:disabled { opacity: .5; cursor: not-allowed; }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Channels <span>· a replica is in the channels it follows</span></h1>
+        <p class="hint">Open this page in a second browser or a private window and follow other channels there.</p>
+
+        <fieldset class="follow" id="follow">
+            <legend>This browser follows</legend>
+        </fieldset>
+
+        <ul class="messages" id="messages"></ul>
+        <form class="composer" id="composer">
+            <select id="channel" aria-label="Channel"></select>
+            <input type="text" id="text" placeholder="Message…" aria-label="Message" autocomplete="off">
+            <button id="send">Send</button>
+        </form>
+        <p class="held">This replica holds <b id="held">0</b> messages.</p>
+    </main>
+
+    <script type="module">
+        /**
+         * Channels: a replica is in the channels it follows.
+         *
+         * One database for every channel — and no reason for a browser to be
+         * connected to the people of channels nobody opens in it, or to
+         * receive what they write. `scope` names the parts of the graph this
+         * replica is in: each value is a room of its own, where the nodes that
+         * carry it are synced among the browsers that are in it. Two browsers
+         * that follow no channel in common are never connected.
+         *
+         * What to read here, and where:
+         *   · gdb(name, { scope: ["channel", followed] }) — stated when the
+         *     database opens, so this browser never joins a room of everyone
+         *   · db.scope("channel", followed) — again whenever what is followed
+         *     changes: a channel just followed is asked of whoever is in it;
+         *     one unfollowed is left, and what was held of it stays on disk
+         *   · db.map({ query }, cb)         — ONE subscription for the life of
+         *     the page, with no channel in its query: it never changes. The
+         *     list shows what is followed of what the replica holds
+         *
+         * A replica is a browser, not a tab: the tabs of one browser share the
+         * stored graph. What is followed lives in localStorage for that reason,
+         * and every tab reads it from there.
+         *
+         * And a channel's history comes from whoever is in it: following one
+         * that nobody else has open brings nothing until someone who holds it
+         * comes back.
+         */
+        import { gdb } from "../dist/index.js"
+
+        const CHANNELS = ["general", "design", "random"]
+        const $ = (id) => document.getElementById(id)
+        const el = { follow: $("follow"), messages: $("messages"), composer: $("composer"), channel: $("channel"), text: $("text"), send: $("send"), held: $("held") }
+
+        /** What this browser follows: one answer for all its tabs. */
+        const followed = () => JSON.parse(localStorage.channelsFollowed ?? '["general"]')
+
+        const db = await gdb("genosdb-channels", { rtc: true, scope: ["channel", followed()] })
+
+        for (const name of CHANNELS) {
+            const label = document.createElement("label")
+            const box = document.createElement("input")
+            box.type = "checkbox"
+            box.value = name
+            label.append(box, ` #${name}`)
+            el.follow.append(label)
+        }
+
+        /** The channels this replica is in, and what depends on them: the two controls and the rows shown. */
+        const enterFollowed = () => {
+            const channels = followed()
+            db.scope("channel", channels)
+            for (const box of el.follow.querySelectorAll("input")) box.checked = channels.includes(box.value)
+            // A message is written where it will be heard: the channels followed here.
+            const chosen = el.channel.value
+            el.channel.replaceChildren(...channels.map((name) => new Option(`#${name}`, name)))
+            if (channels.includes(chosen)) el.channel.value = chosen
+            el.send.disabled = !channels.length
+            for (const row of el.messages.children) row.hidden = !channels.includes(row.dataset.channel) // an unfollowed channel is still held, not shown
+        }
+
+        enterFollowed()
+        el.follow.addEventListener("change", () => {
+            localStorage.channelsFollowed = JSON.stringify([...el.follow.querySelectorAll("input:checked")].map((box) => box.value))
+            enterFollowed()
+        })
+        addEventListener("storage", (e) => { if (e.key === "channelsFollowed") enterFollowed() }) // another tab of this browser changed it
+
+        const buildRow = (id, { channel, text, at }) => {
+            const li = document.createElement("li")
+            li.className = "message"
+            li.dataset.id = id
+            li.dataset.at = at
+            li.dataset.channel = channel
+            li.hidden = !followed().includes(channel)
+            const tag = document.createElement("span")
+            tag.className = "channel"
+            tag.textContent = `#${channel}`
+            const body = document.createElement("span")
+            body.className = "text"
+            body.textContent = text // a peer's value renders as text
+            const time = document.createElement("time")
+            time.textContent = new Date(at).toLocaleTimeString()
+            li.append(tag, body, time)
+            return li
+        }
+
+        /** `at` ascending, the id breaks a tie — the order the sorted map applies. */
+        const place = (li) => {
+            const after = [...el.messages.children].find((other) =>
+                Number(other.dataset.at) > Number(li.dataset.at) || (other.dataset.at === li.dataset.at && other.dataset.id > li.dataset.id))
+            el.messages.insertBefore(li, after ?? null)
+        }
+
+        await db.map({ query: { type: "message" }, field: "at", order: "asc" }, ({ id, value, action }) => {
+            const existing = el.messages.querySelector(`[data-id="${CSS.escape(id)}"]`)
+
+            if (action === "removed") existing?.remove() // deleted by someone
+            else if (action === "updated") existing?.replaceWith(buildRow(id, value))
+            else if (action === "added") place(buildRow(id, value)) // a channel just followed brings its history: each message at its place
+            else if (!existing) el.messages.append(buildRow(id, value)) // initial: already ordered
+
+            el.held.textContent = el.messages.children.length
+        })
+
+        el.composer.addEventListener("submit", async (e) => {
+            e.preventDefault()
+            const text = el.text.value.trim()
+            if (!text || !el.channel.value) return el.text.focus()
+            await db.put({ type: "message", channel: el.channel.value, text, at: Date.now() })
+            el.text.value = ""
+            el.text.focus()
+        })
+    </script>
+</body>
+
+</html>

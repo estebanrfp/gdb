@@ -46,6 +46,7 @@ Creates and configures a database connection.
     - `debug` `{boolean}` _(optional)_ – If `true`, enables GenosDB's internal debug logging (persistence, synchronization, networking and module activity). The console stays fully silent by default. Defaults to `false`.
     - `saveDelay` `{number}` _(optional)_ – The debounce delay in milliseconds for saving the graph and the operation log to persistent storage. Higher values reduce disk I/O under heavy write loads but increase the risk of data loss if the browser crashes. Defaults to `200`.
     - `oplogSize` `{number}` _(optional)_ – The maximum number of recent operations to keep in the operation log for delta-based P2P synchronization. Larger values allow peers to sync efficiently after longer disconnections but consume more memory. Defaults to `200`.
+    - `scope` `{[string, Array<string|number>]}` _(optional)_ – `[field, values]`: opens the replica in these parts of the graph, as [`scope(field, values)`](#scopefield-values) does. Stated here, the replica never joins the room of the whole graph.
 
 - **Returns**: `gdb` object.
 
@@ -154,6 +155,23 @@ db.use(async (operations) => {
   return filteredOps;
 });
 ```
+
+### `scope(field, values)`
+
+Puts this replica in parts of the graph instead of all of it. Each value is a sync room of its own, where the nodes whose value carries `field` with that value are synced among the replicas that are in it; replicas that share no value are never connected. A node without the field does not travel. Leaving a part disconnects and deletes nothing. Never stated, the replica is in the whole graph, as ever. See [Scope](genosdb-partial-replica.md).
+
+- **Parameters**:
+  - `field` `{string}` – The field of a node's value that names the part it belongs to: one name, or a list of them.
+  - `values` `{Array<string|number>}` – The parts this replica is in.
+- **Returns**: `{void}`
+
+```js
+// Be in the channels this browser follows — when the database opens, and again whenever they change
+const db = await gdb("workspace", { rtc: true, scope: ["channel", ["general", "design"]] });
+db.scope("channel", ["general", "random"]);
+```
+
+With a scope there is no `db.room`: `db.rooms.get(value).room` is the room of each part, where the application opens its own channels.
 
 ---
 

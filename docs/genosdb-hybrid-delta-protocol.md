@@ -39,9 +39,10 @@ A delta update is only possible if a peer's history overlaps with the Oplog of i
 
 **Fallback Triggers:**
 
-A full-state sync is initiated under two specific conditions:
+A full-state sync is initiated under three specific conditions:
 1.  A peer receives a `sync` request with a `globalTimestamp` that is older than the oldest operation in its Oplog, indicating the requesting peer is too far behind.
 2.  A peer receives a `sync` request from a new peer, where the `globalTimestamp` is `null`.
+3.  A peer receives, for the second time, a `sync` request whose digest differs from its own in the same way. The window it answered with was not enough: the requesting peer's `globalTimestamp` runs ahead of what it holds, because it wrote before it reconnected. This full state goes to that peer alone, once, and is not answered in turn.
 
 **The Fallback Process:**
 
@@ -56,6 +57,10 @@ A full-state sync is initiated under two specific conditions:
 3.  **Reciprocity:** If the receiver holds nodes the sender lacks, it replies once with its own full state, so reconciliation converges in both directions; that reply is terminal and is never answered with another full state.
 
 This dual-mode architecture offers the performance of delta-syncing with the absolute reliability of full-state reconciliation, guaranteeing **eventual consistency** across the network regardless of peer connectivity.
+
+#### **C. Parts of the Graph: The Same Protocol, a Room for Each Part**
+
+A replica that states a [scope](genosdb-partial-replica.md) is in parts of the graph instead of all of it, and each part is a sync room of its own. In that room the handshake, the delta and the fallback are the ones above, over the nodes of that part alone: the `sync` request carries the newest timestamp the peer holds of that part and a digest of it, a delta is the Oplog window of that part, and a full state is that part. One thing differs: there a reply goes to the peer that asked, not to the room, so peers already in step exchange nothing when someone arrives.
 
 ### **2. The Integrated Zero-Trust Security Layer: The Security Manager (SM) Module**
 

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-11-11
+
+### Added
+
+- **`db.scope(field, values)`: a replica is in parts of the graph.** Each value is a sync room of its own, where the nodes that carry it are synced among the replicas that are in it: replicas that share no value are never connected, and leaving a part deletes nothing. Never stated, nothing changes. [Scope](docs/genosdb-partial-replica.md) · `examples/channels.html`.
+
+### Fixed
+
+- **A replica whose mark runs ahead of what it holds is whole again the next time it says hello.** Away for longer than an oplog window and having written before it reconnected, it was answered with the window and left without the rest, hello after hello. A difference that comes back is now answered with everything — once, to that peer alone. Fallback Server: GenosSRV 0.12.2 answers the same way. Pinned by `lib/tests/catch-up/catchup.spec.js`, red before.
+- **A page that leaves a room and comes back to it is linked again, and stays linked.** The connection it left behind, once given up for dead, took the returned peer out of the room on those who had stayed; and a room joined while the one before it was still closing was that one. The bundled GenosRTC moves to 0.31.3. Pinned by `lib/tests/partial/scope.spec.js`, red before.
+
 ## [0.36.5] - 2026-10-04
 
 ### Fixed

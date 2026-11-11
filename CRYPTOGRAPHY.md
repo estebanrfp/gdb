@@ -279,7 +279,7 @@ signed with the same canonicalization and EIP-191 scheme over the envelope witho
 
 ## 7. Confidentiality: encrypted records (`db.sm.put`)
 
-Every peer in a room replicates the whole graph. What protects a record is encryption, never topology. Selective replication cannot be a control in a serverless network: a modified peer can always re-forward what it already holds.
+Every peer in a room replicates the whole graph — or, with a scope (`db.scope`), the parts of it that peer chooses to be in, and any peer may be in any part. What protects a record is encryption, never topology. Selective replication cannot be a control in a serverless network: a modified peer can always re-forward what it already holds.
 
 ### 7.1 Content key
 
@@ -609,3 +609,4 @@ The greps confirm the constants; the vectors confirm the arithmetic. [`tests/vec
 | 2026-09-16 | 0.36.0 | §6.4, §12.6: the browser's default log window is 200 operations, not 50 (`oplogSize`, unchanged since 0.33.4). |
 | 2026-09-16 | 0.36.0 | §13: conformance vectors under `tests/vectors/` with an independent verifier and the bundle's SHA-256 pinned; §4.1, §4.3, §5.1, §6.1, §6.5, §7.2, §7.3 state what the vectors made explicit. |
 | 2026-09-20 | 0.36.1 | §5.5: a non-owner's write keeps the owner's policy (`owner`, `collaborators`, `_meta.keys`); the subject never carries `priority`; an existing un-owned node takes an owner only from a role that could delete it. |
+| 2026-11-11 | 0.37.0 | §7: with a scope a peer replicates the parts of the graph it chooses to be in, and any peer may be in any part; replication stays outside the security model. |

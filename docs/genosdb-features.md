@@ -40,6 +40,7 @@
 *   **Real-time Database Synchronization:**
     *   **P2P Sync Engine:** Powered by the internal **GenosRTC** module, enabling automatic, real-time, delta-based synchronization of all graph operations between connected peers.
     *   **Cellular Mesh Scalability:** Optional cellular network topology that organizes peers into cells with bridge nodes, enabling horizontal scaling to large-scale networks while maintaining efficient message propagation.
+    *   **Scope:** `db.scope(field, values)` puts a replica in parts of the graph, each a sync room of its own: replicas that share no part are never connected, and a replica that states no scope replicates the whole graph as before.
     *   **Efficient Resynchronization:** Uses a configurable operation log (`oplogSize`) to allow peers to efficiently "catch up" after being disconnected, transmitting only the missed operations.
     *   **Robust Connectivity:** Supports custom **Nostr relays** (`relayUrls`) for peer discovery and **TURN servers** (`turnConfig`) to traverse restrictive NATs and firewalls.
     *   **Optional Encryption:** The P2P signaling and communication layer can be encrypted by providing a `password` during initialization.

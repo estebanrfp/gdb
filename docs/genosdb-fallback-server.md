@@ -47,6 +47,8 @@ bun genossrv.min.js <name> [--cells] [--room]
 
 **Match the transport to your app.** A room where browsers use `rtc: { cells: … }` speaks over per-cell channels; start the server with `--cells` or it cannot receive browser writes (it will print a one-line warning telling you exactly this).
 
+**A browser opened with a `scope` does not meet the server.** The server is in the room of the whole graph; a replica that states a [scope](genosdb-partial-replica.md) is in the rooms of its parts and never joins that one.
+
 ### As a module
 
 Options mirror `gdb(name, options)` — same names, same shapes:
